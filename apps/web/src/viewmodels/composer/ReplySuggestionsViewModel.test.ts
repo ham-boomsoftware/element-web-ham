@@ -91,6 +91,13 @@ describe("ReplySuggestionsViewModel", () => {
             setRoom: vi.fn(),
             generateReply: vi.fn(),
             generateSuggestions: vi.fn().mockResolvedValue({ ok: true, data: SUGGESTIONS }),
+            pickWorkspace: vi.fn(),
+            getTasks: vi.fn(),
+            addTasks: vi.fn(),
+            updateTask: vi.fn(),
+            deleteTask: vi.fn(),
+            detectTasks: vi.fn(),
+            runTask: vi.fn(),
         };
     });
 
@@ -146,6 +153,8 @@ describe("ReplySuggestionsViewModel", () => {
             provider: "copilot",
             instructions: "",
             replySuggestions: true,
+            taskDetection: true,
+            autoInvestigate: false,
             connected: { claude: true, copilot: false },
         });
 
@@ -163,6 +172,8 @@ describe("ReplySuggestionsViewModel", () => {
             provider: "claude",
             instructions: "",
             replySuggestions: false,
+            taskDetection: true,
+            autoInvestigate: false,
             connected: { claude: true, copilot: false },
         });
 

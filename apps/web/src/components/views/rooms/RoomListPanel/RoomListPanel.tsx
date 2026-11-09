@@ -12,6 +12,7 @@ import { shouldShowComponent } from "../../../../customisations/helpers/UICompon
 import { UIComponent } from "../../../../settings/UIFeature";
 import { RoomListSearch } from "./RoomListSearch";
 import { RoomListView } from "./RoomListView";
+import { AgentTodoButton } from "./AgentTodoButton";
 import { _t } from "../../../../languageHandler";
 import { getKeyBindingsManager } from "../../../../KeyBindingsManager";
 import { KeyBindingAction } from "../../../../accessibility/KeyboardShortcuts";
@@ -78,6 +79,7 @@ export const RoomListPanel: React.FC<RoomListPanelProps> = ({ activeSpace }) => 
             onKeyDown={onKeyDown}
         >
             {displayRoomSearch && <RoomListSearch activeSpace={activeSpace} />}
+            <AgentTodoButton />
             <RoomListHeaderView vm={vm} />
             <RoomListView />
         </Flex>

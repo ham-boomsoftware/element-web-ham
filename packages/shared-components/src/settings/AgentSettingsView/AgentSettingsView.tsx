@@ -36,9 +36,10 @@ export type AgentSettingsProvider = "claude" | "copilot";
  * - `invalid_credential`: the provider rejected the key or token.
  * - `rate_limited`: the provider asks to slow down, or the plan's allowance is used up.
  * - `unavailable`: the provider could not be reached.
+ * - `no_workspace`: the chosen project folder doesn't exist.
  * - `unknown`: anything else.
  */
-export type AgentSettingsError = "invalid_credential" | "rate_limited" | "unavailable" | "unknown";
+export type AgentSettingsError = "invalid_credential" | "rate_limited" | "unavailable" | "no_workspace" | "unknown";
 
 /**
  * A model the selected provider offers.
@@ -66,6 +67,12 @@ export interface AgentSettingsViewSnapshot {
     instructions: string;
     /** Whether replies are suggested above the composer of every chat */
     replySuggestions: boolean;
+    /** Whether the agent collects requests from chats into the to-do list */
+    taskDetection: boolean;
+    /** Whether the agent looks into each new task in the project folder by itself */
+    autoInvestigate: boolean;
+    /** The folder of the project the agent works on for tasks, if one is chosen */
+    workspacePath?: string;
     /** Why the last action failed, if it did */
     error?: AgentSettingsError;
 }
@@ -83,6 +90,14 @@ export interface AgentSettingsViewActions {
     saveInstructions: (instructions: string) => void;
     /** Turn the reply suggestions on or off */
     setReplySuggestions: (enabled: boolean) => void;
+    /** Turn collecting requests into the to-do list on or off */
+    setTaskDetection: (enabled: boolean) => void;
+    /** Turn looking into new tasks by itself on or off */
+    setAutoInvestigate: (enabled: boolean) => void;
+    /** Let the user choose the project folder */
+    chooseWorkspace: () => void;
+    /** Forget the project folder */
+    clearWorkspace: () => void;
 }
 
 /**
@@ -97,12 +112,25 @@ export interface AgentSettingsViewProps {
 
 /**
  * Settings of the agent that replies to the direct messages set to "Agent": which AI provider it uses, the
- * credential of the provider, the model, the user's own instructions and whether it suggests replies in every chat.
+ * credential of the provider, the model, the user's own instructions, whether it suggests replies in every chat, and
+ * how it keeps the to-do list: whether it collects requests from chats, and the project folder it works on them in.
  */
 export function AgentSettingsView({ vm }: Readonly<AgentSettingsViewProps>): JSX.Element {
     const { translate: _t } = useI18n();
-    const { isLoading, isBusy, provider, connected, models, model, instructions, replySuggestions, error } =
-        useViewModel(vm);
+    const {
+        isLoading,
+        isBusy,
+        provider,
+        connected,
+        models,
+        model,
+        instructions,
+        replySuggestions,
+        taskDetection,
+        autoInvestigate,
+        workspacePath,
+        error,
+    } = useViewModel(vm);
     const [credential, setCredential] = useState("");
     const [instructionsDraft, setInstructionsDraft] = useState(instructions);
 
@@ -135,13 +163,15 @@ export function AgentSettingsView({ vm }: Readonly<AgentSettingsViewProps>): JSX
         invalid_credential: _t("settings|agent|error_invalid_credential"),
         rate_limited: _t("settings|agent|error_rate_limited"),
         unavailable: _t("settings|agent|error_unavailable"),
+        no_workspace: _t("settings|agent|error_no_workspace"),
         unknown: _t("settings|agent|error_unknown"),
     };
-    const errorMessage = error && errorMessages[error];
+    // A missing project folder is shown next to the folder, the other errors next to the provider
+    const errorMessage = error && error !== "no_workspace" ? errorMessages[error] : undefined;
 
     return (
         <Flex direction="column" gap="var(--cpd-space-6x)" className={styles.agentSettings}>
-            <Text size="sm" className={styles.description}>
+            <Text size="md" className={styles.description}>
                 {_t("settings|agent|description")}
             </Text>
 
@@ -218,7 +248,7 @@ export function AgentSettingsView({ vm }: Readonly<AgentSettingsViewProps>): JSX
                         ))}
                     </select>
                     {errorMessage && (
-                        <Text size="sm" className={styles.error}>
+                        <Text size="md" className={styles.error}>
                             {errorMessage}
                         </Text>
                     )}
@@ -240,6 +270,67 @@ export function AgentSettingsView({ vm }: Readonly<AgentSettingsViewProps>): JSX
                     <HelpMessage>{_t("settings|agent|reply_suggestions_description")}</HelpMessage>
                 </InlineField>
             </Root>
+
+            <Root onSubmit={(ev) => ev.preventDefault()}>
+                <Text as="h3" size="md" weight="semibold">
+                    {_t("settings|agent|tasks")}
+                </Text>
+                <InlineField
+                    name="taskDetection"
+                    control={
+                        <ToggleControl
+                            checked={taskDetection}
+                            disabled={isBusy}
+                            onChange={(ev) => vm.setTaskDetection(ev.currentTarget.checked)}
+                        />
+                    }
+                >
+                    <Label>{_t("settings|agent|task_detection")}</Label>
+                    <HelpMessage>{_t("settings|agent|task_detection_description")}</HelpMessage>
+                </InlineField>
+                <InlineField
+                    name="autoInvestigate"
+                    control={
+                        <ToggleControl
+                            checked={autoInvestigate}
+                            disabled={isBusy || !workspacePath}
+                            onChange={(ev) => vm.setAutoInvestigate(ev.currentTarget.checked)}
+                        />
+                    }
+                >
+                    <Label>{_t("settings|agent|auto_investigate")}</Label>
+                    <HelpMessage>{_t("settings|agent|auto_investigate_description")}</HelpMessage>
+                </InlineField>
+            </Root>
+
+            <Flex direction="column" gap="var(--cpd-space-2x)">
+                <Text as="span" size="md" weight="medium">
+                    {_t("settings|agent|workspace")}
+                </Text>
+                <Flex align="center" justify="space-between" gap="var(--cpd-space-4x)">
+                    <Text size="md" className={styles.workspacePath} title={workspacePath}>
+                        {workspacePath ?? _t("settings|agent|workspace_none")}
+                    </Text>
+                    <Flex gap="var(--cpd-space-2x)">
+                        {workspacePath && (
+                            <Button kind="tertiary" size="md" disabled={isBusy} onClick={vm.clearWorkspace}>
+                                {_t("settings|agent|workspace_clear")}
+                            </Button>
+                        )}
+                        <Button kind="secondary" size="md" disabled={isBusy} onClick={vm.chooseWorkspace}>
+                            {_t("settings|agent|workspace_choose")}
+                        </Button>
+                    </Flex>
+                </Flex>
+                <Text size="md" className={styles.description}>
+                    {_t("settings|agent|workspace_description")}
+                </Text>
+                {error === "no_workspace" && (
+                    <Text size="md" className={styles.error}>
+                        {errorMessages.no_workspace}
+                    </Text>
+                )}
+            </Flex>
 
             <Flex direction="column" gap="var(--cpd-space-2x)">
                 <label className={styles.label} htmlFor="mx_AgentSettings_instructions">

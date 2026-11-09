@@ -38,6 +38,35 @@
         "view_source": "View source",
         "yes": "Yes"
     },
+    "agent_todo": {
+        "add": "Add",
+        "add_label": "New task",
+        "add_placeholder": "Add a task…",
+        "added_by_you": "Added by you · %(date)s",
+        "changed_files": "Changed files, not committed:",
+        "empty_done": "Nothing done yet.",
+        "empty_open": "Nothing to do. Requests from your chats show up here.",
+        "error_no_workspace": "Choose a project folder in the agent settings first.",
+        "error_not_connected": "Connect a provider in the agent settings first.",
+        "error_rate_limited": "The provider is limiting requests, or your plan's allowance is used up. Try again later.",
+        "error_unknown": "The agent couldn't work on this. Try again.",
+        "filter_done": "Done (%(number)s)",
+        "filter_label": "Show tasks",
+        "filter_open": "Open (%(number)s)",
+        "from_chat": "%(sender)s in %(chat)s · %(date)s",
+        "implement": "Do it",
+        "investigate": "Look into it",
+        "list_label": "To-do list",
+        "mark_done": "Mark %(title)s as done",
+        "mark_open": "Mark %(title)s as not done",
+        "no_workspace_hint": "Choose a project folder in the agent settings, so that the agent can look into tasks and do them.",
+        "open_chat": "Open chat",
+        "report_implement": "What the agent changed",
+        "report_investigate": "What the agent found",
+        "report_label": "Report of the agent",
+        "running_implement": "The agent is working on it…",
+        "running_investigate": "The agent is looking into it…"
+    },
     "common": {
         "attachment": "Attachment",
         "encryption_enabled": "Encryption enabled",
@@ -273,6 +302,8 @@
     },
     "settings": {
         "agent": {
+            "auto_investigate": "Look into new tasks by itself",
+            "auto_investigate_description": "For each new task, the agent reads the project folder and writes down what to do, with a ticket. It doesn't change anything.",
             "connect": "Connect",
             "connected_claude": "Connected to Claude",
             "connected_copilot": "Connected to GitHub Copilot",
@@ -280,9 +311,10 @@
             "credential_copilot": "GitHub token",
             "credential_help_claude": "Create an API key at console.anthropic.com. It is checked with Anthropic, then stored encrypted on this computer only.",
             "credential_help_copilot": "Use a fine-grained personal access token with the \"Copilot Requests\" permission, from an account with a Copilot plan. It is checked with GitHub, then stored encrypted on this computer only.",
-            "description": "The agent replies to direct messages set to Agent in their notification options. Its replies are sent as automated messages. It only runs while Element Desktop is open on this computer.",
+            "description": "The agent replies to direct messages set to Agent in their notification options. Its replies look like your own messages; they are marked so that other agents don't answer them. It only runs while Element Desktop is open on this computer.",
             "disconnect": "Disconnect",
             "error_invalid_credential": "The key or token was not accepted. Check it and try again.",
+            "error_no_workspace": "This folder doesn't exist.",
             "error_rate_limited": "The provider is limiting requests, or your plan's allowance is used up. Try again later.",
             "error_unavailable": "The provider could not be reached. Check your connection and try again.",
             "error_unknown": "Something went wrong. Try again.",
@@ -294,7 +326,15 @@
             "provider_claude": "Claude",
             "provider_copilot": "GitHub Copilot",
             "reply_suggestions": "Suggest replies",
-            "reply_suggestions_description": "Shows three suggested replies above the message field of every chat. The latest messages of the open chat are sent to the provider for this."
+            "reply_suggestions_description": "Shows three suggested replies above the message field of every chat. The latest messages of the open chat are sent to the provider for this.",
+            "task_detection": "Collect requests",
+            "task_detection_description": "Adds what others ask you to do to your to-do list: requests in direct chats, and in group chats when you are mentioned. The new messages of these chats are sent to the provider for this.",
+            "tasks": "To-do list",
+            "workspace": "Project folder",
+            "workspace_choose": "Choose folder…",
+            "workspace_clear": "Remove",
+            "workspace_description": "The agent works on tasks in this folder: it reads its files, and changes them when you choose Do it. It can't run commands or commit, so you review and commit the changes yourself.",
+            "workspace_none": "No folder chosen"
         }
     },
     "status": {

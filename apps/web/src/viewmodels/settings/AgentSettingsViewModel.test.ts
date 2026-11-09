@@ -23,12 +23,23 @@ describe("AgentSettingsViewModel", () => {
                 provider: "claude",
                 instructions: "Be brief.",
                 replySuggestions: true,
+                taskDetection: true,
+                autoInvestigate: false,
                 connected: { claude: true, copilot: false },
                 ...status,
             }),
             setSettings: vi.fn(async (changes) => ({
                 ok: true as const,
-                data: { provider: "claude" as const, instructions: "", replySuggestions: true, ...changes },
+                data: {
+                    provider: "claude" as const,
+                    instructions: "",
+                    replySuggestions: true,
+                    taskDetection: true,
+                    autoInvestigate: false,
+                    ...changes,
+                    // An empty folder forgets it, as the platform does
+                    workspacePath: changes.workspacePath || undefined,
+                },
             })),
             connect: vi.fn().mockResolvedValue({ ok: true, data: undefined }),
             disconnect: vi.fn().mockResolvedValue({ ok: true, data: undefined }),
@@ -37,6 +48,13 @@ describe("AgentSettingsViewModel", () => {
             setRoom: vi.fn(),
             generateReply: vi.fn(),
             generateSuggestions: vi.fn(),
+            pickWorkspace: vi.fn().mockResolvedValue({ ok: true, data: "/home/alice/project" }),
+            getTasks: vi.fn(),
+            addTasks: vi.fn(),
+            updateTask: vi.fn(),
+            deleteTask: vi.fn(),
+            detectTasks: vi.fn(),
+            runTask: vi.fn(),
         };
     }
 
@@ -58,7 +76,7 @@ describe("AgentSettingsViewModel", () => {
         });
 
         it("shows the settings and the models of a connected provider", async () => {
-            await createLoaded({ model: "claude-opus-5-5" });
+            await createLoaded({ model: "claude-opus-5-5", workspacePath: "/home/alice/project" });
 
             await vi.waitFor(() => expect(vm.getSnapshot().models).toEqual(MODELS));
             expect(vm.getSnapshot()).toMatchObject({
@@ -66,6 +84,9 @@ describe("AgentSettingsViewModel", () => {
                 connected: { claude: true, copilot: false },
                 model: "claude-opus-5-5",
                 instructions: "Be brief.",
+                taskDetection: true,
+                autoInvestigate: false,
+                workspacePath: "/home/alice/project",
             });
             expect(agent.listModels).toHaveBeenCalledWith("claude");
         });
@@ -143,6 +164,42 @@ describe("AgentSettingsViewModel", () => {
             await vi.waitFor(() => expect(vm.getSnapshot().replySuggestions).toBe(false));
             expect(agent.setSettings).toHaveBeenCalledWith({ replySuggestions: false });
         });
+
+        it("changes whether requests are collected and looked into", async () => {
+            vm.setTaskDetection(false);
+            await vi.waitFor(() => expect(vm.getSnapshot().taskDetection).toBe(false));
+            expect(agent.setSettings).toHaveBeenCalledWith({ taskDetection: false });
+
+            vm.setAutoInvestigate(true);
+            await vi.waitFor(() => expect(vm.getSnapshot().autoInvestigate).toBe(true));
+            expect(agent.setSettings).toHaveBeenCalledWith({ autoInvestigate: true });
+        });
+
+        it("chooses and forgets the project folder", async () => {
+            vm.chooseWorkspace();
+            await vi.waitFor(() => expect(vm.getSnapshot().workspacePath).toBe("/home/alice/project"));
+
+            vm.clearWorkspace();
+            await vi.waitFor(() => expect(vm.getSnapshot().workspacePath).toBeUndefined());
+            expect(agent.setSettings).toHaveBeenCalledWith({ workspacePath: "" });
+        });
+
+        it("keeps the project folder when the folder dialog is cancelled", async () => {
+            agent.pickWorkspace.mockResolvedValue({ ok: true, data: undefined });
+
+            vm.chooseWorkspace();
+
+            await vi.waitFor(() => expect(vm.getSnapshot().isBusy).toBe(false));
+            expect(vm.getSnapshot().workspacePath).toBeUndefined();
+        });
+
+        it("shows when the chosen folder doesn't exist", async () => {
+            agent.pickWorkspace.mockResolvedValue({ ok: false, error: "no_workspace" });
+
+            vm.chooseWorkspace();
+
+            await vi.waitFor(() => expect(vm.getSnapshot().error).toBe("no_workspace"));
+        });
     });
 
     describe("toSettingsError", () => {
@@ -150,6 +207,7 @@ describe("AgentSettingsViewModel", () => {
             ["invalid_credential", "invalid_credential"],
             ["rate_limited", "rate_limited"],
             ["unavailable", "unavailable"],
+            ["no_workspace", "no_workspace"],
             ["refused", "unknown"],
             ["not_connected", "unknown"],
         ] as const)("shows %s as %s", (error, expected) => {

@@ -6,18 +6,25 @@ Please see LICENSE files in the repository root for full details.
 */
 
 import type {
+    AgentDetectedTask,
     AgentModel,
+    AgentNewTask,
     AgentProvider,
     AgentReplyRequest,
     AgentResult,
     AgentSettings,
     AgentStatus,
     AgentSuggestionsRequest,
+    AgentTask,
+    AgentTaskChanges,
+    AgentTaskDetectionRequest,
+    AgentTaskRunMode,
 } from "shared-types";
 
 /**
- * Access to the agent that replies to the direct messages the user marked for it, and suggests replies in any chat. The platform holds the
- * credentials and the marks and talks to the AI providers; see {@link BasePlatform.agent}.
+ * Access to the agent that replies to the direct messages the user marked for it, suggests replies in any chat, and
+ * keeps the user's to-do list. The platform holds the credentials, the marks and the list and talks to the AI
+ * providers; see {@link BasePlatform.agent}.
  */
 export interface AgentApi {
     /** Get the settings of the agent and which providers are connected */
@@ -41,4 +48,27 @@ export interface AgentApi {
     generateReply(request: AgentReplyRequest): Promise<AgentResult<string>>;
     /** Suggest replies the user could send next in a chat */
     generateSuggestions(request: AgentSuggestionsRequest): Promise<AgentResult<string[]>>;
+    /**
+     * Let the user choose the workspace, the folder of the project the agent works on for tasks, and save it.
+     * @returns the chosen folder, or undefined if the user cancelled
+     */
+    pickWorkspace(): Promise<AgentResult<string | undefined>>;
+    /** Get the to-do list of a Matrix user, newest first */
+    getTasks(userId: string): Promise<AgentResult<AgentTask[]>>;
+    /**
+     * Add tasks to the to-do list of a Matrix user.
+     * @returns the added tasks
+     */
+    addTasks(userId: string, tasks: AgentNewTask[]): Promise<AgentResult<AgentTask[]>>;
+    /** Change the title, description or state of a task */
+    updateTask(userId: string, taskId: string, changes: AgentTaskChanges): Promise<AgentResult<AgentTask>>;
+    /** Remove a task from the to-do list */
+    deleteTask(userId: string, taskId: string): Promise<AgentResult<void>>;
+    /** Find requests to the user in the new messages of a chat */
+    detectTasks(request: AgentTaskDetectionRequest): Promise<AgentResult<AgentDetectedTask[]>>;
+    /**
+     * Let the agent work on a task in the workspace. It never commits.
+     * @returns the task with the finished or failed run
+     */
+    runTask(userId: string, taskId: string, mode: AgentTaskRunMode): Promise<AgentResult<AgentTask>>;
 }

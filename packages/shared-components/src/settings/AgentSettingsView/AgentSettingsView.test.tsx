@@ -13,7 +13,8 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 
 import * as stories from "./AgentSettingsView.stories";
 
-const { NotConnected, Connected, Copilot, InvalidCredential, Loading } = composeStories(stories);
+const { NotConnected, Connected, Copilot, InvalidCredential, Loading, WithWorkspace, MissingWorkspace } =
+    composeStories(stories);
 
 describe("<AgentSettingsView />", () => {
     beforeEach(() => {
@@ -24,9 +25,14 @@ describe("<AgentSettingsView />", () => {
             "setModel",
             "saveInstructions",
             "setReplySuggestions",
+            "setTaskDetection",
+            "setAutoInvestigate",
+            "chooseWorkspace",
+            "clearWorkspace",
         ] as const) {
             vi.mocked(NotConnected.args[action]!).mockClear();
             vi.mocked(Connected.args[action]!).mockClear();
+            vi.mocked(WithWorkspace.args[action]!).mockClear();
         }
     });
 
@@ -113,5 +119,47 @@ describe("<AgentSettingsView />", () => {
         await user.click(toggle);
 
         expect(Connected.args.setReplySuggestions).toHaveBeenCalledWith(false);
+    });
+
+    it("turns collecting requests off", async () => {
+        const user = userEvent.setup();
+        render(<Connected />);
+
+        const toggle = screen.getByRole("switch", { name: "Collect requests" });
+        expect(toggle).toBeChecked();
+        await user.click(toggle);
+
+        expect(Connected.args.setTaskDetection).toHaveBeenCalledWith(false);
+    });
+
+    it("asks for a project folder before the agent looks into tasks by itself", async () => {
+        const user = userEvent.setup();
+        render(<Connected />);
+
+        expect(screen.getByText("No folder chosen")).toBeInTheDocument();
+        expect(screen.getByRole("switch", { name: "Look into new tasks by itself" })).toBeDisabled();
+        expect(screen.queryByRole("button", { name: "Remove" })).not.toBeInTheDocument();
+        await user.click(screen.getByRole("button", { name: "Choose folder…" }));
+
+        expect(Connected.args.chooseWorkspace).toHaveBeenCalled();
+    });
+
+    it("shows the project folder, which can be removed, and looks into tasks by itself", async () => {
+        const user = userEvent.setup();
+        render(<WithWorkspace />);
+
+        expect(screen.getByText("C:\\Users\\alice\\projects\\element-web")).toBeInTheDocument();
+        const toggle = screen.getByRole("switch", { name: "Look into new tasks by itself" });
+        expect(toggle).toBeChecked();
+        await user.click(toggle);
+        expect(WithWorkspace.args.setAutoInvestigate).toHaveBeenCalledWith(false);
+
+        await user.click(screen.getByRole("button", { name: "Remove" }));
+        expect(WithWorkspace.args.clearWorkspace).toHaveBeenCalled();
+    });
+
+    it("says when the project folder doesn't exist", () => {
+        render(<MissingWorkspace />);
+        expect(screen.getByText("This folder doesn't exist.")).toBeInTheDocument();
     });
 });

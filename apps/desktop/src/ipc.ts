@@ -23,6 +23,15 @@ import {
     setAgentRoom,
     setAgentSettings,
 } from "./agent.js";
+import {
+    addAgentTasks,
+    deleteAgentTask,
+    detectAgentTasks,
+    getAgentTasks,
+    pickAgentWorkspace,
+    runAgentTask,
+    updateAgentTask,
+} from "./agent-tasks.js";
 
 let focusHandlerAttached = false;
 ipcMain.on("loudNotification", function (): void {
@@ -209,6 +218,27 @@ ipcMain.on("ipcCall", async function (_ev: IpcMainEvent, payload) {
             break;
         case "agentGenerateSuggestions":
             ret = await generateAgentSuggestions(args[0]);
+            break;
+        case "agentPickWorkspace":
+            ret = await pickAgentWorkspace();
+            break;
+        case "agentGetTasks":
+            ret = getAgentTasks(args[0]);
+            break;
+        case "agentAddTasks":
+            ret = addAgentTasks(args[0], args[1]);
+            break;
+        case "agentUpdateTask":
+            ret = updateAgentTask(args[0], args[1], args[2]);
+            break;
+        case "agentDeleteTask":
+            ret = deleteAgentTask(args[0], args[1]);
+            break;
+        case "agentDetectTasks":
+            ret = await detectAgentTasks(args[0]);
+            break;
+        case "agentRunTask":
+            ret = await runAgentTask(args[0], args[1], args[2]);
             break;
 
         case "clearStorage":

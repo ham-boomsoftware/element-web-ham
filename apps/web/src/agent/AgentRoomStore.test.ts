@@ -27,6 +27,13 @@ describe("AgentRoomStore", () => {
             setRoom: vi.fn(async (_userId, roomId, enabled) => ({ ok: true as const, data: enabled ? [roomId] : [] })),
             generateReply: vi.fn(),
             generateSuggestions: vi.fn(),
+            pickWorkspace: vi.fn(),
+            getTasks: vi.fn(),
+            addTasks: vi.fn(),
+            updateTask: vi.fn(),
+            deleteTask: vi.fn(),
+            detectTasks: vi.fn(),
+            runTask: vi.fn(),
         };
         store = new AgentRoomStore();
     });

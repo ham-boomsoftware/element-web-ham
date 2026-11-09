@@ -35,6 +35,35 @@
         "unpin": "Lösen",
         "view_source": "Rohdaten anzeigen"
     },
+    "agent_todo": {
+        "add": "Hinzufügen",
+        "add_label": "Neue Aufgabe",
+        "add_placeholder": "Aufgabe hinzufügen …",
+        "added_by_you": "Von dir hinzugefügt · %(date)s",
+        "changed_files": "Geänderte Dateien, nicht committet:",
+        "empty_done": "Noch nichts erledigt.",
+        "empty_open": "Nichts zu tun. Bitten aus deinen Chats erscheinen hier.",
+        "error_no_workspace": "Wähle zuerst in den Agent-Einstellungen einen Projektordner.",
+        "error_not_connected": "Verbinde zuerst in den Agent-Einstellungen einen Anbieter.",
+        "error_rate_limited": "Der Anbieter begrenzt die Anfragen, oder das Kontingent deines Abos ist aufgebraucht. Versuche es später erneut.",
+        "error_unknown": "Der Agent konnte daran nicht arbeiten. Versuche es erneut.",
+        "filter_done": "Erledigt (%(number)s)",
+        "filter_label": "Aufgaben anzeigen",
+        "filter_open": "Offen (%(number)s)",
+        "from_chat": "%(sender)s in %(chat)s · %(date)s",
+        "implement": "Umsetzen",
+        "investigate": "Anschauen",
+        "list_label": "To-do-Liste",
+        "mark_done": "%(title)s als erledigt markieren",
+        "mark_open": "%(title)s als offen markieren",
+        "no_workspace_hint": "Wähle in den Agent-Einstellungen einen Projektordner, damit der Agent Aufgaben anschauen und umsetzen kann.",
+        "open_chat": "Zum Chat",
+        "report_implement": "Was der Agent geändert hat",
+        "report_investigate": "Was der Agent herausgefunden hat",
+        "report_label": "Bericht des Agents",
+        "running_implement": "Der Agent setzt das um …",
+        "running_investigate": "Der Agent schaut sich das an …"
+    },
     "common": {
         "attachment": "Anhang",
         "encryption_enabled": "Verschlüsselung aktiviert",
@@ -259,6 +288,8 @@
     },
     "settings": {
         "agent": {
+            "auto_investigate": "Neue Aufgaben selbst anschauen",
+            "auto_investigate_description": "Für jede neue Aufgabe liest der Agent den Projektordner und schreibt auf, was zu tun ist, mit einem Ticket. Er ändert dabei nichts.",
             "connect": "Verbinden",
             "connected_claude": "Mit Claude verbunden",
             "connected_copilot": "Mit GitHub Copilot verbunden",
@@ -266,9 +297,10 @@
             "credential_copilot": "GitHub-Token",
             "credential_help_claude": "Erstelle einen API-Schlüssel unter console.anthropic.com. Er wird bei Anthropic geprüft und danach nur auf diesem Computer verschlüsselt gespeichert.",
             "credential_help_copilot": "Verwende einen Fine-grained Personal Access Token mit der Berechtigung „Copilot Requests“ von einem Konto mit Copilot-Abo. Er wird bei GitHub geprüft und danach nur auf diesem Computer verschlüsselt gespeichert.",
-            "description": "Der Agent antwortet auf Direktnachrichten, deren Benachrichtigungsoption auf Agent steht. Seine Antworten werden als automatische Nachrichten gesendet. Er läuft nur, solange Element Desktop auf diesem Computer geöffnet ist.",
+            "description": "Der Agent antwortet auf Direktnachrichten, deren Benachrichtigungsoption auf Agent steht. Seine Antworten sehen aus wie deine eigenen Nachrichten; sie sind markiert, damit andere Agents nicht darauf antworten. Er läuft nur, solange Element Desktop auf diesem Computer geöffnet ist.",
             "disconnect": "Trennen",
             "error_invalid_credential": "Der Schlüssel oder Token wurde nicht akzeptiert. Prüfe ihn und versuche es erneut.",
+            "error_no_workspace": "Diesen Ordner gibt es nicht.",
             "error_rate_limited": "Der Anbieter begrenzt die Anfragen, oder das Kontingent deines Abos ist aufgebraucht. Versuche es später erneut.",
             "error_unavailable": "Der Anbieter ist nicht erreichbar. Prüfe deine Verbindung und versuche es erneut.",
             "error_unknown": "Etwas ist schiefgelaufen. Versuche es erneut.",
@@ -280,7 +312,15 @@
             "provider_claude": "Claude",
             "provider_copilot": "GitHub Copilot",
             "reply_suggestions": "Antworten vorschlagen",
-            "reply_suggestions_description": "Zeigt in jedem Chat drei Antwortvorschläge über dem Eingabefeld. Dafür werden die letzten Nachrichten des geöffneten Chats an den Anbieter gesendet."
+            "reply_suggestions_description": "Zeigt in jedem Chat drei Antwortvorschläge über dem Eingabefeld. Dafür werden die letzten Nachrichten des geöffneten Chats an den Anbieter gesendet.",
+            "task_detection": "Bitten sammeln",
+            "task_detection_description": "Nimmt in deine To-do-Liste auf, worum dich andere bitten: in Direktnachrichten, und in Gruppenchats, wenn du erwähnt wirst. Dafür werden die neuen Nachrichten dieser Chats an den Anbieter gesendet.",
+            "tasks": "To-do-Liste",
+            "workspace": "Projektordner",
+            "workspace_choose": "Ordner wählen …",
+            "workspace_clear": "Entfernen",
+            "workspace_description": "In diesem Ordner arbeitet der Agent an Aufgaben: Er liest die Dateien und ändert sie, wenn du Umsetzen wählst. Er kann keine Befehle ausführen und nicht committen, du prüfst und committest die Änderungen also selbst.",
+            "workspace_none": "Kein Ordner gewählt"
         }
     },
     "status": {

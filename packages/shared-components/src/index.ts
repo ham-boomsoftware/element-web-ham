@@ -114,5 +114,6 @@ export * from "./status/StatusTextView";
 export * from "./status/UserStatusIconView";
 export * from "./devtools/CustomThemesView";
 export * from "./settings/AgentSettingsView";
+export * from "./agent/AgentTodoView";
 // MVVM
 export * from "./core/viewmodel";

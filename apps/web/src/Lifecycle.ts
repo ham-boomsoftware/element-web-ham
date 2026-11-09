@@ -70,6 +70,8 @@ import { clearUploadedMediaCache } from "./utils/UploadedMediaCache";
 import { CallStatusListener } from "./CallStatusListener.ts";
 import { AgentReplyListener } from "./agent/AgentReplyListener.ts";
 import { AgentRoomStore } from "./agent/AgentRoomStore.ts";
+import { AgentTaskStore } from "./agent/AgentTaskStore.ts";
+import { AgentTaskListener } from "./agent/AgentTaskListener.ts";
 import { CallStore } from "./stores/CallStore.ts";
 import { ModuleApi } from "./modules/Api.ts";
 
@@ -1136,10 +1138,12 @@ async function startMatrixClient(
 
     CallStatusListener.sharedInstance().start(CallStore.instance, client);
 
-    // Answers the direct messages marked for the agent, on platforms that have an agent
+    // Answers the direct messages marked for the agent and keeps the to-do list, on platforms that have an agent
     const agent = PlatformPeg.get()?.agent;
     void AgentRoomStore.instance.start(agent, client.getSafeUserId());
     AgentReplyListener.sharedInstance().start(client, agent);
+    void AgentTaskStore.instance.start(agent, client.getSafeUserId());
+    AgentTaskListener.sharedInstance().start(client, agent);
 
     // Similarly, don't start sending presence updates until we've started the client
     if (!SettingsStore.getValue("lowBandwidth")) {
@@ -1278,6 +1282,8 @@ export function stopMatrixClient(unsetClient = true): void {
     CallStatusListener.sharedInstance().stop();
     AgentReplyListener.sharedInstance().stop();
     AgentRoomStore.instance.stop();
+    AgentTaskListener.sharedInstance().stop();
+    AgentTaskStore.instance.stop();
     DMRoomMap.shared()?.stop();
     EventIndexPeg.stop();
     const cli = MatrixClientPeg.get();

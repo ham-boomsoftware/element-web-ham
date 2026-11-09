@@ -133,6 +133,10 @@
         "zoom_in": "Vergrößern",
         "zoom_out": "Verkleinern"
     },
+    "agent_todo_list": {
+        "button": "To-dos (%(number)s)",
+        "title": "To-do-Liste"
+    },
     "analytics": {
         "accept_button": "Das ist okay",
         "bullet_1": "Wir erfassen und analysieren <Bold>keine</Bold> Kontodaten",

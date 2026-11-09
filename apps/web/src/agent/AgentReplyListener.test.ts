@@ -74,6 +74,13 @@ describe("AgentReplyListener", () => {
             setRoom: vi.fn(),
             generateReply: vi.fn().mockResolvedValue({ ok: true, data: "Sure, see you tomorrow!" }),
             generateSuggestions: vi.fn(),
+            pickWorkspace: vi.fn(),
+            getTasks: vi.fn(),
+            addTasks: vi.fn(),
+            updateTask: vi.fn(),
+            deleteTask: vi.fn(),
+            detectTasks: vi.fn(),
+            runTask: vi.fn(),
         };
         listener = new AgentReplyListener();
         listener.start(client, agent);

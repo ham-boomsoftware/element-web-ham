@@ -80,6 +80,16 @@ const agent = vi.hoisted(() => ({
     generateAgentSuggestions: vi.fn(),
 }));
 vi.mock("./agent.js", () => agent);
+const agentTasks = vi.hoisted(() => ({
+    pickAgentWorkspace: vi.fn(),
+    getAgentTasks: vi.fn(),
+    addAgentTasks: vi.fn(),
+    updateAgentTask: vi.fn(),
+    deleteAgentTask: vi.fn(),
+    detectAgentTasks: vi.fn(),
+    runAgentTask: vi.fn(),
+}));
+vi.mock("./agent-tasks.js", () => agentTasks);
 
 await import("./ipc.js");
 
@@ -383,6 +393,17 @@ describe("ipc agent commands", () => {
             agent.generateAgentSuggestions,
             [{ ownName: "Alice", chatName: "Bob", isDirect: true, messages: [] }],
         ],
+        ["agentPickWorkspace", agentTasks.pickAgentWorkspace, []],
+        ["agentGetTasks", agentTasks.getAgentTasks, ["@alice:example.org"]],
+        ["agentAddTasks", agentTasks.addAgentTasks, ["@alice:example.org", [{ title: "Create a ticket" }]]],
+        ["agentUpdateTask", agentTasks.updateAgentTask, ["@alice:example.org", "task-1", { done: true }]],
+        ["agentDeleteTask", agentTasks.deleteAgentTask, ["@alice:example.org", "task-1"]],
+        [
+            "agentDetectTasks",
+            agentTasks.detectAgentTasks,
+            [{ ownName: "Alice", chatName: "Bob", isDirect: true, messages: [], newCount: 1, openTasks: [] }],
+        ],
+        ["agentRunTask", agentTasks.runAgentTask, ["@alice:example.org", "task-1", "investigate"]],
     ])("routes %s to the agent and replies with its result", async (name, handler, args) => {
         // A plain value works for the synchronous and the awaited handlers alike
         vi.mocked(handler).mockReturnValue({ ok: true, data: name });

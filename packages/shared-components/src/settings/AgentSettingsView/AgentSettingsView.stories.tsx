@@ -22,6 +22,10 @@ const AgentSettingsViewWrapperImpl = ({
     setModel,
     saveInstructions,
     setReplySuggestions,
+    setTaskDetection,
+    setAutoInvestigate,
+    chooseWorkspace,
+    clearWorkspace,
     ...rest
 }: AgentSettingsProps): JSX.Element => {
     const vm = useMockedViewModel(rest, {
@@ -31,6 +35,10 @@ const AgentSettingsViewWrapperImpl = ({
         setModel,
         saveInstructions,
         setReplySuggestions,
+        setTaskDetection,
+        setAutoInvestigate,
+        chooseWorkspace,
+        clearWorkspace,
     });
     return <AgentSettingsView vm={vm} />;
 };
@@ -49,6 +57,9 @@ const meta = {
         model: undefined,
         instructions: "",
         replySuggestions: true,
+        taskDetection: true,
+        autoInvestigate: false,
+        workspacePath: undefined,
         error: undefined,
         setProvider: fn(),
         connect: fn(),
@@ -56,6 +67,10 @@ const meta = {
         setModel: fn(),
         saveInstructions: fn(),
         setReplySuggestions: fn(),
+        setTaskDetection: fn(),
+        setAutoInvestigate: fn(),
+        chooseWorkspace: fn(),
+        clearWorkspace: fn(),
     },
 } satisfies Meta<typeof AgentSettingsViewWrapper>;
 
@@ -73,6 +88,20 @@ export const Connected: Story = {
         ],
         model: "claude-sonnet-5-5",
         instructions: "Answer in a friendly, short way.",
+    },
+};
+
+export const WithWorkspace: Story = {
+    args: {
+        connected: { claude: true, copilot: false },
+        workspacePath: "C:\\Users\\alice\\projects\\element-web",
+        autoInvestigate: true,
+    },
+};
+
+export const MissingWorkspace: Story = {
+    args: {
+        error: "no_workspace",
     },
 };
 

@@ -5,13 +5,15 @@ SPDX-License-Identifier: AGPL-3.0-only OR GPL-3.0-only OR LicenseRef-Element-Com
 Please see LICENSE files in the repository root for full details.
 */
 
-// The agent writes replies to the direct messages the user marked for it, and suggests replies in any chat. The
+// The agent writes replies to the direct messages the user marked for it, and suggests replies in any chat; its
+// to-do list is in agent-tasks.ts. The
 // renderer decides when a reply or suggestions are needed and sends the conversation; this module holds the credentials and talks to the providers, so the
 // credentials stay in the main process.
 //
 // Everything the agent keeps stays on this computer: its settings, the credentials (encrypted with safeStorage)
 // and the marked rooms are in a store of their own, in a directory that is never synced to other computers.
 
+import fs from "node:fs";
 import path from "node:path";
 import { app, safeStorage } from "electron";
 import ElectronStore from "electron-store";
@@ -26,6 +28,7 @@ import type {
     AgentSettings,
     AgentStatus,
     AgentSuggestionsRequest,
+    AgentTask,
     AgentTurn,
 } from "shared-types";
 
@@ -33,27 +36,45 @@ import type {
 export const DEFAULT_CLAUDE_MODEL = "claude-opus-5-5";
 
 /** Models that accept server-side refusal fallbacks with `fallbacks: "default"` */
-const MODELS_WITH_FALLBACK = new Set(["claude-fable-5-1", "claude-opus-5-5", "claude-opus-5", "claude-sonnet-5-5"]);
+export const MODELS_WITH_FALLBACK = new Set([
+    "claude-fable-5-1",
+    "claude-opus-5-5",
+    "claude-opus-5",
+    "claude-sonnet-5-5",
+]);
 
 /** Models that accept the effort setting */
-const MODELS_WITH_EFFORT = new Set([...MODELS_WITH_FALLBACK, "claude-haiku-5-5", "claude-opus-4-8", "claude-opus-4-7"]);
+export const MODELS_WITH_EFFORT = new Set([
+    ...MODELS_WITH_FALLBACK,
+    "claude-haiku-5-5",
+    "claude-opus-4-8",
+    "claude-opus-4-7",
+]);
 
 /** How many replies are suggested at once */
 export const SUGGESTION_COUNT = 3;
 
 /** How long to wait for a reply before giving up */
-const REPLY_TIMEOUT_MS = 2 * 60 * 1000;
+export const REPLY_TIMEOUT_MS = 2 * 60 * 1000;
 
-const DEFAULT_SETTINGS: AgentSettings = { provider: "claude", instructions: "", replySuggestions: true };
+const DEFAULT_SETTINGS: AgentSettings = {
+    provider: "claude",
+    instructions: "",
+    replySuggestions: true,
+    taskDetection: true,
+    autoInvestigate: false,
+};
 
 const PROVIDERS: readonly AgentProvider[] = ["claude", "copilot"];
 
-interface AgentStoreData {
+export interface AgentStoreData {
     settings?: AgentSettings;
     /** The credential of each connected provider, encrypted with safeStorage and base64-encoded */
     secrets?: Partial<Record<AgentProvider, string>>;
     /** The rooms the agent replies in, by the Matrix user they belong to */
     rooms?: Record<string, string[]>;
+    /** The to-do list, by the Matrix user it belongs to */
+    tasks?: Record<string, AgentTask[]>;
 }
 
 /**
@@ -68,7 +89,7 @@ export function getAgentDataPath(): string {
 
 let agentStore: ElectronStore<AgentStoreData> | undefined;
 
-function getAgentStore(): ElectronStore<AgentStoreData> {
+export function getAgentStore(): ElectronStore<AgentStoreData> {
     agentStore ??= new ElectronStore<AgentStoreData>({
         name: "agent",
         cwd: getAgentDataPath(),
@@ -81,7 +102,7 @@ function isProvider(value: unknown): value is AgentProvider {
     return PROVIDERS.includes(value as AgentProvider);
 }
 
-function getSettings(): AgentSettings {
+export function getSettings(): AgentSettings {
     return { ...DEFAULT_SETTINGS, ...getAgentStore().get("settings") };
 }
 
@@ -94,7 +115,7 @@ function hasCredential(provider: AgentProvider): boolean {
  * Read the credential of a provider.
  * @returns the credential, or undefined if none is stored or it can't be decrypted on this computer
  */
-async function getCredential(provider: AgentProvider): Promise<string | undefined> {
+export async function getCredential(provider: AgentProvider): Promise<string | undefined> {
     const encrypted = getAgentStore().get("secrets")?.[provider];
     if (!encrypted) return undefined;
     try {
@@ -119,7 +140,7 @@ function setCredential(provider: AgentProvider, credential: string | undefined):
     getAgentStore().set("secrets", secrets);
 }
 
-function failure(error: AgentErrorCode, message?: string): AgentResult<never> {
+export function failure(error: AgentErrorCode, message?: string): AgentResult<never> {
     return { ok: false, error, message };
 }
 
@@ -135,11 +156,16 @@ export function getAgentStatus(): AgentStatus {
  */
 export function setAgentSettings(changes: unknown): AgentResult<AgentSettings> {
     if (typeof changes !== "object" || changes === null) return failure("invalid_request");
-    const { provider, model, instructions, replySuggestions } = changes as Partial<AgentSettings>;
+    const { provider, model, instructions, replySuggestions, taskDetection, autoInvestigate, workspacePath } =
+        changes as Partial<AgentSettings>;
     if (provider !== undefined && !isProvider(provider)) return failure("invalid_request");
     if (model !== undefined && typeof model !== "string") return failure("invalid_request");
     if (instructions !== undefined && typeof instructions !== "string") return failure("invalid_request");
     if (replySuggestions !== undefined && typeof replySuggestions !== "boolean") return failure("invalid_request");
+    if (taskDetection !== undefined && typeof taskDetection !== "boolean") return failure("invalid_request");
+    if (autoInvestigate !== undefined && typeof autoInvestigate !== "boolean") return failure("invalid_request");
+    if (workspacePath !== undefined && typeof workspacePath !== "string") return failure("invalid_request");
+    if (workspacePath && !isDirectory(workspacePath)) return failure("no_workspace");
 
     const settings = getSettings();
     // Each provider has its own models, so a new provider starts with its default model
@@ -148,8 +174,20 @@ export function setAgentSettings(changes: unknown): AgentResult<AgentSettings> {
     if (model !== undefined) settings.model = model || undefined;
     if (instructions !== undefined) settings.instructions = instructions;
     if (replySuggestions !== undefined) settings.replySuggestions = replySuggestions;
+    if (taskDetection !== undefined) settings.taskDetection = taskDetection;
+    if (autoInvestigate !== undefined) settings.autoInvestigate = autoInvestigate;
+    if (workspacePath !== undefined) settings.workspacePath = workspacePath ? path.resolve(workspacePath) : undefined;
     getAgentStore().set("settings", settings);
     return { ok: true, data: settings };
+}
+
+/** Whether a path is an absolute path of an existing folder */
+export function isDirectory(folder: string): boolean {
+    try {
+        return path.isAbsolute(folder) && fs.statSync(folder).isDirectory();
+    } catch {
+        return false;
+    }
 }
 
 /**
@@ -411,7 +449,7 @@ export function toClaudeMessages(turns: AgentTurn[]): Anthropic.MessageParam[] {
 /**
  * Get the answer of Claude to a conversation that ends with a message of the user's side.
  */
-async function askClaude(
+export async function askClaude(
     apiKey: string,
     model: string | undefined,
     system: string,
@@ -451,7 +489,7 @@ let copilot: { token: string; client: CopilotClient } | undefined;
  * Get the Copilot client for a token, starting the Copilot runtime if needed. The runtime runs as a child
  * process, so one client is kept for as long as the token stays the same.
  */
-async function getCopilotClient(token: string): Promise<CopilotClient> {
+export async function getCopilotClient(token: string): Promise<CopilotClient> {
     if (copilot?.token === token) return copilot.client;
     await stopCopilot();
     const client = new CopilotClient({
@@ -489,7 +527,7 @@ function buildCopilotReplyPrompt({ ownName, partnerName, turns }: AgentReplyRequ
 /**
  * Get the answer of Copilot to a prompt, in a session that is deleted afterwards.
  */
-async function askCopilot(
+export async function askCopilot(
     token: string,
     model: string | undefined,
     system: string,
@@ -524,7 +562,7 @@ async function askCopilot(
     }
 }
 
-function toFailure(provider: AgentProvider, e: unknown): AgentResult<never> {
+export function toFailure(provider: AgentProvider, e: unknown): AgentResult<never> {
     const message = e instanceof Error ? e.message : String(e);
     console.error(`Agent request to ${provider} failed`, e);
     if (e instanceof Anthropic.AuthenticationError || e instanceof Anthropic.PermissionDeniedError) {

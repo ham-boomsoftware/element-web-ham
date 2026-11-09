@@ -27,6 +27,15 @@ export interface AgentSettings {
     instructions: string;
     /** Whether replies are suggested above the composer of every chat */
     replySuggestions: boolean;
+    /**
+     * Whether the agent looks for requests to the user in new messages and adds them to the to-do list: every
+     * message of a direct chat, and messages of group chats that mention the user.
+     */
+    taskDetection: boolean;
+    /** Whether the agent looks into each new task in the workspace by itself, without changing anything */
+    autoInvestigate: boolean;
+    /** The local folder of the project the agent works on for tasks, or undefined if none is set */
+    workspacePath?: string;
 }
 
 /**
@@ -84,6 +93,95 @@ export interface AgentSuggestionsRequest {
 }
 
 /**
+ * A request to find tasks for the user in the latest messages of a chat.
+ */
+export interface AgentTaskDetectionRequest {
+    /** The display name of the user the tasks are for */
+    ownName: string;
+    /** The name of the chat */
+    chatName: string;
+    /** Whether the chat is a direct message */
+    isDirect: boolean;
+    /** The latest messages of the chat, oldest first, for context */
+    messages: AgentSuggestionMessage[];
+    /** How many of the last messages are new; only these are searched for tasks */
+    newCount: number;
+    /** The titles of the open tasks, so that a task already on the list is not added again */
+    openTasks: string[];
+}
+
+/**
+ * A task the agent found in a chat.
+ */
+export interface AgentDetectedTask {
+    /** A short title, as an instruction */
+    title: string;
+    /** What exactly is asked, with the context needed to do it */
+    details: string;
+}
+
+/**
+ * Where a task came from: the message that asked for it.
+ */
+export interface AgentTaskSource {
+    roomId: string;
+    /** The name of the chat when the task was found */
+    roomName: string;
+    /** The display name of who asked */
+    sender: string;
+    /** The message that asked for it, if known */
+    eventId?: string;
+}
+
+/**
+ * How the agent works on a task.
+ * - `investigate`: it reads the workspace and reports what to do, with a ticket text, without changing anything.
+ * - `implement`: it changes files in the workspace to do the task. It never commits.
+ */
+export type AgentTaskRunMode = "investigate" | "implement";
+
+/**
+ * The latest work of the agent on a task.
+ */
+export interface AgentTaskRun {
+    mode: AgentTaskRunMode;
+    state: "running" | "finished" | "failed";
+    startedAt: number;
+    finishedAt?: number;
+    /** The report of the agent: what it found, or what it changed */
+    summary?: string;
+    /** The files the agent changed, relative to the workspace */
+    changedFiles?: string[];
+    /** Why the run failed */
+    error?: AgentErrorCode;
+}
+
+/**
+ * An entry of the user's to-do list: something someone asked them to do, or that they added themselves.
+ */
+export interface AgentTask {
+    id: string;
+    title: string;
+    details: string;
+    done: boolean;
+    createdAt: number;
+    /** The message that asked for it; undefined for a task the user added */
+    source?: AgentTaskSource;
+    /** The latest work of the agent on it */
+    run?: AgentTaskRun;
+}
+
+/**
+ * The fields of a new task.
+ */
+export type AgentNewTask = Pick<AgentTask, "title" | "details" | "source">;
+
+/**
+ * The fields of a task the user can change.
+ */
+export type AgentTaskChanges = Partial<Pick<AgentTask, "title" | "details" | "done">>;
+
+/**
  * A model a provider offers.
  */
 export interface AgentModel {
@@ -99,6 +197,9 @@ export interface AgentModel {
  * - `rate_limited`: the provider asks to slow down, or the plan's allowance is used up.
  * - `refused`: the model declined to write a reply.
  * - `disabled`: the user turned the feature off in the settings.
+ * - `no_workspace`: no workspace is set, or its folder doesn't exist.
+ * - `not_found`: the task doesn't exist.
+ * - `busy`: the agent is already working on the task.
  * - `unavailable`: the provider could not be reached or failed.
  * - `invalid_request`: the command was called with invalid arguments.
  */
@@ -108,6 +209,9 @@ export type AgentErrorCode =
     | "rate_limited"
     | "refused"
     | "disabled"
+    | "no_workspace"
+    | "not_found"
+    | "busy"
     | "unavailable"
     | "invalid_request";
 

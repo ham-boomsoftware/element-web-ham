@@ -47,3 +47,13 @@ textarea.control {
 .error {
     color: var(--cpd-color-text-critical-primary);
 }
+
+/* A long folder path is cut off; the whole path is in the tooltip */
+.workspacePath {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--cpd-color-text-secondary);
+    font-family: var(--cpd-font-family-mono);
+}

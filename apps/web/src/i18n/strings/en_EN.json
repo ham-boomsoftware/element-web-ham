@@ -136,6 +136,10 @@
         "zoom_in": "Zoom in",
         "zoom_out": "Zoom out"
     },
+    "agent_todo_list": {
+        "button": "To-dos (%(number)s)",
+        "title": "To-do list"
+    },
     "analytics": {
         "accept_button": "That's fine",
         "bullet_1": "We <Bold>don't</Bold> record or profile any account data",

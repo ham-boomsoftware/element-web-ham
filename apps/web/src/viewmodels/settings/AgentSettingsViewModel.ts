@@ -27,6 +27,7 @@ export function toSettingsError(error: AgentErrorCode): AgentSettingsError {
         case "invalid_credential":
         case "rate_limited":
         case "unavailable":
+        case "no_workspace":
             return error;
         default:
             return "unknown";
@@ -49,6 +50,8 @@ export class AgentSettingsViewModel
             models: [],
             instructions: "",
             replySuggestions: true,
+            taskDetection: true,
+            autoInvestigate: false,
         });
         void this.load();
     }
@@ -56,8 +59,18 @@ export class AgentSettingsViewModel
     private async load(): Promise<void> {
         const status = await this.props.agent.getStatus();
         if (this.isDisposed) return;
-        const { provider, connected, model, instructions, replySuggestions } = status;
-        this.snapshot.merge({ isLoading: false, provider, connected, model, instructions, replySuggestions });
+        const { provider, connected, model, instructions, replySuggestions, taskDetection, autoInvestigate } = status;
+        this.snapshot.merge({
+            isLoading: false,
+            provider,
+            connected,
+            model,
+            instructions,
+            replySuggestions,
+            taskDetection,
+            autoInvestigate,
+            workspacePath: status.workspacePath,
+        });
         await this.loadModels();
     }
 
@@ -135,6 +148,35 @@ export class AgentSettingsViewModel
         void (async () => {
             const result = await this.run(() => this.props.agent.setSettings({ replySuggestions }));
             if (result?.ok) this.snapshot.merge({ replySuggestions: result.data.replySuggestions });
+        })();
+    };
+
+    public setTaskDetection = (taskDetection: boolean): void => {
+        void (async () => {
+            const result = await this.run(() => this.props.agent.setSettings({ taskDetection }));
+            if (result?.ok) this.snapshot.merge({ taskDetection: result.data.taskDetection });
+        })();
+    };
+
+    public setAutoInvestigate = (autoInvestigate: boolean): void => {
+        void (async () => {
+            const result = await this.run(() => this.props.agent.setSettings({ autoInvestigate }));
+            if (result?.ok) this.snapshot.merge({ autoInvestigate: result.data.autoInvestigate });
+        })();
+    };
+
+    public chooseWorkspace = (): void => {
+        void (async () => {
+            const result = await this.run(() => this.props.agent.pickWorkspace());
+            // Nothing changes when the user cancelled the folder dialog
+            if (result?.ok && result.data) this.snapshot.merge({ workspacePath: result.data });
+        })();
+    };
+
+    public clearWorkspace = (): void => {
+        void (async () => {
+            const result = await this.run(() => this.props.agent.setSettings({ workspacePath: "" }));
+            if (result?.ok) this.snapshot.merge({ workspacePath: result.data.workspacePath });
         })();
     };
 }

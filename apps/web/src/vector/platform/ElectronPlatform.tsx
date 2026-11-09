@@ -515,6 +515,13 @@ export default class ElectronPlatform extends BasePlatform {
         setRoom: (userId, roomId, enabled) => this.ipc.call("agentSetRoom", userId, roomId, enabled),
         generateReply: (request) => this.ipc.call("agentGenerateReply", request),
         generateSuggestions: (request) => this.ipc.call("agentGenerateSuggestions", request),
+        pickWorkspace: () => this.ipc.call("agentPickWorkspace"),
+        getTasks: (userId) => this.ipc.call("agentGetTasks", userId),
+        addTasks: (userId, tasks) => this.ipc.call("agentAddTasks", userId, tasks),
+        updateTask: (userId, taskId, changes) => this.ipc.call("agentUpdateTask", userId, taskId, changes),
+        deleteTask: (userId, taskId) => this.ipc.call("agentDeleteTask", userId, taskId),
+        detectTasks: (request) => this.ipc.call("agentDetectTasks", request),
+        runTask: (userId, taskId, mode) => this.ipc.call("agentRunTask", userId, taskId, mode),
     };
 
     public get agent(): AgentApi {

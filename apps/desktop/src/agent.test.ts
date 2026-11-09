@@ -145,6 +145,8 @@ describe("agent", () => {
                 provider: "claude",
                 instructions: "",
                 replySuggestions: true,
+                taskDetection: true,
+                autoInvestigate: false,
                 connected: { claude: false, copilot: false },
             });
         });
@@ -155,17 +157,50 @@ describe("agent", () => {
 
             expect(result).toEqual({
                 ok: true,
-                data: { provider: "copilot", model: undefined, instructions: "Be brief.", replySuggestions: true },
+                data: {
+                    provider: "copilot",
+                    model: undefined,
+                    instructions: "Be brief.",
+                    replySuggestions: true,
+                    taskDetection: true,
+                    autoInvestigate: false,
+                },
             });
         });
 
-        it.each([null, { provider: "openai" }, { model: 1 }, { instructions: false }, { replySuggestions: "yes" }])(
-            "refuses invalid settings %j",
-            (changes) => {
-                expect(setAgentSettings(changes)).toEqual({ ok: false, error: "invalid_request", message: undefined });
+        it("stores the task settings and the workspace as an absolute path", () => {
+            const workspace = path.resolve("src");
+
+            const result = setAgentSettings({ taskDetection: false, autoInvestigate: true, workspacePath: workspace });
+
+            expect(result).toMatchObject({
+                ok: true,
+                data: { taskDetection: false, autoInvestigate: true, workspacePath: workspace },
+            });
+            expect(setAgentSettings({ workspacePath: "" })).toMatchObject({ data: { workspacePath: undefined } });
+        });
+
+        it.each([path.resolve("does-not-exist"), "relative/folder", path.resolve("package.json")])(
+            "refuses a workspace that is not a folder: %s",
+            (workspacePath) => {
+                expect(setAgentSettings({ workspacePath })).toMatchObject({ ok: false, error: "no_workspace" });
                 expect(storeData.settings).toBeUndefined();
             },
         );
+
+        it.each([
+            null,
+            { provider: "openai" },
+            { model: 1 },
+            { instructions: false },
+            { replySuggestions: "yes" },
+            { taskDetection: 1 },
+            { autoInvestigate: "no" },
+            { workspacePath: 3 },
+        ])("refuses invalid settings %j", (changes) => {
+            expect(setAgentSettings(changes)).toEqual({ ok: false, error: "invalid_request", message: undefined });
+            expect(storeData.settings).toBeUndefined();
+        });
     });
 
     describe("connecting", () => {
