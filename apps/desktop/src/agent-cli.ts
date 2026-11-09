@@ -120,16 +120,18 @@ async function launchCli(cli: AgentCodingCli, folder: string, taskFile: string):
     const script = buildLaunchScript(cli, folder, taskFile);
     const encoded = Buffer.from(script, "utf16le").toString("base64");
     await new Promise<void>((resolve, reject) => {
-        // A detached console program gets a console window of its own on Windows
-        const child = spawn("powershell.exe", ["-NoExit", "-NoLogo", "-EncodedCommand", encoded], {
-            cwd: folder,
-            detached: true,
-            stdio: "ignore",
-        });
+        // A detached child of Element gets no console at all, so the CLI would run hidden. `start` opens PowerShell
+        // in a console window of its own; its first argument is the window title, set by the script instead.
+        // The encoded script only has base64 characters, which cmd leaves alone.
+        const child = spawn(
+            "cmd.exe",
+            ["/d", "/c", "start", '""', "powershell.exe", "-NoExit", "-NoLogo", "-EncodedCommand", encoded],
+            { cwd: folder, stdio: "ignore", windowsHide: true },
+        );
         child.once("error", reject);
-        child.once("spawn", () => {
-            child.unref();
-            resolve();
+        child.once("exit", (code) => {
+            if (code === 0) resolve();
+            else reject(new Error(`The terminal could not be started (exit code ${code})`));
         });
     });
 }

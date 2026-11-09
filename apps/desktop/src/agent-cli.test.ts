@@ -54,11 +54,17 @@ const TASK: AgentTask = {
     run: { mode: "investigate", state: "finished", startedAt: 1, summary: "login() returns false" },
 };
 
-/** A child process that starts at once */
-function mkChild(): EventEmitter & { unref: () => void } {
-    const child = Object.assign(new EventEmitter(), { unref: vi.fn() });
-    queueMicrotask(() => child.emit("spawn"));
+/** A child process that ends at once, with an exit code */
+function mkChild(code = 0): EventEmitter {
+    const child = new EventEmitter();
+    queueMicrotask(() => child.emit("exit", code));
     return child;
+}
+
+/** The PowerShell script the terminal runs */
+function launchedScript(): string {
+    const args: string[] = spawn.mock.calls[0][1];
+    return Buffer.from(args.at(-1)!, "base64").toString("utf16le");
 }
 
 describe("agent CLI", () => {
@@ -77,7 +83,7 @@ describe("agent CLI", () => {
         vi.stubEnv("LOCALAPPDATA", "");
         platform = Object.getOwnPropertyDescriptor(process, "platform");
         Object.defineProperty(process, "platform", { value: "win32" });
-        spawn.mockImplementation(mkChild);
+        spawn.mockImplementation(() => mkChild());
     });
 
     afterEach(async () => {
@@ -96,12 +102,23 @@ describe("agent CLI", () => {
 
         expect(await openAgentTaskInCli(USER, id, project, "Use the new API")).toEqual({ ok: true, data: undefined });
 
+        // `start` opens a console window of its own, which a detached child wouldn't get
         expect(spawn).toHaveBeenCalledWith(
-            "powershell.exe",
-            ["-NoExit", "-NoLogo", "-EncodedCommand", expect.any(String)],
-            { cwd: project, detached: true, stdio: "ignore" },
+            "cmd.exe",
+            [
+                "/d",
+                "/c",
+                "start",
+                '""',
+                "powershell.exe",
+                "-NoExit",
+                "-NoLogo",
+                "-EncodedCommand",
+                expect.stringMatching(/^[A-Za-z0-9+/=]+$/),
+            ],
+            { cwd: project, stdio: "ignore", windowsHide: true },
         );
-        const script = Buffer.from(spawn.mock.calls[0][1][3], "base64").toString("utf16le");
+        const script = launchedScript();
         expect(script).toContain(`Set-Location -LiteralPath '${project}'`);
         expect(script).toMatch(/^claude --add-dir '.*cli-tasks' 'Read the task in .*task-.*\.md and work on it/m);
         // The text of the task only goes into the file
@@ -120,8 +137,7 @@ describe("agent CLI", () => {
 
         await openAgentTaskInCli(USER, addTask(), project, "");
 
-        const script = Buffer.from(spawn.mock.calls[0][1][3], "base64").toString("utf16le");
-        expect(script).toMatch(/^copilot -i 'Read the task in /m);
+        expect(launchedScript()).toMatch(/^copilot -i 'Read the task in /m);
     });
 
     it("keeps the most recent projects first, without duplicates", async () => {
@@ -163,17 +179,27 @@ describe("agent CLI", () => {
 
     it("reports when the terminal can't be opened", async () => {
         spawn.mockImplementation(() => {
-            const child = Object.assign(new EventEmitter(), { unref: vi.fn() });
-            queueMicrotask(() => child.emit("error", new Error("spawn powershell.exe ENOENT")));
+            const child = new EventEmitter();
+            queueMicrotask(() => child.emit("error", new Error("spawn cmd.exe ENOENT")));
             return child;
         });
 
         expect(await openAgentTaskInCli(USER, addTask(), project, "")).toMatchObject({
             ok: false,
             error: "unavailable",
-            message: "spawn powershell.exe ENOENT",
+            message: "spawn cmd.exe ENOENT",
         });
         expect(getAgentStatus().recentProjects).toEqual([]);
+    });
+
+    it("reports when start fails", async () => {
+        spawn.mockImplementation(() => mkChild(1));
+
+        expect(await openAgentTaskInCli(USER, addTask(), project, "")).toMatchObject({
+            ok: false,
+            error: "unavailable",
+            message: "The terminal could not be started (exit code 1)",
+        });
     });
 
     it("only opens a CLI on Windows", async () => {
