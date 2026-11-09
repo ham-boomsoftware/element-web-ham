@@ -36,7 +36,9 @@ const STATUS: AgentStatus = {
     replySuggestions: true,
     taskDetection: true,
     autoInvestigate: false,
+    codingCli: "claude",
     connected: { claude: true, copilot: false },
+    recentProjects: [],
 };
 
 describe("AgentTaskListener", () => {
@@ -99,6 +101,8 @@ describe("AgentTaskListener", () => {
                 data: [{ title: "Create a ticket", details: "Bob asked for a ticket" }],
             }),
             runTask: vi.fn().mockResolvedValue({ ok: false, error: "no_workspace" }),
+            pickFolder: vi.fn(),
+            openTaskInCli: vi.fn(),
         };
         await AgentTaskStore.instance.start(agent, me);
         listener = new AgentTaskListener();

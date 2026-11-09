@@ -36,6 +36,29 @@ export type AgentTodoRunMode = "investigate" | "implement";
 export type AgentTodoRunError = "no_workspace" | "not_connected" | "rate_limited" | "unknown";
 
 /**
+ * The coding CLI that "Do it" opens in a terminal: Claude Code or GitHub Copilot CLI.
+ */
+export type AgentTodoCli = "claude" | "copilot";
+
+/**
+ * Opening a task in the coding CLI.
+ * - `opening`: the terminal is being opened.
+ * - `opened`: the terminal is open; the user carries on there.
+ * - `failed`: it couldn't be opened, see `error`.
+ */
+export interface AgentTodoLaunch {
+    /** The task that is opened */
+    id: string;
+    state: "opening" | "opened" | "failed";
+    /**
+     * Why it couldn't be opened.
+     * - `folder_missing`: the project folder doesn't exist.
+     * - `unknown`: anything else, most likely that the CLI isn't installed.
+     */
+    error?: "folder_missing" | "unknown";
+}
+
+/**
  * The latest work of the agent on a task.
  */
 export interface AgentTodoRun {
@@ -79,8 +102,16 @@ export interface AgentTodoViewSnapshot {
     openCount: number;
     /** How many tasks are done */
     doneCount: number;
-    /** Whether the agent can work on tasks: a provider is connected and a project folder is set */
+    /** Whether the agent can look into tasks: a provider is connected and a project folder is set */
     canRun: boolean;
+    /** The project folders to choose from for "Do it", most recent first */
+    projects: string[];
+    /** The chosen project folder, if any */
+    project?: string;
+    /** The coding CLI that "Do it" opens */
+    cli: AgentTodoCli;
+    /** The latest opening of a task in the coding CLI */
+    launch?: AgentTodoLaunch;
 }
 
 export interface AgentTodoViewActions {
@@ -96,6 +127,12 @@ export interface AgentTodoViewActions {
     openChat: (id: string) => void;
     /** Let the agent work on a task */
     runTask: (id: string, mode: AgentTodoRunMode) => void;
+    /** Choose one of the project folders */
+    selectProject: (project: string) => void;
+    /** Let the user choose another project folder in a dialog */
+    chooseProject: () => void;
+    /** Open a task in the coding CLI, in the chosen project folder, with the user's own prompt */
+    openInCli: (id: string, instructions: string) => void;
 }
 
 /**
@@ -110,7 +147,8 @@ export interface AgentTodoViewProps {
 
 /**
  * The user's to-do list: what others asked them to do in chats, collected by the agent, and what they added
- * themselves. The agent can look into a task, or do it, in the user's project folder.
+ * themselves. The agent can look into a task in the user's project folder, and "Do it" opens the task in a
+ * coding CLI in a terminal, in a project folder the user chooses, with a prompt of their own.
  *
  * @example
  * ```tsx
@@ -119,7 +157,8 @@ export interface AgentTodoViewProps {
  */
 export function AgentTodoView({ vm }: Readonly<AgentTodoViewProps>): JSX.Element {
     const { translate: _t } = useI18n();
-    const { filter, items, openCount, doneCount, canRun } = useViewModel(vm);
+    const snapshot = useViewModel(vm);
+    const { filter, items, openCount, doneCount, canRun } = snapshot;
     const [draft, setDraft] = useState("");
 
     const filters: { value: AgentTodoFilter; label: string }[] = [
@@ -177,7 +216,7 @@ export function AgentTodoView({ vm }: Readonly<AgentTodoViewProps>): JSX.Element
             ) : (
                 <ul className={styles.list} aria-label={_t("agent_todo|list_label")}>
                     {items.map((item) => (
-                        <AgentTodoEntry key={item.id} item={item} canRun={canRun} vm={vm} />
+                        <AgentTodoEntry key={item.id} item={item} snapshot={snapshot} vm={vm} />
                     ))}
                 </ul>
             )}
@@ -187,15 +226,16 @@ export function AgentTodoView({ vm }: Readonly<AgentTodoViewProps>): JSX.Element
 
 interface AgentTodoEntryProps {
     item: AgentTodoItem;
-    canRun: boolean;
+    snapshot: AgentTodoViewSnapshot;
     vm: AgentTodoViewModel;
 }
 
 /** One task of the list, with its actions and the latest report of the agent */
-function AgentTodoEntry({ item, canRun, vm }: Readonly<AgentTodoEntryProps>): JSX.Element {
+function AgentTodoEntry({ item, snapshot, vm }: Readonly<AgentTodoEntryProps>): JSX.Element {
     const { translate: _t } = useI18n();
     const { id, title, details, done, sender, chatName, date, canOpenChat, run } = item;
     const isRunning = run?.state === "running";
+    const [isLaunchOpen, setLaunchOpen] = useState(false);
     const origin =
         sender && chatName
             ? _t("agent_todo|from_chat", { sender, chat: chatName, date })
@@ -234,7 +274,7 @@ function AgentTodoEntry({ item, canRun, vm }: Readonly<AgentTodoEntryProps>): JS
                                 <Button
                                     kind="secondary"
                                     size="md"
-                                    disabled={!canRun || isRunning}
+                                    disabled={!snapshot.canRun || isRunning}
                                     onClick={() => vm.runTask(id, "investigate")}
                                 >
                                     {_t("agent_todo|investigate")}
@@ -242,8 +282,8 @@ function AgentTodoEntry({ item, canRun, vm }: Readonly<AgentTodoEntryProps>): JS
                                 <Button
                                     kind="secondary"
                                     size="md"
-                                    disabled={!canRun || isRunning}
-                                    onClick={() => vm.runTask(id, "implement")}
+                                    aria-expanded={isLaunchOpen}
+                                    onClick={() => setLaunchOpen(!isLaunchOpen)}
                                 >
                                     {_t("agent_todo|implement")}
                                 </Button>
@@ -254,10 +294,117 @@ function AgentTodoEntry({ item, canRun, vm }: Readonly<AgentTodoEntryProps>): JS
                         </Button>
                     </Flex>
 
+                    {isLaunchOpen && !done && (
+                        <AgentTodoLaunchForm
+                            id={id}
+                            snapshot={snapshot}
+                            vm={vm}
+                            onCancel={() => setLaunchOpen(false)}
+                        />
+                    )}
                     {run && <AgentTodoRunReport run={run} />}
                 </Flex>
             </Flex>
         </li>
+    );
+}
+
+/** The value of the option that opens the folder dialog */
+const OTHER_PROJECT = "\0other";
+
+interface AgentTodoLaunchFormProps {
+    id: string;
+    snapshot: AgentTodoViewSnapshot;
+    vm: AgentTodoViewModel;
+    onCancel: () => void;
+}
+
+/** Choose the project folder and write a prompt, then open the task in the coding CLI */
+function AgentTodoLaunchForm({ id, snapshot, vm, onCancel }: Readonly<AgentTodoLaunchFormProps>): JSX.Element {
+    const { translate: _t } = useI18n();
+    const { projects, project, cli, launch } = snapshot;
+    const [instructions, setInstructions] = useState("");
+    const ownLaunch = launch?.id === id ? launch : undefined;
+    const projectId = `mx_AgentTodo_project_${id}`;
+    const instructionsId = `mx_AgentTodo_instructions_${id}`;
+    const launchErrors: Record<NonNullable<AgentTodoLaunch["error"]>, string> = {
+        folder_missing: _t("agent_todo|launch_error_folder"),
+        unknown: _t("agent_todo|launch_error_unknown"),
+    };
+
+    return (
+        <form
+            className={styles.launch}
+            aria-label={_t("agent_todo|launch_label")}
+            onSubmit={(ev) => {
+                ev.preventDefault();
+                if (project) vm.openInCli(id, instructions.trim());
+            }}
+        >
+            <label className={styles.launchLabel} htmlFor={projectId}>
+                {_t("agent_todo|project")}
+            </label>
+            {projects.length > 0 ? (
+                <select
+                    id={projectId}
+                    className={styles.control}
+                    value={project ?? ""}
+                    onChange={(ev) => {
+                        const value = ev.currentTarget.value;
+                        if (value === OTHER_PROJECT) vm.chooseProject();
+                        else vm.selectProject(value);
+                    }}
+                >
+                    {projects.map((folder) => (
+                        <option key={folder} value={folder}>
+                            {folder}
+                        </option>
+                    ))}
+                    <option value={OTHER_PROJECT}>{_t("agent_todo|project_other")}</option>
+                </select>
+            ) : (
+                <Flex align="center" justify="space-between" gap="var(--cpd-space-3x)">
+                    <Text id={projectId} size="sm" className={styles.hint}>
+                        {_t("agent_todo|project_none")}
+                    </Text>
+                    <Button type="button" kind="secondary" size="md" onClick={vm.chooseProject}>
+                        {_t("agent_todo|project_choose")}
+                    </Button>
+                </Flex>
+            )}
+
+            <label className={styles.launchLabel} htmlFor={instructionsId}>
+                {_t("agent_todo|instructions_label")}
+            </label>
+            <textarea
+                id={instructionsId}
+                className={styles.control}
+                rows={3}
+                value={instructions}
+                placeholder={_t("agent_todo|instructions_placeholder")}
+                onChange={(ev) => setInstructions(ev.currentTarget.value)}
+            />
+
+            <Flex gap="var(--cpd-space-2x)" justify="end">
+                <Button type="button" kind="tertiary" size="md" onClick={onCancel}>
+                    {_t("action|cancel")}
+                </Button>
+                <Button type="submit" kind="primary" size="md" disabled={!project || ownLaunch?.state === "opening"}>
+                    {cli === "claude" ? _t("agent_todo|open_claude") : _t("agent_todo|open_copilot")}
+                </Button>
+            </Flex>
+
+            {ownLaunch?.state === "opened" && (
+                <Text size="sm" role="status" className={styles.hint}>
+                    {_t("agent_todo|launch_opened")}
+                </Text>
+            )}
+            {ownLaunch?.state === "failed" && (
+                <Text size="sm" role="alert" className={styles.launchError}>
+                    {launchErrors[ownLaunch.error ?? "unknown"]}
+                </Text>
+            )}
+        </form>
     );
 }
 

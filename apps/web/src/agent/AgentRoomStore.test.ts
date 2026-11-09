@@ -34,6 +34,8 @@ describe("AgentRoomStore", () => {
             deleteTask: vi.fn(),
             detectTasks: vi.fn(),
             runTask: vi.fn(),
+            pickFolder: vi.fn(),
+            openTaskInCli: vi.fn(),
         };
         store = new AgentRoomStore();
     });

@@ -7,8 +7,10 @@
 
 export { AgentTodoView } from "./AgentTodoView";
 export type {
+    AgentTodoCli,
     AgentTodoFilter,
     AgentTodoItem,
+    AgentTodoLaunch,
     AgentTodoRun,
     AgentTodoRunError,
     AgentTodoRunMode,

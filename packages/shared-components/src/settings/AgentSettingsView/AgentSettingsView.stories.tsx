@@ -26,6 +26,7 @@ const AgentSettingsViewWrapperImpl = ({
     setAutoInvestigate,
     chooseWorkspace,
     clearWorkspace,
+    setCodingCli,
     ...rest
 }: AgentSettingsProps): JSX.Element => {
     const vm = useMockedViewModel(rest, {
@@ -39,6 +40,7 @@ const AgentSettingsViewWrapperImpl = ({
         setAutoInvestigate,
         chooseWorkspace,
         clearWorkspace,
+        setCodingCli,
     });
     return <AgentSettingsView vm={vm} />;
 };
@@ -60,6 +62,7 @@ const meta = {
         taskDetection: true,
         autoInvestigate: false,
         workspacePath: undefined,
+        codingCli: "claude",
         error: undefined,
         setProvider: fn(),
         connect: fn(),
@@ -71,6 +74,7 @@ const meta = {
         setAutoInvestigate: fn(),
         chooseWorkspace: fn(),
         clearWorkspace: fn(),
+        setCodingCli: fn(),
     },
 } satisfies Meta<typeof AgentSettingsViewWrapper>;
 

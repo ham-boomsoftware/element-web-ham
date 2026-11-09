@@ -71,4 +71,15 @@ export interface AgentApi {
      * @returns the task with the finished or failed run
      */
     runTask(userId: string, taskId: string, mode: AgentTaskRunMode): Promise<AgentResult<AgentTask>>;
+    /**
+     * Let the user choose a project folder, without changing the settings.
+     * @returns the chosen folder, or undefined if the user cancelled
+     */
+    pickFolder(): Promise<AgentResult<string | undefined>>;
+    /**
+     * Open a task in the coding CLI of the settings, in a new terminal in a project folder, for the user to do it
+     * together with the CLI.
+     * @param instructions - What the user adds for the CLI, or ""
+     */
+    openTaskInCli(userId: string, taskId: string, folder: string, instructions: string): Promise<AgentResult<void>>;
 }

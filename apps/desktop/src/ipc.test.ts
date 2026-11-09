@@ -90,6 +90,8 @@ const agentTasks = vi.hoisted(() => ({
     runAgentTask: vi.fn(),
 }));
 vi.mock("./agent-tasks.js", () => agentTasks);
+const agentCli = vi.hoisted(() => ({ pickAgentFolder: vi.fn(), openAgentTaskInCli: vi.fn() }));
+vi.mock("./agent-cli.js", () => agentCli);
 
 await import("./ipc.js");
 
@@ -404,6 +406,12 @@ describe("ipc agent commands", () => {
             [{ ownName: "Alice", chatName: "Bob", isDirect: true, messages: [], newCount: 1, openTasks: [] }],
         ],
         ["agentRunTask", agentTasks.runAgentTask, ["@alice:example.org", "task-1", "investigate"]],
+        ["agentPickFolder", agentCli.pickAgentFolder, []],
+        [
+            "agentOpenTaskInCli",
+            agentCli.openAgentTaskInCli,
+            ["@alice:example.org", "task-1", "/work/app", "Be careful"],
+        ],
     ])("routes %s to the agent and replies with its result", async (name, handler, args) => {
         // A plain value works for the synchronous and the awaited handlers alike
         vi.mocked(handler).mockReturnValue({ ok: true, data: name });

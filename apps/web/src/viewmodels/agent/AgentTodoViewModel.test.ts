@@ -21,7 +21,9 @@ const STATUS: AgentStatus = {
     taskDetection: true,
     autoInvestigate: false,
     workspacePath: "/work",
+    codingCli: "claude",
     connected: { claude: true, copilot: false },
+    recentProjects: ["/projects/app", "/Work"],
 };
 
 const TASKS: AgentTask[] = [
@@ -47,6 +49,7 @@ describe("AgentTodoViewModel", () => {
         agent = {
             getStatus: vi.fn().mockResolvedValue(STATUS),
             getTasks: vi.fn().mockResolvedValue({ ok: true, data: TASKS }),
+            pickFolder: vi.fn().mockResolvedValue({ ok: true, data: "/projects/new" }),
         } as unknown as Mocked<AgentApi>;
         store = new AgentTaskStore();
         await store.start(agent, "@alice:example.org");
@@ -54,6 +57,7 @@ describe("AgentTodoViewModel", () => {
         vi.spyOn(store, "setDone").mockResolvedValue();
         vi.spyOn(store, "deleteTask").mockResolvedValue();
         vi.spyOn(store, "runTask").mockResolvedValue();
+        vi.spyOn(store, "openInCli").mockResolvedValue(undefined);
         onOpenChat = vi.fn();
         vm = new AgentTodoViewModel({ store, agent, onOpenChat });
     });
@@ -83,6 +87,70 @@ describe("AgentTodoViewModel", () => {
                 },
             }),
         ]);
+    });
+
+    it("offers the recent projects and the workspace, without repeats, and the coding CLI", async () => {
+        await vi.waitFor(() => expect(vm.getSnapshot().projects).toEqual(["/projects/app", "/Work"]));
+
+        expect(vm.getSnapshot()).toMatchObject({ project: "/projects/app", cli: "claude" });
+    });
+
+    it("chooses a project, from the list or from the folder dialog", async () => {
+        await vi.waitFor(() => expect(vm.getSnapshot().projects).toHaveLength(2));
+
+        vm.selectProject("/Work");
+        expect(vm.getSnapshot().project).toBe("/Work");
+
+        vm.chooseProject();
+        await vi.waitFor(() => expect(vm.getSnapshot().project).toBe("/projects/new"));
+        expect(vm.getSnapshot().projects).toEqual(["/projects/new", "/projects/app", "/Work"]);
+    });
+
+    it("keeps the project when the folder dialog is cancelled", async () => {
+        await vi.waitFor(() => expect(vm.getSnapshot().project).toBe("/projects/app"));
+        agent.pickFolder.mockResolvedValue({ ok: true, data: undefined });
+
+        vm.chooseProject();
+
+        await vi.waitFor(() => expect(agent.pickFolder).toHaveBeenCalled());
+        expect(vm.getSnapshot().project).toBe("/projects/app");
+    });
+
+    it("opens a task in the coding CLI and puts the project first", async () => {
+        await vi.waitFor(() => expect(vm.getSnapshot().projects).toHaveLength(2));
+        vm.selectProject("/Work");
+
+        vm.openInCli("1", "Add a test");
+
+        expect(vm.getSnapshot().launch).toEqual({ id: "1", state: "opening" });
+        await vi.waitFor(() => expect(vm.getSnapshot().launch).toEqual({ id: "1", state: "opened" }));
+        expect(store.openInCli).toHaveBeenCalledWith("1", "/Work", "Add a test");
+        expect(vm.getSnapshot().projects).toEqual(["/Work", "/projects/app"]);
+    });
+
+    it.each([
+        ["no_workspace", "folder_missing"],
+        ["unavailable", "unknown"],
+    ] as const)("shows why a task couldn't be opened: %s", async (error, expected) => {
+        await vi.waitFor(() => expect(vm.getSnapshot().project).toBeDefined());
+        vi.mocked(store.openInCli).mockResolvedValue(error);
+
+        vm.openInCli("1", "");
+
+        await vi.waitFor(() => expect(vm.getSnapshot().launch).toEqual({ id: "1", state: "failed", error: expected }));
+    });
+
+    it("opens nothing without a project", async () => {
+        agent.getStatus.mockResolvedValue({ ...STATUS, recentProjects: [], workspacePath: undefined });
+        const other = new AgentTodoViewModel({ store, agent, onOpenChat });
+        await vi.waitFor(() => expect(agent.getStatus).toHaveBeenCalledTimes(2));
+
+        other.openInCli("1", "");
+
+        expect(store.openInCli).not.toHaveBeenCalled();
+        expect(other.getSnapshot().projects).toEqual([]);
+        expect(other.getSnapshot().launch).toBeUndefined();
+        other.dispose();
     });
 
     it("shows the done tasks", () => {

@@ -63,6 +63,11 @@ function readTasks(userId: string): AgentTask[] {
     return getAgentStore().get("tasks")?.[userId] ?? [];
 }
 
+/** Get one task of the to-do list of a user */
+export function findAgentTask(userId: string, taskId: string): AgentTask | undefined {
+    return readTasks(userId).find((task) => task.id === taskId);
+}
+
 function writeTasks(userId: string, tasks: AgentTask[]): void {
     getAgentStore().set("tasks", { ...getAgentStore().get("tasks"), [userId]: tasks });
 }
@@ -185,17 +190,23 @@ export function deleteAgentTask(userId: unknown, taskId: unknown): AgentResult<v
  * @returns the chosen folder, or undefined if the user cancelled
  */
 export async function pickAgentWorkspace(): Promise<AgentResult<string | undefined>> {
-    const options: Electron.OpenDialogOptions = {
-        properties: ["openDirectory"],
-        defaultPath: getSettings().workspacePath,
-    };
+    const folder = await showFolderDialog(getSettings().workspacePath);
+    if (!folder) return { ok: true, data: undefined };
+    const saved = setAgentSettings({ workspacePath: folder });
+    return saved.ok ? { ok: true, data: saved.data.workspacePath } : saved;
+}
+
+/**
+ * Let the user choose a folder in a dialog.
+ * @param defaultPath - The folder the dialog starts in
+ * @returns the chosen folder, or undefined if the user cancelled
+ */
+export async function showFolderDialog(defaultPath?: string): Promise<string | undefined> {
+    const options: Electron.OpenDialogOptions = { properties: ["openDirectory"], defaultPath };
     const result = global.mainWindow
         ? await dialog.showOpenDialog(global.mainWindow, options)
         : await dialog.showOpenDialog(options);
-    const folder = result.filePaths[0];
-    if (result.canceled || !folder) return { ok: true, data: undefined };
-    const saved = setAgentSettings({ workspacePath: folder });
-    return saved.ok ? { ok: true, data: saved.data.workspacePath } : saved;
+    return result.canceled ? undefined : result.filePaths[0];
 }
 
 function isDetectionRequest(value: unknown): value is AgentTaskDetectionRequest {

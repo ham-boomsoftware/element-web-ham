@@ -7,6 +7,7 @@ Please see LICENSE files in the repository root for full details.
 
 import {
     BaseViewModel,
+    type AgentSettingsCli,
     type AgentSettingsError,
     type AgentSettingsProvider,
     type AgentSettingsViewModel as AgentSettingsViewModelInterface,
@@ -52,6 +53,7 @@ export class AgentSettingsViewModel
             replySuggestions: true,
             taskDetection: true,
             autoInvestigate: false,
+            codingCli: "claude",
         });
         void this.load();
     }
@@ -70,6 +72,7 @@ export class AgentSettingsViewModel
             taskDetection,
             autoInvestigate,
             workspacePath: status.workspacePath,
+            codingCli: status.codingCli,
         });
         await this.loadModels();
     }
@@ -170,6 +173,13 @@ export class AgentSettingsViewModel
             const result = await this.run(() => this.props.agent.pickWorkspace());
             // Nothing changes when the user cancelled the folder dialog
             if (result?.ok && result.data) this.snapshot.merge({ workspacePath: result.data });
+        })();
+    };
+
+    public setCodingCli = (codingCli: AgentSettingsCli): void => {
+        void (async () => {
+            const result = await this.run(() => this.props.agent.setSettings({ codingCli }));
+            if (result?.ok) this.snapshot.merge({ codingCli: result.data.codingCli });
         })();
     };
 

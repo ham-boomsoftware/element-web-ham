@@ -32,6 +32,7 @@ import {
     runAgentTask,
     updateAgentTask,
 } from "./agent-tasks.js";
+import { openAgentTaskInCli, pickAgentFolder } from "./agent-cli.js";
 
 let focusHandlerAttached = false;
 ipcMain.on("loudNotification", function (): void {
@@ -239,6 +240,12 @@ ipcMain.on("ipcCall", async function (_ev: IpcMainEvent, payload) {
             break;
         case "agentRunTask":
             ret = await runAgentTask(args[0], args[1], args[2]);
+            break;
+        case "agentPickFolder":
+            ret = await pickAgentFolder();
+            break;
+        case "agentOpenTaskInCli":
+            ret = await openAgentTaskInCli(args[0], args[1], args[2], args[3]);
             break;
 
         case "clearStorage":

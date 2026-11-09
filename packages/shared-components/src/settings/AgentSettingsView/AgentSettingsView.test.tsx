@@ -29,6 +29,7 @@ describe("<AgentSettingsView />", () => {
             "setAutoInvestigate",
             "chooseWorkspace",
             "clearWorkspace",
+            "setCodingCli",
         ] as const) {
             vi.mocked(NotConnected.args[action]!).mockClear();
             vi.mocked(Connected.args[action]!).mockClear();
@@ -156,6 +157,17 @@ describe("<AgentSettingsView />", () => {
 
         await user.click(screen.getByRole("button", { name: "Remove" }));
         expect(WithWorkspace.args.clearWorkspace).toHaveBeenCalled();
+    });
+
+    it("chooses the coding CLI that does tasks", async () => {
+        const user = userEvent.setup();
+        render(<Connected />);
+
+        const cli = screen.getByLabelText("Do tasks with");
+        expect(cli).toHaveValue("claude");
+        await user.selectOptions(cli, "GitHub Copilot CLI");
+
+        expect(Connected.args.setCodingCli).toHaveBeenCalledWith("copilot");
     });
 
     it("says when the project folder doesn't exist", () => {

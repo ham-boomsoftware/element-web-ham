@@ -147,7 +147,9 @@ describe("agent", () => {
                 replySuggestions: true,
                 taskDetection: true,
                 autoInvestigate: false,
+                codingCli: "claude",
                 connected: { claude: false, copilot: false },
+                recentProjects: [],
             });
         });
 
@@ -164,6 +166,7 @@ describe("agent", () => {
                     replySuggestions: true,
                     taskDetection: true,
                     autoInvestigate: false,
+                    codingCli: "claude",
                 },
             });
         });
@@ -197,6 +200,7 @@ describe("agent", () => {
             { taskDetection: 1 },
             { autoInvestigate: "no" },
             { workspacePath: 3 },
+            { codingCli: "cursor" },
         ])("refuses invalid settings %j", (changes) => {
             expect(setAgentSettings(changes)).toEqual({ ok: false, error: "invalid_request", message: undefined });
             expect(storeData.settings).toBeUndefined();

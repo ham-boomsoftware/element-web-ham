@@ -48,6 +48,8 @@ describe("AgentTaskStore", () => {
                 ok: true as const,
                 data: mkTask(taskId, { run: { mode, state: "finished", startedAt: 1, summary: "Report" } }),
             })),
+            pickFolder: vi.fn(),
+            openTaskInCli: vi.fn(),
         };
         store = new AgentTaskStore();
     });
@@ -157,6 +159,25 @@ describe("AgentTaskStore", () => {
         await store.runTask("1", "implement");
 
         expect(store.getTask("1")?.run).toMatchObject({ mode: "implement", state: "failed", error: "no_workspace" });
+    });
+
+    it("opens a task in the coding CLI of the platform", async () => {
+        await store.start(agent, ALICE);
+        agent.openTaskInCli.mockResolvedValue({ ok: true, data: undefined });
+
+        expect(await store.openInCli("1", "/work/app", "Add a test")).toBeUndefined();
+
+        expect(agent.openTaskInCli).toHaveBeenCalledWith(ALICE, "1", "/work/app", "Add a test");
+    });
+
+    it("says why a task couldn't be opened in the coding CLI", async () => {
+        expect(await store.openInCli("1", "/work/app", "")).toBe("unavailable");
+
+        await store.start(agent, ALICE);
+        agent.openTaskInCli.mockResolvedValueOnce({ ok: false, error: "no_workspace" });
+        expect(await store.openInCli("1", "/gone", "")).toBe("no_workspace");
+        agent.openTaskInCli.mockRejectedValueOnce(new Error("IPC failed"));
+        expect(await store.openInCli("1", "/work/app", "")).toBe("unavailable");
     });
 
     it("shows a failure when the platform throws", async () => {

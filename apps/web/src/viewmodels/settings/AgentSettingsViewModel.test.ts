@@ -25,7 +25,9 @@ describe("AgentSettingsViewModel", () => {
                 replySuggestions: true,
                 taskDetection: true,
                 autoInvestigate: false,
+                codingCli: "claude",
                 connected: { claude: true, copilot: false },
+                recentProjects: [],
                 ...status,
             }),
             setSettings: vi.fn(async (changes) => ({
@@ -36,6 +38,7 @@ describe("AgentSettingsViewModel", () => {
                     replySuggestions: true,
                     taskDetection: true,
                     autoInvestigate: false,
+                    codingCli: "claude" as const,
                     ...changes,
                     // An empty folder forgets it, as the platform does
                     workspacePath: changes.workspacePath || undefined,
@@ -55,6 +58,8 @@ describe("AgentSettingsViewModel", () => {
             deleteTask: vi.fn(),
             detectTasks: vi.fn(),
             runTask: vi.fn(),
+            pickFolder: vi.fn(),
+            openTaskInCli: vi.fn(),
         };
     }
 
@@ -173,6 +178,15 @@ describe("AgentSettingsViewModel", () => {
             vm.setAutoInvestigate(true);
             await vi.waitFor(() => expect(vm.getSnapshot().autoInvestigate).toBe(true));
             expect(agent.setSettings).toHaveBeenCalledWith({ autoInvestigate: true });
+        });
+
+        it("chooses the coding CLI", async () => {
+            expect(vm.getSnapshot().codingCli).toBe("claude");
+
+            vm.setCodingCli("copilot");
+
+            await vi.waitFor(() => expect(vm.getSnapshot().codingCli).toBe("copilot"));
+            expect(agent.setSettings).toHaveBeenCalledWith({ codingCli: "copilot" });
         });
 
         it("chooses and forgets the project folder", async () => {

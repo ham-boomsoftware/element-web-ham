@@ -24,6 +24,9 @@ class TestViewModel extends MockViewModel<AgentTodoViewSnapshot> implements Agen
     public deleteTask = vi.fn();
     public openChat = vi.fn();
     public runTask = vi.fn();
+    public selectProject = vi.fn();
+    public chooseProject = vi.fn();
+    public openInCli = vi.fn();
 }
 
 const SNAPSHOT: AgentTodoViewSnapshot = {
@@ -31,6 +34,9 @@ const SNAPSHOT: AgentTodoViewSnapshot = {
     openCount: 1,
     doneCount: 0,
     canRun: true,
+    projects: ["/work/app", "/work/api"],
+    project: "/work/app",
+    cli: "claude",
     items: [
         {
             id: "task-1",
@@ -85,12 +91,12 @@ describe("AgentTodoView", () => {
         expect(screen.getByText(/The provider is limiting requests/)).toBeInTheDocument();
     });
 
-    it("asks for a workspace and disables the agent's actions without one", () => {
+    it("asks for a workspace to look into tasks, but still lets them be done in a CLI", () => {
         render(<WithoutWorkspace />);
 
         expect(screen.getByText(/Choose a project folder in the agent settings/)).toBeInTheDocument();
         for (const button of screen.getAllByRole("button", { name: "Look into it" })) expect(button).toBeDisabled();
-        for (const button of screen.getAllByRole("button", { name: "Do it" })) expect(button).toBeDisabled();
+        for (const button of screen.getAllByRole("button", { name: "Do it" })) expect(button).toBeEnabled();
     });
 
     it("says when there is nothing to do", () => {
@@ -110,12 +116,73 @@ describe("AgentTodoView", () => {
         expect(vm.openChat).toHaveBeenCalledWith("task-1");
         await user.click(screen.getByRole("button", { name: "Look into it" }));
         expect(vm.runTask).toHaveBeenCalledWith("task-1", "investigate");
-        await user.click(screen.getByRole("button", { name: "Do it" }));
-        expect(vm.runTask).toHaveBeenCalledWith("task-1", "implement");
         await user.click(screen.getByRole("button", { name: "Delete" }));
         expect(vm.deleteTask).toHaveBeenCalledWith("task-1");
         await user.click(screen.getByRole("button", { name: "Done (0)" }));
         expect(vm.setFilter).toHaveBeenCalledWith("done");
+    });
+
+    it("opens a task in Claude Code, in the chosen project and with the user's prompt", async () => {
+        const user = userEvent.setup();
+        const vm = new TestViewModel(SNAPSHOT);
+        render(<AgentTodoView vm={vm} />);
+        const doIt = screen.getByRole("button", { name: "Do it" });
+        expect(doIt).toHaveAttribute("aria-expanded", "false");
+
+        await user.click(doIt);
+
+        const form = screen.getByRole("form", { name: "Do it in a coding CLI" });
+        const project = within(form).getByRole("combobox", { name: "Project" });
+        expect(project).toHaveValue("/work/app");
+        await user.selectOptions(project, "/work/api");
+        expect(vm.selectProject).toHaveBeenCalledWith("/work/api");
+        await user.type(within(form).getByRole("textbox", { name: "Your prompt (optional)" }), " Add a test ");
+        await user.click(within(form).getByRole("button", { name: "Open in Claude Code" }));
+        expect(vm.openInCli).toHaveBeenCalledWith("task-1", "Add a test");
+
+        await user.click(within(form).getByRole("button", { name: "Cancel" }));
+        expect(screen.queryByRole("form", { name: "Do it in a coding CLI" })).not.toBeInTheDocument();
+    });
+
+    it("lets the user choose another folder", async () => {
+        const user = userEvent.setup();
+        const vm = new TestViewModel(SNAPSHOT);
+        render(<AgentTodoView vm={vm} />);
+        await user.click(screen.getByRole("button", { name: "Do it" }));
+
+        await user.selectOptions(screen.getByRole("combobox", { name: "Project" }), "Other folder…");
+
+        expect(vm.chooseProject).toHaveBeenCalled();
+        expect(vm.selectProject).not.toHaveBeenCalled();
+    });
+
+    it("asks for a folder when there is no project yet, and offers Copilot CLI when it is chosen", async () => {
+        const user = userEvent.setup();
+        const vm = new TestViewModel({ ...SNAPSHOT, projects: [], project: undefined, cli: "copilot" });
+        render(<AgentTodoView vm={vm} />);
+        await user.click(screen.getByRole("button", { name: "Do it" }));
+
+        expect(screen.getByText("Choose the project folder to work in.")).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Open in Copilot CLI" })).toBeDisabled();
+        await user.click(screen.getByRole("button", { name: "Choose folder…" }));
+        expect(vm.chooseProject).toHaveBeenCalled();
+    });
+
+    it.each([
+        [{ id: "task-1", state: "opened" as const }, "status", "Opened in a new terminal"],
+        [
+            { id: "task-1", state: "failed" as const, error: "folder_missing" as const },
+            "alert",
+            "doesn't exist any more",
+        ],
+        [{ id: "task-1", state: "failed" as const }, "alert", "Check that the CLI is installed"],
+    ])("shows how opening went: %j", async (launch, role, text) => {
+        const user = userEvent.setup();
+        const vm = new TestViewModel({ ...SNAPSHOT, launch });
+        render(<AgentTodoView vm={vm} />);
+        await user.click(screen.getByRole("button", { name: "Do it" }));
+
+        expect(screen.getByRole(role).textContent).toContain(text);
     });
 
     it("adds a task the user writes", async () => {

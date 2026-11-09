@@ -7,7 +7,7 @@ Please see LICENSE files in the repository root for full details.
 
 import { TypedEventEmitter } from "matrix-js-sdk/src/matrix";
 import { logger } from "matrix-js-sdk/src/logger";
-import type { AgentNewTask, AgentTask, AgentTaskRunMode } from "shared-types";
+import type { AgentErrorCode, AgentNewTask, AgentTask, AgentTaskRunMode } from "shared-types";
 
 import type { AgentApi } from "./AgentApi";
 
@@ -172,6 +172,23 @@ export class AgentTaskStore extends TypedEventEmitter<AgentTaskStoreEvent, Event
                 run: { mode, state: "failed", startedAt, finishedAt: Date.now(), error: result.error },
             });
         }
+    }
+
+    /**
+     * Open a task in the coding CLI of the settings, in a new terminal in a project folder.
+     * @param instructions - What the user adds for the CLI, or ""
+     * @returns why it couldn't be opened, or undefined if it was
+     */
+    public async openInCli(taskId: string, folder: string, instructions: string): Promise<AgentErrorCode | undefined> {
+        const { agent, userId } = this;
+        if (!agent || !userId) return "unavailable";
+        const result = await agent.openTaskInCli(userId, taskId, folder, instructions).catch((e) => {
+            logger.warn(`Could not open the task ${taskId} in the coding CLI`, e);
+            return { ok: false as const, error: "unavailable" as const, message: undefined };
+        });
+        if (result.ok) return undefined;
+        logger.warn(`Could not open the task ${taskId} in the coding CLI: ${result.error}`, result.message);
+        return result.error;
     }
 
     private replace(task: AgentTask): void {

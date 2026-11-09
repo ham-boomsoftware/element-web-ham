@@ -7,6 +7,7 @@
 
 export { AgentSettingsView } from "./AgentSettingsView";
 export type {
+    AgentSettingsCli,
     AgentSettingsError,
     AgentSettingsModel,
     AgentSettingsProvider,

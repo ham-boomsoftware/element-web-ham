@@ -22,9 +22,22 @@ const AgentTodoViewWrapperImpl = ({
     deleteTask,
     openChat,
     runTask,
+    selectProject,
+    chooseProject,
+    openInCli,
     ...rest
 }: AgentTodoProps): JSX.Element => {
-    const vm = useMockedViewModel(rest, { setFilter, addTask, setDone, deleteTask, openChat, runTask });
+    const vm = useMockedViewModel(rest, {
+        setFilter,
+        addTask,
+        setDone,
+        deleteTask,
+        openChat,
+        runTask,
+        selectProject,
+        chooseProject,
+        openInCli,
+    });
     return <AgentTodoView vm={vm} />;
 };
 const AgentTodoViewWrapper = withViewDocs(AgentTodoViewWrapperImpl, AgentTodoView);
@@ -38,6 +51,9 @@ const meta = {
         openCount: 3,
         doneCount: 1,
         canRun: true,
+        projects: ["C:\\projects\\element-web", "C:\\projects\\backend"],
+        project: "C:\\projects\\element-web",
+        cli: "claude",
         items: [
             {
                 id: "1",
@@ -84,6 +100,9 @@ const meta = {
         deleteTask: fn(),
         openChat: fn(),
         runTask: fn(),
+        selectProject: fn(),
+        chooseProject: fn(),
+        openInCli: fn(),
     },
 } satisfies Meta<typeof AgentTodoViewWrapper>;
 

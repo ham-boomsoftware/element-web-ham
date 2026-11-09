@@ -98,6 +98,8 @@ describe("ReplySuggestionsViewModel", () => {
             deleteTask: vi.fn(),
             detectTasks: vi.fn(),
             runTask: vi.fn(),
+            pickFolder: vi.fn(),
+            openTaskInCli: vi.fn(),
         };
     });
 
@@ -155,7 +157,9 @@ describe("ReplySuggestionsViewModel", () => {
             replySuggestions: true,
             taskDetection: true,
             autoInvestigate: false,
+            codingCli: "claude",
             connected: { claude: true, copilot: false },
+            recentProjects: [],
         });
 
         await createViewModel();
@@ -174,7 +178,9 @@ describe("ReplySuggestionsViewModel", () => {
             replySuggestions: false,
             taskDetection: true,
             autoInvestigate: false,
+            codingCli: "claude",
             connected: { claude: true, copilot: false },
+            recentProjects: [],
         });
 
         await createViewModel();

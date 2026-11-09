@@ -522,6 +522,9 @@ export default class ElectronPlatform extends BasePlatform {
         deleteTask: (userId, taskId) => this.ipc.call("agentDeleteTask", userId, taskId),
         detectTasks: (request) => this.ipc.call("agentDetectTasks", request),
         runTask: (userId, taskId, mode) => this.ipc.call("agentRunTask", userId, taskId, mode),
+        pickFolder: () => this.ipc.call("agentPickFolder"),
+        openTaskInCli: (userId, taskId, folder, instructions) =>
+            this.ipc.call("agentOpenTaskInCli", userId, taskId, folder, instructions),
     };
 
     public get agent(): AgentApi {

@@ -63,6 +63,7 @@ const DEFAULT_SETTINGS: AgentSettings = {
     replySuggestions: true,
     taskDetection: true,
     autoInvestigate: false,
+    codingCli: "claude",
 };
 
 const PROVIDERS: readonly AgentProvider[] = ["claude", "copilot"];
@@ -75,6 +76,8 @@ export interface AgentStoreData {
     rooms?: Record<string, string[]>;
     /** The to-do list, by the Matrix user it belongs to */
     tasks?: Record<string, AgentTask[]>;
+    /** The project folders tasks were last opened in with the coding CLI, most recent first */
+    recentProjects?: string[];
 }
 
 /**
@@ -148,7 +151,11 @@ export function failure(error: AgentErrorCode, message?: string): AgentResult<ne
  * Get the settings of the agent and which providers are connected.
  */
 export function getAgentStatus(): AgentStatus {
-    return { ...getSettings(), connected: { claude: hasCredential("claude"), copilot: hasCredential("copilot") } };
+    return {
+        ...getSettings(),
+        connected: { claude: hasCredential("claude"), copilot: hasCredential("copilot") },
+        recentProjects: getAgentStore().get("recentProjects") ?? [],
+    };
 }
 
 /**
@@ -156,8 +163,16 @@ export function getAgentStatus(): AgentStatus {
  */
 export function setAgentSettings(changes: unknown): AgentResult<AgentSettings> {
     if (typeof changes !== "object" || changes === null) return failure("invalid_request");
-    const { provider, model, instructions, replySuggestions, taskDetection, autoInvestigate, workspacePath } =
-        changes as Partial<AgentSettings>;
+    const {
+        provider,
+        model,
+        instructions,
+        replySuggestions,
+        taskDetection,
+        autoInvestigate,
+        workspacePath,
+        codingCli,
+    } = changes as Partial<AgentSettings>;
     if (provider !== undefined && !isProvider(provider)) return failure("invalid_request");
     if (model !== undefined && typeof model !== "string") return failure("invalid_request");
     if (instructions !== undefined && typeof instructions !== "string") return failure("invalid_request");
@@ -166,6 +181,9 @@ export function setAgentSettings(changes: unknown): AgentResult<AgentSettings> {
     if (autoInvestigate !== undefined && typeof autoInvestigate !== "boolean") return failure("invalid_request");
     if (workspacePath !== undefined && typeof workspacePath !== "string") return failure("invalid_request");
     if (workspacePath && !isDirectory(workspacePath)) return failure("no_workspace");
+    if (codingCli !== undefined && codingCli !== "claude" && codingCli !== "copilot") {
+        return failure("invalid_request");
+    }
 
     const settings = getSettings();
     // Each provider has its own models, so a new provider starts with its default model
@@ -177,6 +195,7 @@ export function setAgentSettings(changes: unknown): AgentResult<AgentSettings> {
     if (taskDetection !== undefined) settings.taskDetection = taskDetection;
     if (autoInvestigate !== undefined) settings.autoInvestigate = autoInvestigate;
     if (workspacePath !== undefined) settings.workspacePath = workspacePath ? path.resolve(workspacePath) : undefined;
+    if (codingCli !== undefined) settings.codingCli = codingCli;
     getAgentStore().set("settings", settings);
     return { ok: true, data: settings };
 }

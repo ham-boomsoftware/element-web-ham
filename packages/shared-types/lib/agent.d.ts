@@ -36,7 +36,16 @@ export interface AgentSettings {
     autoInvestigate: boolean;
     /** The local folder of the project the agent works on for tasks, or undefined if none is set */
     workspacePath?: string;
+    /** The coding CLI that is opened in a terminal to do a task */
+    codingCli: AgentCodingCli;
 }
+
+/**
+ * The coding CLIs the user can do a task with, in a terminal of their own.
+ * - `claude`: Claude Code.
+ * - `copilot`: GitHub Copilot CLI.
+ */
+export type AgentCodingCli = "claude" | "copilot";
 
 /**
  * The settings of the agent and which providers have a stored credential.
@@ -44,6 +53,8 @@ export interface AgentSettings {
 export interface AgentStatus extends AgentSettings {
     /** Whether a credential is stored for each provider */
     connected: Record<AgentProvider, boolean>;
+    /** The project folders tasks were last opened in with the coding CLI, most recent first */
+    recentProjects: string[];
 }
 
 /**

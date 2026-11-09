@@ -32,6 +32,11 @@ import styles from "./AgentSettingsView.module.css";
 export type AgentSettingsProvider = "claude" | "copilot";
 
 /**
+ * The coding CLIs a task can be done with, in a terminal: Claude Code or GitHub Copilot CLI.
+ */
+export type AgentSettingsCli = "claude" | "copilot";
+
+/**
  * Why the last action failed.
  * - `invalid_credential`: the provider rejected the key or token.
  * - `rate_limited`: the provider asks to slow down, or the plan's allowance is used up.
@@ -73,6 +78,8 @@ export interface AgentSettingsViewSnapshot {
     autoInvestigate: boolean;
     /** The folder of the project the agent works on for tasks, if one is chosen */
     workspacePath?: string;
+    /** The coding CLI that "Do it" opens in a terminal */
+    codingCli: AgentSettingsCli;
     /** Why the last action failed, if it did */
     error?: AgentSettingsError;
 }
@@ -98,6 +105,8 @@ export interface AgentSettingsViewActions {
     chooseWorkspace: () => void;
     /** Forget the project folder */
     clearWorkspace: () => void;
+    /** Choose the coding CLI that "Do it" opens */
+    setCodingCli: (cli: AgentSettingsCli) => void;
 }
 
 /**
@@ -129,6 +138,7 @@ export function AgentSettingsView({ vm }: Readonly<AgentSettingsViewProps>): JSX
         taskDetection,
         autoInvestigate,
         workspacePath,
+        codingCli,
         error,
     } = useViewModel(vm);
     const [credential, setCredential] = useState("");
@@ -330,6 +340,25 @@ export function AgentSettingsView({ vm }: Readonly<AgentSettingsViewProps>): JSX
                         {errorMessages.no_workspace}
                     </Text>
                 )}
+            </Flex>
+
+            <Flex direction="column" gap="var(--cpd-space-2x)">
+                <label className={styles.label} htmlFor="mx_AgentSettings_codingCli">
+                    {_t("settings|agent|coding_cli")}
+                </label>
+                <select
+                    id="mx_AgentSettings_codingCli"
+                    className={styles.control}
+                    value={codingCli}
+                    disabled={isBusy}
+                    onChange={(ev) => vm.setCodingCli(ev.currentTarget.value as AgentSettingsCli)}
+                >
+                    <option value="claude">{_t("settings|agent|coding_cli_claude")}</option>
+                    <option value="copilot">{_t("settings|agent|coding_cli_copilot")}</option>
+                </select>
+                <Text size="sm" className={styles.description}>
+                    {_t("settings|agent|coding_cli_description")}
+                </Text>
             </Flex>
 
             <Flex direction="column" gap="var(--cpd-space-2x)">
