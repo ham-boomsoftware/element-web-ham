@@ -115,7 +115,13 @@ jobs:
                   base=$(node -p 'require("./package.json").version')
                   IFS=. read -r major minor patch <<< "${base%%-*}"
                   version="$major.$minor.$((patch * 100000 + RUN_NUMBER))"
-                  pnpm version --no-git-tag-version --new-version "$version"
+                  # pnpm 12's `version` has no --new-version, so package.json is changed directly
+                  node -e '
+                      const fs = require("fs");
+                      const pkg = JSON.parse(fs.readFileSync("package.json", "utf8"));
+                      pkg.version = process.argv[1];
+                      fs.writeFileSync("package.json", JSON.stringify(pkg, null, 4) + "\n");
+                  ' "$version"
                   echo "version=$version" >> "$GITHUB_OUTPUT"
                   echo "Building version $version"
 
