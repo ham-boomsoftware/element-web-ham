@@ -18,7 +18,7 @@ import {
 } from "matrix-js-sdk/src/matrix";
 import { mkEvent, mkMessage, stubClient } from "test-utils";
 
-import { AgentReplyListener, REPLY_DELAY_MS } from "./AgentReplyListener";
+import { AGENT_MESSAGE_KEY, AgentReplyListener, REPLY_DELAY_MS } from "./AgentReplyListener";
 import type { AgentApi } from "./AgentApi";
 import DMRoomMap from "../utils/DMRoomMap";
 import { AgentRoomStore } from "./AgentRoomStore";
@@ -85,7 +85,7 @@ describe("AgentReplyListener", () => {
         vi.restoreAllMocks();
     });
 
-    it("replies to the partner in a direct message marked for the agent, as a notice", async () => {
+    it("replies to the partner in a direct message marked for the agent, as marked text", async () => {
         events.push(mkMessage({ room: ROOM_ID, user: me, msg: "Hi Bob", ts: 1, event: true }));
         receive(PARTNER, "Are you free tomorrow?");
 
@@ -100,8 +100,9 @@ describe("AgentReplyListener", () => {
             ],
         });
         expect(client.sendMessage).toHaveBeenCalledWith(ROOM_ID, {
-            msgtype: MsgType.Notice,
+            msgtype: MsgType.Text,
             body: "Sure, see you tomorrow!",
+            [AGENT_MESSAGE_KEY]: true,
         });
         expect(client.sendTyping).toHaveBeenCalledWith(ROOM_ID, true, 30000);
         expect(client.sendTyping).toHaveBeenLastCalledWith(ROOM_ID, false, 0);
@@ -144,6 +145,13 @@ describe("AgentReplyListener", () => {
     it.each([
         ["the user's own message", () => receive("@userId:matrix.org", "Hi")],
         ["an automated notice of the partner", () => receive(PARTNER, "Hi", MsgType.Notice)],
+        [
+            "a message the partner's agent wrote",
+            () => {
+                const event = receive(PARTNER, "Hi");
+                event.getContent()[AGENT_MESSAGE_KEY] = true;
+            },
+        ],
         [
             "an event that is not a message",
             () => {

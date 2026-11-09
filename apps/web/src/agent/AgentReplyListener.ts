@@ -15,6 +15,7 @@ import {
     RelationType,
     RoomEvent,
 } from "matrix-js-sdk/src/matrix";
+import type { RoomMessageEventContent } from "matrix-js-sdk/src/types";
 import { logger } from "matrix-js-sdk/src/logger";
 import type { AgentTurn } from "shared-types";
 
@@ -28,6 +29,12 @@ export const REPLY_DELAY_MS = 5000;
 /** How many of the latest messages the agent sees */
 export const HISTORY_LENGTH = 30;
 
+/**
+ * Marks a message the agent wrote. The message is sent as ordinary text, so that it looks like the user's own
+ * messages; the mark keeps agents in other Element Pilot clients from answering it, as they would a notice.
+ */
+export const AGENT_MESSAGE_KEY = "io.element.pilot.agent";
+
 /** The kinds of message the agent answers. A notice is an automated message, which bots never answer */
 const ANSWERED_MSGTYPES: ReadonlySet<string | undefined> = new Set<string | undefined>([MsgType.Text, MsgType.Emote]);
 
@@ -35,8 +42,8 @@ const ANSWERED_MSGTYPES: ReadonlySet<string | undefined> = new Set<string | unde
  * Replies to the direct messages the user marked for the agent, through the agent of the platform.
  *
  * The marks are kept on this computer (see {@link AgentRoomStore}). When the partner writes in a marked room,
- * the conversation goes to the agent and its reply is sent as a notice, which marks it as automated and keeps
- * other agents from answering it.
+ * the conversation goes to the agent and its reply is sent as ordinary text with {@link AGENT_MESSAGE_KEY}, which
+ * marks it as automated and keeps other agents from answering it.
  *
  * Only new messages are answered: those sent before the client started are left alone.
  */
@@ -120,7 +127,8 @@ export class AgentReplyListener {
             return false;
         }
         const partnerId = DMRoomMap.shared()?.getUserIdForRoomId(room.roomId);
-        return event.getSender() === partnerId && ANSWERED_MSGTYPES.has(event.getContent().msgtype);
+        const content = event.getContent();
+        return event.getSender() === partnerId && ANSWERED_MSGTYPES.has(content.msgtype) && !content[AGENT_MESSAGE_KEY];
     }
 
     private async reply(room: Room): Promise<void> {
@@ -150,7 +158,9 @@ export class AgentReplyListener {
             }
             // Don't send a reply that is out of date: the user or the partner wrote in the meantime
             if (this.client !== client || this.getLastMessage(room) !== lastEvent) return;
-            await client.sendMessage(room.roomId, { msgtype: MsgType.Notice, body: result.data });
+            // The mark is not part of the typed message content, so the content is built as a plain object first
+            const content = { msgtype: MsgType.Text, body: result.data, [AGENT_MESSAGE_KEY]: true };
+            await client.sendMessage(room.roomId, content as RoomMessageEventContent);
         } catch (e) {
             logger.warn(`Agent could not reply in ${room.roomId}`, e);
         } finally {
