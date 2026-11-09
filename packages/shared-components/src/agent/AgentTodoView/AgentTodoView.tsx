@@ -165,7 +165,7 @@ export function AgentTodoView({ vm }: Readonly<AgentTodoViewProps>): JSX.Element
             </form>
 
             {!canRun && (
-                <Text size="md" className={styles.hint}>
+                <Text size="sm" className={styles.hint}>
                     {_t("agent_todo|no_workspace_hint")}
                 </Text>
             )}
@@ -214,11 +214,11 @@ function AgentTodoEntry({ item, canRun, vm }: Readonly<AgentTodoEntryProps>): JS
                     <Text size="md" weight="semibold" className={styles.title}>
                         {title}
                     </Text>
-                    <Text size="md" className={styles.meta}>
+                    <Text size="sm" className={styles.meta}>
                         {origin}
                     </Text>
                     {details && (
-                        <Text size="md" className={styles.details}>
+                        <Text size="sm" className={styles.details}>
                             {details}
                         </Text>
                     )}
@@ -289,18 +289,18 @@ function AgentTodoRunReport({ run }: Readonly<{ run: AgentTodoRun }>): JSX.Eleme
         >
             <Flex align="center" gap="var(--cpd-space-2x)">
                 <AiIcon className={styles.reportIcon} width="16px" height="16px" aria-hidden />
-                <Text size="md" weight="semibold">
+                <Text size="sm" weight="semibold">
                     {heading}
                 </Text>
             </Flex>
             {run.state !== "running" && run.summary && (
-                <Text size="md" className={styles.summary}>
+                <Text size="sm" className={styles.summary}>
                     {run.summary}
                 </Text>
             )}
             {run.changedFiles.length > 0 && (
                 <>
-                    <Text size="md" weight="semibold">
+                    <Text size="sm" weight="semibold">
                         {_t("agent_todo|changed_files")}
                     </Text>
                     <ul className={styles.files}>

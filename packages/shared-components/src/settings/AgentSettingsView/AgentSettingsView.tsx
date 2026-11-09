@@ -171,7 +171,7 @@ export function AgentSettingsView({ vm }: Readonly<AgentSettingsViewProps>): JSX
 
     return (
         <Flex direction="column" gap="var(--cpd-space-6x)" className={styles.agentSettings}>
-            <Text size="md" className={styles.description}>
+            <Text size="sm" className={styles.description}>
                 {_t("settings|agent|description")}
             </Text>
 
@@ -248,7 +248,7 @@ export function AgentSettingsView({ vm }: Readonly<AgentSettingsViewProps>): JSX
                         ))}
                     </select>
                     {errorMessage && (
-                        <Text size="md" className={styles.error}>
+                        <Text size="sm" className={styles.error}>
                             {errorMessage}
                         </Text>
                     )}
@@ -308,7 +308,7 @@ export function AgentSettingsView({ vm }: Readonly<AgentSettingsViewProps>): JSX
                     {_t("settings|agent|workspace")}
                 </Text>
                 <Flex align="center" justify="space-between" gap="var(--cpd-space-4x)">
-                    <Text size="md" className={styles.workspacePath} title={workspacePath}>
+                    <Text size="sm" className={styles.workspacePath} title={workspacePath}>
                         {workspacePath ?? _t("settings|agent|workspace_none")}
                     </Text>
                     <Flex gap="var(--cpd-space-2x)">
@@ -322,11 +322,11 @@ export function AgentSettingsView({ vm }: Readonly<AgentSettingsViewProps>): JSX
                         </Button>
                     </Flex>
                 </Flex>
-                <Text size="md" className={styles.description}>
+                <Text size="sm" className={styles.description}>
                     {_t("settings|agent|workspace_description")}
                 </Text>
                 {error === "no_workspace" && (
-                    <Text size="md" className={styles.error}>
+                    <Text size="sm" className={styles.error}>
                         {errorMessages.no_workspace}
                     </Text>
                 )}

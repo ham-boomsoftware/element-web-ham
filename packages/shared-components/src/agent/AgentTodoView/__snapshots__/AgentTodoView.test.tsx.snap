@@ -153,7 +153,7 @@ exports[`AgentTodoView > Storybook snapshots > renders the done tasks 1`] = `
               Send the slides
             </p>
             <p
-              class="_typography_6v6n8_153 _font-body-md-regular_6v6n8_50 AgentTodoView-module_meta"
+              class="_typography_6v6n8_153 _font-body-sm-regular_6v6n8_31 AgentTodoView-module_meta"
             >
               Bob in Team · Fri, 6 Nov, 16:20
             </p>
@@ -237,7 +237,7 @@ exports[`AgentTodoView > Storybook snapshots > renders the list without a worksp
       </button>
     </form>
     <p
-      class="_typography_6v6n8_153 _font-body-md-regular_6v6n8_50 AgentTodoView-module_hint"
+      class="_typography_6v6n8_153 _font-body-sm-regular_6v6n8_31 AgentTodoView-module_hint"
     >
       Choose a project folder in the agent settings, so that the agent can look into tasks and do them.
     </p>
@@ -288,12 +288,12 @@ exports[`AgentTodoView > Storybook snapshots > renders the list without a worksp
               Create a ticket for the login bug
             </p>
             <p
-              class="_typography_6v6n8_153 _font-body-md-regular_6v6n8_50 AgentTodoView-module_meta"
+              class="_typography_6v6n8_153 _font-body-sm-regular_6v6n8_31 AgentTodoView-module_meta"
             >
               Bob in Team · Mon, 9 Nov, 12:40
             </p>
             <p
-              class="_typography_6v6n8_153 _font-body-md-regular_6v6n8_50 AgentTodoView-module_details"
+              class="_typography_6v6n8_153 _font-body-sm-regular_6v6n8_31 AgentTodoView-module_details"
             >
               Bob asked for a ticket: logging in with SSO fails since yesterday's release.
             </p>
@@ -386,12 +386,12 @@ exports[`AgentTodoView > Storybook snapshots > renders the list without a worksp
               Look at the failing build
             </p>
             <p
-              class="_typography_6v6n8_153 _font-body-md-regular_6v6n8_50 AgentTodoView-module_meta"
+              class="_typography_6v6n8_153 _font-body-sm-regular_6v6n8_31 AgentTodoView-module_meta"
             >
               Carol in Carol · Mon, 9 Nov, 11:02
             </p>
             <p
-              class="_typography_6v6n8_153 _font-body-md-regular_6v6n8_50 AgentTodoView-module_details"
+              class="_typography_6v6n8_153 _font-body-sm-regular_6v6n8_31 AgentTodoView-module_details"
             >
               Carol: the nightly build fails in the settings tests.
             </p>
@@ -462,13 +462,13 @@ exports[`AgentTodoView > Storybook snapshots > renders the list without a worksp
                   />
                 </svg>
                 <p
-                  class="_typography_6v6n8_153 _font-body-md-semibold_6v6n8_55"
+                  class="_typography_6v6n8_153 _font-body-sm-semibold_6v6n8_36"
                 >
                   What the agent found
                 </p>
               </div>
               <p
-                class="_typography_6v6n8_153 _font-body-md-regular_6v6n8_50 AgentTodoView-module_summary"
+                class="_typography_6v6n8_153 _font-body-sm-regular_6v6n8_31 AgentTodoView-module_summary"
               >
                 The settings tests expect the old default of the theme.
 
@@ -522,7 +522,7 @@ The default changed in ThemeWatcher.ts; the snapshots still have the old one.
               Prepare the demo
             </p>
             <p
-              class="_typography_6v6n8_153 _font-body-md-regular_6v6n8_50 AgentTodoView-module_meta"
+              class="_typography_6v6n8_153 _font-body-sm-regular_6v6n8_31 AgentTodoView-module_meta"
             >
               Added by you · Sun, 8 Nov, 18:15
             </p>
@@ -584,7 +584,7 @@ The default changed in ThemeWatcher.ts; the snapshots still have the old one.
                   />
                 </svg>
                 <p
-                  class="_typography_6v6n8_153 _font-body-md-semibold_6v6n8_55"
+                  class="_typography_6v6n8_153 _font-body-sm-semibold_6v6n8_36"
                 >
                   The agent is working on it…
                 </p>
@@ -693,12 +693,12 @@ exports[`AgentTodoView > Storybook snapshots > renders the open tasks 1`] = `
               Create a ticket for the login bug
             </p>
             <p
-              class="_typography_6v6n8_153 _font-body-md-regular_6v6n8_50 AgentTodoView-module_meta"
+              class="_typography_6v6n8_153 _font-body-sm-regular_6v6n8_31 AgentTodoView-module_meta"
             >
               Bob in Team · Mon, 9 Nov, 12:40
             </p>
             <p
-              class="_typography_6v6n8_153 _font-body-md-regular_6v6n8_50 AgentTodoView-module_details"
+              class="_typography_6v6n8_153 _font-body-sm-regular_6v6n8_31 AgentTodoView-module_details"
             >
               Bob asked for a ticket: logging in with SSO fails since yesterday's release.
             </p>
@@ -791,12 +791,12 @@ exports[`AgentTodoView > Storybook snapshots > renders the open tasks 1`] = `
               Look at the failing build
             </p>
             <p
-              class="_typography_6v6n8_153 _font-body-md-regular_6v6n8_50 AgentTodoView-module_meta"
+              class="_typography_6v6n8_153 _font-body-sm-regular_6v6n8_31 AgentTodoView-module_meta"
             >
               Carol in Carol · Mon, 9 Nov, 11:02
             </p>
             <p
-              class="_typography_6v6n8_153 _font-body-md-regular_6v6n8_50 AgentTodoView-module_details"
+              class="_typography_6v6n8_153 _font-body-sm-regular_6v6n8_31 AgentTodoView-module_details"
             >
               Carol: the nightly build fails in the settings tests.
             </p>
@@ -867,13 +867,13 @@ exports[`AgentTodoView > Storybook snapshots > renders the open tasks 1`] = `
                   />
                 </svg>
                 <p
-                  class="_typography_6v6n8_153 _font-body-md-semibold_6v6n8_55"
+                  class="_typography_6v6n8_153 _font-body-sm-semibold_6v6n8_36"
                 >
                   What the agent found
                 </p>
               </div>
               <p
-                class="_typography_6v6n8_153 _font-body-md-regular_6v6n8_50 AgentTodoView-module_summary"
+                class="_typography_6v6n8_153 _font-body-sm-regular_6v6n8_31 AgentTodoView-module_summary"
               >
                 The settings tests expect the old default of the theme.
 
@@ -927,7 +927,7 @@ The default changed in ThemeWatcher.ts; the snapshots still have the old one.
               Prepare the demo
             </p>
             <p
-              class="_typography_6v6n8_153 _font-body-md-regular_6v6n8_50 AgentTodoView-module_meta"
+              class="_typography_6v6n8_153 _font-body-sm-regular_6v6n8_31 AgentTodoView-module_meta"
             >
               Added by you · Sun, 8 Nov, 18:15
             </p>
@@ -989,7 +989,7 @@ The default changed in ThemeWatcher.ts; the snapshots still have the old one.
                   />
                 </svg>
                 <p
-                  class="_typography_6v6n8_153 _font-body-md-semibold_6v6n8_55"
+                  class="_typography_6v6n8_153 _font-body-sm-semibold_6v6n8_36"
                 >
                   The agent is working on it…
                 </p>
@@ -1098,12 +1098,12 @@ exports[`AgentTodoView > Storybook snapshots > renders the reports of the agent 
               Fix the typo on the login page
             </p>
             <p
-              class="_typography_6v6n8_153 _font-body-md-regular_6v6n8_50 AgentTodoView-module_meta"
+              class="_typography_6v6n8_153 _font-body-sm-regular_6v6n8_31 AgentTodoView-module_meta"
             >
               Dave in Dave · Mon, 9 Nov, 09:30
             </p>
             <p
-              class="_typography_6v6n8_153 _font-body-md-regular_6v6n8_50 AgentTodoView-module_details"
+              class="_typography_6v6n8_153 _font-body-sm-regular_6v6n8_31 AgentTodoView-module_details"
             >
               Dave: it says 'Sign inn'.
             </p>
@@ -1174,18 +1174,18 @@ exports[`AgentTodoView > Storybook snapshots > renders the reports of the agent 
                   />
                 </svg>
                 <p
-                  class="_typography_6v6n8_153 _font-body-md-semibold_6v6n8_55"
+                  class="_typography_6v6n8_153 _font-body-sm-semibold_6v6n8_36"
                 >
                   What the agent changed
                 </p>
               </div>
               <p
-                class="_typography_6v6n8_153 _font-body-md-regular_6v6n8_50 AgentTodoView-module_summary"
+                class="_typography_6v6n8_153 _font-body-sm-regular_6v6n8_31 AgentTodoView-module_summary"
               >
                 Fixed the label in the login form. Nothing is committed.
               </p>
               <p
-                class="_typography_6v6n8_153 _font-body-md-semibold_6v6n8_55"
+                class="_typography_6v6n8_153 _font-body-sm-semibold_6v6n8_36"
               >
                 Changed files, not committed:
               </p>
@@ -1250,7 +1250,7 @@ exports[`AgentTodoView > Storybook snapshots > renders the reports of the agent 
               Review the release notes
             </p>
             <p
-              class="_typography_6v6n8_153 _font-body-md-regular_6v6n8_50 AgentTodoView-module_meta"
+              class="_typography_6v6n8_153 _font-body-sm-regular_6v6n8_31 AgentTodoView-module_meta"
             >
               Erin in Release · Mon, 9 Nov, 08:00
             </p>
@@ -1321,7 +1321,7 @@ exports[`AgentTodoView > Storybook snapshots > renders the reports of the agent 
                   />
                 </svg>
                 <p
-                  class="_typography_6v6n8_153 _font-body-md-semibold_6v6n8_55"
+                  class="_typography_6v6n8_153 _font-body-sm-semibold_6v6n8_36"
                 >
                   The provider is limiting requests, or your plan's allowance is used up. Try again later.
                 </p>
