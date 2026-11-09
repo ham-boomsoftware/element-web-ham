@@ -2,6 +2,9 @@
 # artifact of the run. Element's own desktop workflows sign the build and fetch the web app from element-hq,
 # which this repository can't do, so Pilot has its own.
 #
+# The web app is built on Linux: on Windows, installing the whole workspace fails while matrix-js-sdk builds
+# itself from git. The Windows job then only installs the desktop app, as Element's own Windows build does.
+#
 # The web app is built with the repository variable PILOT_WEB_CONFIG as its config.json, if it is set, and with
 # config.sample.json otherwise.
 name: Build Element Pilot (Windows)
@@ -21,8 +24,54 @@ concurrency:
 permissions:
     contents: read
 jobs:
-    build:
+    webapp:
+        name: Build the web app
+        runs-on: ubuntu-24.04
+        steps:
+            - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+              with:
+                  persist-credentials: false
+
+            - uses: pnpm/setup@fa36a5ef7dcdefc3a7cb25655c122e00cf6e636e # v3.1.2
+              with:
+                  node-version-file: apps/desktop/.node-version
+                  cache: true
+                  install: false
+
+            - name: Install dependencies
+              run: pnpm install --frozen-lockfile
+
+            - name: Write the config of the web app
+              env:
+                  PILOT_WEB_CONFIG: ${{ vars.PILOT_WEB_CONFIG }}
+              run: |
+                  if [ -n "$PILOT_WEB_CONFIG" ]; then
+                      printf '%s' "$PILOT_WEB_CONFIG" > apps/web/config.json
+                  else
+                      cp apps/web/config.sample.json apps/web/config.json
+                  fi
+
+            # Builds the shared packages first, as the web app depends on them
+            - name: Build the web app
+              run: pnpm nx run element-web:build
+
+            - name: Pack the web app for the desktop app
+              run: |
+                  rm -rf apps/desktop/webapp
+                  cp -r apps/web/webapp apps/desktop/webapp
+                  cd apps/desktop
+                  pnpm run asar-webapp
+
+            - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+              with:
+                  name: webapp
+                  path: apps/desktop/webapp.asar
+                  if-no-files-found: error
+                  retention-days: 1
+
+    windows:
         name: Build Windows x64
+        needs: webapp
         runs-on: windows-2025
         defaults:
             run:
@@ -45,42 +94,14 @@ jobs:
                   cache: true
                   install: false
 
-            # matrix-js-sdk comes from git and builds itself with `pnpm build` while it is installed. On Windows that
-            # inner pnpm isn't found through the shim of pnpm/setup, so a plain npm install of pnpm goes first on the
-            # PATH. npm runs outside the checkout, as the devEngines of package.json only allow pnpm there.
-            - name: Put pnpm on the PATH
-              working-directory: ${{ runner.temp }}
-              run: |
-                  version=$(node -p "require(process.env.GITHUB_WORKSPACE + '/package.json').devEngines.packageManager.version")
-                  npm install -g "pnpm@$version"
-                  npm config get prefix >> "$GITHUB_PATH"
+            - name: Install dependencies of the desktop app
+              working-directory: apps/desktop
+              run: pnpm install --frozen-lockfile --filter element-desktop
 
-            - name: Install dependencies
-              run: |
-                  which pnpm
-                  pnpm --version
-                  pnpm install --frozen-lockfile
-
-            - name: Write the config of the web app
-              env:
-                  PILOT_WEB_CONFIG: ${{ vars.PILOT_WEB_CONFIG }}
-              run: |
-                  if [ -n "$PILOT_WEB_CONFIG" ]; then
-                      printf '%s' "$PILOT_WEB_CONFIG" > apps/web/config.json
-                  else
-                      cp apps/web/config.sample.json apps/web/config.json
-                  fi
-
-            # Builds the shared packages first, as the web app depends on them
-            - name: Build the web app
-              run: pnpm nx run element-web:build
-
-            - name: Pack the web app for the desktop app
-              run: |
-                  rm -rf apps/desktop/webapp
-                  cp -r apps/web/webapp apps/desktop/webapp
-                  cd apps/desktop
-                  pnpm run asar-webapp
+            - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+              with:
+                  name: webapp
+                  path: apps/desktop/
 
             # Every build gets a higher version, so that the installer replaces the installed build. The run number
             # goes into the patch number, as the installer only compares plain numbers reliably:
