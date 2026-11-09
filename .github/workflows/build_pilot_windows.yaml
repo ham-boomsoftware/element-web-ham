@@ -1,0 +1,85 @@
+# Builds the Windows installer of Element Pilot (see apps/desktop/pilot/README), unsigned, and keeps it as an
+# artifact of the run. Element's own desktop workflows sign the build and fetch the web app from element-hq,
+# which this repository can't do, so Pilot has its own.
+#
+# The web app is built with the repository variable PILOT_WEB_CONFIG as its config.json, if it is set, and with
+# config.sample.json otherwise.
+name: Build Element Pilot (Windows)
+on:
+    workflow_dispatch: {}
+    push:
+        branches: [develop, "pilot/**"]
+        paths:
+            - "apps/web/**"
+            - "apps/desktop/**"
+            - "packages/**"
+            - "pnpm-lock.yaml"
+            - ".github/workflows/build_pilot_windows.yaml"
+concurrency:
+    group: ${{ github.workflow }}-${{ github.ref }}
+    cancel-in-progress: true
+permissions:
+    contents: read
+jobs:
+    build:
+        name: Build Windows x64
+        runs-on: windows-2025
+        defaults:
+            run:
+                shell: bash
+        steps:
+            # Tweak line endings to make nx happy, workaround for https://github.com/nrwl/nx/issues/35828
+            - name: Configure git line endings
+              shell: powershell
+              run: |
+                  git config --system core.autocrlf false
+                  git config --system core.eol lf
+
+            - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+              with:
+                  persist-credentials: false
+
+            - uses: pnpm/setup@fa36a5ef7dcdefc3a7cb25655c122e00cf6e636e # v3.1.2
+              with:
+                  node-version-file: apps/desktop/.node-version
+                  cache: true
+                  install: false
+
+            - name: Install dependencies
+              run: pnpm install --frozen-lockfile
+
+            - name: Write the config of the web app
+              env:
+                  PILOT_WEB_CONFIG: ${{ vars.PILOT_WEB_CONFIG }}
+              run: |
+                  if [ -n "$PILOT_WEB_CONFIG" ]; then
+                      printf '%s' "$PILOT_WEB_CONFIG" > apps/web/config.json
+                  else
+                      cp apps/web/config.sample.json apps/web/config.json
+                  fi
+
+            # Builds the shared packages first, as the web app depends on them
+            - name: Build the web app
+              run: pnpm nx run element-web:build
+
+            - name: Pack the web app for the desktop app
+              run: |
+                  rm -rf apps/desktop/webapp
+                  cp -r apps/web/webapp apps/desktop/webapp
+                  cd apps/desktop
+                  pnpm run asar-webapp
+
+            - name: Build the installer
+              working-directory: apps/desktop
+              env:
+                  VARIANT_PATH: pilot/build.json
+              run: pnpm run build --publish never -w squirrel
+
+            - name: Keep the installer
+              uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+              with:
+                  name: element-pilot-windows-x64
+                  path: |
+                      apps/desktop/dist/squirrel-windows/*.exe
+                  if-no-files-found: error
+                  retention-days: 14
