@@ -45,8 +45,21 @@ jobs:
                   cache: true
                   install: false
 
+            # matrix-js-sdk comes from git and builds itself with `pnpm build` while it is installed. On Windows that
+            # inner pnpm isn't found through the shim of pnpm/setup, so a plain npm install of pnpm goes first on the
+            # PATH. npm runs outside the checkout, as the devEngines of package.json only allow pnpm there.
+            - name: Put pnpm on the PATH
+              working-directory: ${{ runner.temp }}
+              run: |
+                  version=$(node -p "require(process.env.GITHUB_WORKSPACE + '/package.json').devEngines.packageManager.version")
+                  npm install -g "pnpm@$version"
+                  npm config get prefix >> "$GITHUB_PATH"
+
             - name: Install dependencies
-              run: pnpm install --frozen-lockfile
+              run: |
+                  which pnpm
+                  pnpm --version
+                  pnpm install --frozen-lockfile
 
             - name: Write the config of the web app
               env:
