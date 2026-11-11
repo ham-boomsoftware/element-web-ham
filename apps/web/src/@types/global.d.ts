@@ -46,6 +46,7 @@ type ElectronChannel =
     | "install_update"
     | "ipcCall"
     | "ipcReply"
+    | "agentTaskProgress"
     | "loudNotification"
     | "preferences"
     | "seshat"

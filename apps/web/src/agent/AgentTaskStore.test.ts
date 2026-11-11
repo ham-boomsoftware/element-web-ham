@@ -6,7 +6,7 @@ Please see LICENSE files in the repository root for full details.
 */
 
 import { vi, describe, it, expect, beforeEach, afterEach, type Mocked } from "vitest";
-import type { AgentTask } from "shared-types";
+import type { AgentTask, AgentTaskRun } from "shared-types";
 
 import { AgentTaskStore, AgentTaskStoreEvent } from "./AgentTaskStore";
 import type { AgentApi } from "./AgentApi";
@@ -53,6 +53,10 @@ describe("AgentTaskStore", () => {
             })),
             pickFolder: vi.fn(),
             openTaskInCli: vi.fn(),
+            onTaskProgress: vi.fn(() => () => {}),
+            getTaskDiff: vi.fn(),
+            removeTaskWorktree: vi.fn(),
+            openTaskFolder: vi.fn(),
         };
         store = new AgentTaskStore();
     });
@@ -190,5 +194,79 @@ describe("AgentTaskStore", () => {
         await store.runTask("1", "investigate");
 
         expect(store.getTask("1")?.run).toMatchObject({ state: "failed", error: "unavailable" });
+    });
+
+    describe("the autopilot", () => {
+        const progress = (taskId: string, run: AgentTaskRun, userId = ALICE): void => {
+            const listener = agent.onTaskProgress.mock.calls[0][0];
+            listener({ userId, taskId, run });
+        };
+        const running: AgentTaskRun = {
+            mode: "autopilot",
+            state: "running",
+            startedAt: 5,
+            steps: [{ kind: "read", text: "a.ts", at: 6 }],
+        };
+
+        it("shows each step of a run as it happens", async () => {
+            await store.start(agent, ALICE);
+
+            progress("1", running);
+
+            expect(store.getTask("1")?.run).toEqual(running);
+        });
+
+        it("ignores the steps of other users, and late steps of a finished run", async () => {
+            await store.start(agent, ALICE);
+            const finished = { ...running, state: "finished" as const, summary: "Done" };
+            agent.getTasks.mockResolvedValue({ ok: true, data: [mkTask("1", { run: finished })] });
+            await store.start(agent, ALICE);
+
+            progress("1", { ...running, startedAt: 9 }, "@bob:example.org");
+            progress("1", running);
+
+            expect(store.getTask("1")?.run).toEqual(finished);
+        });
+
+        it("stops following the steps when stopped", async () => {
+            const unsubscribe = vi.fn();
+            agent.onTaskProgress.mockReturnValue(unsubscribe);
+            await store.start(agent, ALICE);
+
+            store.stop();
+
+            expect(unsubscribe).toHaveBeenCalled();
+        });
+
+        it("reads the changes of a task", async () => {
+            await store.start(agent, ALICE);
+            agent.getTaskDiff.mockResolvedValue({ ok: true, data: [] });
+
+            expect(await store.getDiff("1")).toEqual({ ok: true, data: [] });
+            expect(agent.getTaskDiff).toHaveBeenCalledWith(ALICE, "1");
+
+            agent.getTaskDiff.mockRejectedValue(new Error("IPC failed"));
+            expect(await store.getDiff("1")).toMatchObject({ ok: false, error: "unavailable" });
+        });
+
+        it("removes the worktree of a task", async () => {
+            await store.start(agent, ALICE);
+            agent.removeTaskWorktree.mockResolvedValue({ ok: true, data: mkTask("1", { title: "Without worktree" }) });
+
+            await store.removeWorktree("1");
+
+            expect(agent.removeTaskWorktree).toHaveBeenCalledWith(ALICE, "1");
+            expect(store.getTask("1")?.title).toBe("Without worktree");
+        });
+
+        it("opens the worktree of a task, or says why it couldn't", async () => {
+            expect(await store.openFolder("1")).toBe("unavailable");
+
+            await store.start(agent, ALICE);
+            agent.openTaskFolder.mockResolvedValueOnce({ ok: true, data: undefined });
+            expect(await store.openFolder("1")).toBeUndefined();
+            agent.openTaskFolder.mockResolvedValueOnce({ ok: false, error: "not_found" });
+            expect(await store.openFolder("1")).toBe("not_found");
+        });
     });
 });

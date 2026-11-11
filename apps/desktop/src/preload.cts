@@ -22,6 +22,7 @@ const CHANNELS = [
     "install_update",
     "ipcCall",
     "ipcReply",
+    "agentTaskProgress",
     "loudNotification",
     "preferences",
     "seshat",

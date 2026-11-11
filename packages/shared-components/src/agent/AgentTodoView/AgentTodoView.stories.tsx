@@ -9,7 +9,12 @@ import React, { type JSX } from "react";
 import { fn } from "storybook/test";
 
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { AgentTodoView, type AgentTodoViewActions, type AgentTodoViewSnapshot } from "./AgentTodoView";
+import {
+    AgentTodoView,
+    type AgentTodoStep,
+    type AgentTodoViewActions,
+    type AgentTodoViewSnapshot,
+} from "./AgentTodoView";
 import { useMockedViewModel } from "../../core/viewmodel";
 import { withViewDocs } from "../../../.storybook/withViewDocs";
 
@@ -25,6 +30,11 @@ const AgentTodoViewWrapperImpl = ({
     selectProject,
     chooseProject,
     openInCli,
+    toggleDiff,
+    openWorktree,
+    continueInCli,
+    removeWorktree,
+    reportToChat,
     ...rest
 }: AgentTodoProps): JSX.Element => {
     const vm = useMockedViewModel(rest, {
@@ -37,6 +47,11 @@ const AgentTodoViewWrapperImpl = ({
         selectProject,
         chooseProject,
         openInCli,
+        toggleDiff,
+        openWorktree,
+        continueInCli,
+        removeWorktree,
+        reportToChat,
     });
     return <AgentTodoView vm={vm} />;
 };
@@ -82,6 +97,10 @@ const meta = {
                         "default in the settings tests\nThe default changed in ThemeWatcher.ts; the snapshots " +
                         "still have the old one.",
                     changedFiles: [],
+                    steps: [
+                        { kind: "search", text: "theme", time: "11:03", failed: false },
+                        { kind: "read", text: "src/settings/ThemeWatcher.ts", time: "11:03", failed: false },
+                    ],
                 },
             },
             {
@@ -91,7 +110,7 @@ const meta = {
                 done: false,
                 date: "Sun, 8 Nov, 18:15",
                 canOpenChat: false,
-                run: { mode: "implement", state: "running", changedFiles: [] },
+                run: { mode: "implement", state: "running", changedFiles: [], steps: [] },
             },
         ],
         setFilter: fn(),
@@ -103,6 +122,11 @@ const meta = {
         selectProject: fn(),
         chooseProject: fn(),
         openInCli: fn(),
+        toggleDiff: fn(),
+        openWorktree: fn(),
+        continueInCli: fn(),
+        removeWorktree: fn(),
+        reportToChat: fn(),
     },
 } satisfies Meta<typeof AgentTodoViewWrapper>;
 
@@ -128,6 +152,7 @@ export const Implemented: Story = {
                     state: "finished",
                     summary: "Fixed the label in the login form. Nothing is committed.",
                     changedFiles: ["src/components/LoginForm.tsx", "src/i18n/strings/en_EN.json"],
+                    steps: [],
                 },
             },
             {
@@ -139,7 +164,7 @@ export const Implemented: Story = {
                 chatName: "Release",
                 date: "Mon, 9 Nov, 08:00",
                 canOpenChat: true,
-                run: { mode: "investigate", state: "failed", error: "rate_limited", changedFiles: [] },
+                run: { mode: "investigate", state: "failed", error: "rate_limited", changedFiles: [], steps: [] },
             },
         ],
     },
@@ -147,6 +172,143 @@ export const Implemented: Story = {
 
 export const WithoutWorkspace: Story = {
     args: { canRun: false },
+};
+
+const autopilotSteps: AgentTodoStep[] = [
+    { kind: "list", text: ".", time: "10:02:11", failed: false },
+    { kind: "search", text: "Sign inn", time: "10:02:14", failed: false },
+    { kind: "read", text: "src/components/LoginForm.tsx", time: "10:02:15", failed: false },
+    { kind: "edit", text: "src/components/LoginForm.tsx", time: "10:02:31", failed: false },
+    { kind: "command", text: "pnpm install", time: "10:02:40", failed: false },
+    { kind: "command", text: "pnpm test LoginForm", time: "10:03:12", failed: true },
+    { kind: "edit", text: "src/components/LoginForm.test.tsx", time: "10:03:30", failed: false },
+    { kind: "command", text: "pnpm test LoginForm", time: "10:03:58", failed: false },
+];
+
+export const AutopilotRunning: Story = {
+    args: {
+        items: [
+            {
+                id: "7",
+                title: "Fix the typo on the login page",
+                details: "Dave: it says 'Sign inn'.",
+                done: false,
+                sender: "Dave",
+                chatName: "Dave",
+                date: "Mon, 9 Nov, 09:30",
+                canOpenChat: true,
+                run: {
+                    mode: "autopilot",
+                    state: "running",
+                    changedFiles: [],
+                    steps: autopilotSteps.slice(0, 5),
+                    branch: { name: "pilot/fix-the-typo-a1b2c3", base: "main", pushed: false, hasWorktree: true },
+                },
+            },
+        ],
+    },
+};
+
+export const AutopilotFinished: Story = {
+    args: {
+        items: [
+            {
+                id: "7",
+                title: "Fix the typo on the login page",
+                details: "Dave: it says 'Sign inn'.",
+                done: false,
+                sender: "Dave",
+                chatName: "Dave",
+                date: "Mon, 9 Nov, 09:30",
+                canOpenChat: true,
+                chatReport:
+                    "Done: fixed the typo on the login page.\nBranch: pilot/fix-the-typo-a1b2c3\n" +
+                    "Pull request: https://github.com/example/app/compare/main...pilot/fix-the-typo-a1b2c3",
+                run: {
+                    mode: "autopilot",
+                    state: "finished",
+                    summary: "Fixed the label in the login form and added a test for it.",
+                    changedFiles: ["src/components/LoginForm.tsx", "src/components/LoginForm.test.tsx"],
+                    steps: [
+                        ...autopilotSteps,
+                        { kind: "git", text: "commit 3f9e2a1", time: "10:04:01", failed: false },
+                        { kind: "git", text: "push origin pilot/fix-the-typo-a1b2c3", time: "10:04:03", failed: false },
+                    ],
+                    branch: {
+                        name: "pilot/fix-the-typo-a1b2c3",
+                        base: "main",
+                        commit: "3f9e2a1",
+                        pushed: true,
+                        pullRequestUrl: "https://github.com/example/app/compare/main...pilot/fix-the-typo-a1b2c3",
+                        hasWorktree: true,
+                    },
+                },
+            },
+        ],
+        diff: {
+            id: "7",
+            state: "loaded",
+            files: [
+                {
+                    path: "src/components/LoginForm.tsx",
+                    status: "modified",
+                    additions: 1,
+                    deletions: 1,
+                    truncated: false,
+                    lines: [
+                        { type: "hunk", text: "@@ -40,7 +40,7 @@ export function LoginForm()" },
+                        { type: "context", text: "         <form onSubmit={onSubmit}>" },
+                        { type: "remove", text: '-            <Button type="submit">Sign inn</Button>' },
+                        { type: "add", text: '+            <Button type="submit">Sign in</Button>' },
+                        { type: "context", text: "         </form>" },
+                    ],
+                },
+                {
+                    path: "src/components/LoginForm.test.tsx",
+                    status: "added",
+                    additions: 3,
+                    deletions: 0,
+                    truncated: false,
+                    lines: [
+                        { type: "hunk", text: "@@ -0,0 +1,3 @@" },
+                        { type: "add", text: '+it("says Sign in", () => {' },
+                        { type: "add", text: '+    expect(render(<LoginForm />).getByText("Sign in")).toBeVisible();' },
+                        { type: "add", text: "+});" },
+                    ],
+                },
+            ],
+        },
+    },
+};
+
+export const AutopilotPushFailed: Story = {
+    args: {
+        items: [
+            {
+                id: "8",
+                title: "Update the README",
+                details: "",
+                done: false,
+                date: "Mon, 9 Nov, 08:00",
+                canOpenChat: false,
+                run: {
+                    mode: "autopilot",
+                    state: "finished",
+                    summary: "Added the new build steps to the README.",
+                    changedFiles: ["README.md"],
+                    steps: [{ kind: "edit", text: "README.md", time: "08:01:10", failed: false }],
+                    branch: {
+                        name: "pilot/update-the-readme-d4e5f6",
+                        base: "main",
+                        commit: "8c1d0b7",
+                        pushed: false,
+                        pushError: "remote: Permission to example/app.git denied.",
+                        hasWorktree: true,
+                    },
+                },
+            },
+        ],
+    },
 };
 
 export const Empty: Story = {

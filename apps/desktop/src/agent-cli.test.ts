@@ -152,6 +152,28 @@ describe("agent CLI", () => {
         expect(getAgentStatus().recentProjects).toEqual([project, other]);
     });
 
+    it("doesn't offer the worktree of the autopilot as a project again", async () => {
+        const id = addTask();
+        const tasks = (storeData.tasks as Record<string, AgentTask[]>)[USER];
+        tasks[0].run = {
+            mode: "autopilot",
+            state: "finished",
+            startedAt: 1,
+            branch: {
+                name: "pilot/fix",
+                base: "main",
+                baseCommit: "abc",
+                repositoryPath: temp,
+                worktreePath: project,
+                pushed: false,
+            },
+        };
+
+        expect(await openAgentTaskInCli(USER, id, project, "")).toEqual({ ok: true, data: undefined });
+
+        expect(getAgentStatus().recentProjects).toEqual([]);
+    });
+
     it("removes task files that are older than a week", async () => {
         const dir = path.join(dataPath.value, "agent", "cli-tasks");
         await fs.mkdir(dir, { recursive: true });

@@ -37,6 +37,8 @@ const STATUS: AgentStatus = {
     replySuggestions: true,
     taskDetection: true,
     autoInvestigate: false,
+    autopilot: false,
+    autopilotCommands: [],
     codingCli: "claude",
     connected: { claude: true, copilot: false },
     recentProjects: [],
@@ -107,6 +109,10 @@ describe("AgentTaskListener", () => {
             runTask: vi.fn().mockResolvedValue({ ok: false, error: "no_workspace" }),
             pickFolder: vi.fn(),
             openTaskInCli: vi.fn(),
+            onTaskProgress: vi.fn(() => () => {}),
+            getTaskDiff: vi.fn(),
+            removeTaskWorktree: vi.fn(),
+            openTaskFolder: vi.fn(),
         };
         await AgentTaskStore.instance.start(agent, me);
         listener = new AgentTaskListener();
@@ -244,6 +250,28 @@ describe("AgentTaskListener", () => {
         await vi.advanceTimersByTimeAsync(DETECTION_DELAY_MS);
 
         expect(agent.runTask).toHaveBeenCalledWith(me, "task-0", "investigate");
+    });
+
+    it("lets the autopilot do new coding tasks when the user turned it on", async () => {
+        agent.getStatus.mockResolvedValue({
+            ...STATUS,
+            autoInvestigate: true,
+            autopilot: true,
+            workspacePath: "/work",
+        });
+        agent.detectTasks.mockResolvedValue({
+            ok: true,
+            data: [
+                { title: "Fix the typo", details: "", coding: true },
+                { title: "Call Dave", details: "" },
+            ],
+        });
+        receive(DM_ID, BOB, "Can you fix the typo and call Dave?");
+
+        await vi.advanceTimersByTimeAsync(DETECTION_DELAY_MS);
+
+        expect(agent.runTask).toHaveBeenCalledWith(me, "task-0", "autopilot");
+        expect(agent.runTask).toHaveBeenCalledWith(me, "task-1", "investigate");
     });
 
     it("adds nothing when the agent can't read the messages", async () => {

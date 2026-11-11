@@ -141,6 +141,9 @@
     },
     "agent_todo_list": {
         "button": "To-dos (%(number)s)",
+        "chat_report_branch": "Branch: %(branch)s",
+        "chat_report_done": "Erledigt: %(title)s",
+        "chat_report_pull_request": "Pull Request: %(url)s",
         "title": "To-do-Liste"
     },
     "analytics": {

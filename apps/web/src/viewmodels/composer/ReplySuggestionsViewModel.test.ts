@@ -103,6 +103,10 @@ describe("ReplySuggestionsViewModel", () => {
             runTask: vi.fn(),
             pickFolder: vi.fn(),
             openTaskInCli: vi.fn(),
+            onTaskProgress: vi.fn(() => () => {}),
+            getTaskDiff: vi.fn(),
+            removeTaskWorktree: vi.fn(),
+            openTaskFolder: vi.fn(),
         };
     });
 
@@ -160,6 +164,8 @@ describe("ReplySuggestionsViewModel", () => {
             replySuggestions: true,
             taskDetection: true,
             autoInvestigate: false,
+            autopilot: false,
+            autopilotCommands: [],
             codingCli: "claude",
             connected: { claude: true, copilot: false },
             recentProjects: [],
@@ -181,6 +187,8 @@ describe("ReplySuggestionsViewModel", () => {
             replySuggestions: false,
             taskDetection: true,
             autoInvestigate: false,
+            autopilot: false,
+            autopilotCommands: [],
             codingCli: "claude",
             connected: { claude: true, copilot: false },
             recentProjects: [],

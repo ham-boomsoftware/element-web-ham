@@ -1,0 +1,392 @@
+/*
+ * Copyright 2026 Element Creations Ltd.
+ *
+ * SPDX-License-Identifier: AGPL-3.0-only OR GPL-3.0-only OR LicenseRef-Element-Commercial
+ * Please see LICENSE files in the repository root for full details.
+ */
+
+/* The timeline: a line down the left with a dot per step */
+.timeline {
+    display: flex;
+    flex-direction: column;
+    gap: var(--cpd-space-1x);
+}
+
+.moreSteps {
+    align-self: flex-start;
+    padding: 0;
+    border: none;
+    background: none;
+    color: var(--cpd-color-text-action-accent);
+    font: var(--cpd-font-body-sm-medium);
+    cursor: pointer;
+}
+
+.moreSteps:focus-visible {
+    outline: 2px solid var(--cpd-color-border-focused);
+    outline-offset: 1px;
+}
+
+.steps {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: var(--cpd-space-1-5x);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.steps::before {
+    content: "";
+    position: absolute;
+    inset-block: var(--cpd-space-2x);
+    inset-inline-start: 11px;
+    inline-size: 2px;
+    border-radius: 1px;
+    background: linear-gradient(
+        to bottom,
+        transparent,
+        var(--cpd-color-border-interactive-secondary) var(--cpd-space-4x),
+        var(--cpd-color-border-interactive-secondary)
+    );
+}
+
+.step {
+    position: relative;
+    display: grid;
+    grid-template-columns: 24px auto minmax(0, 1fr) auto;
+    gap: var(--cpd-space-2x);
+    align-items: center;
+    font: var(--cpd-font-body-sm-regular);
+    animation: stepIn 240ms ease-out both;
+}
+
+.stepDot {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    inline-size: 24px;
+    block-size: 24px;
+    border: 2px solid var(--cpd-color-bg-subtle-secondary);
+    border-radius: 50%;
+    background: var(--cpd-color-bg-canvas-default);
+    color: var(--cpd-color-icon-secondary);
+}
+
+.step[data-kind="write"] .stepDot,
+.step[data-kind="edit"] .stepDot {
+    background: var(--cpd-color-bg-success-subtle);
+    color: var(--cpd-color-icon-success-primary);
+}
+
+.step[data-kind="command"] .stepDot {
+    background: var(--cpd-color-bg-info-subtle);
+    color: var(--cpd-color-icon-info-primary);
+}
+
+.step[data-kind="git"] .stepDot {
+    background: var(--cpd-color-bg-accent-subtle);
+    color: var(--cpd-color-icon-accent-primary);
+}
+
+.step[data-failed="true"] .stepDot {
+    background: var(--cpd-color-bg-critical-subtle);
+    color: var(--cpd-color-icon-critical-primary);
+}
+
+.step[aria-current="step"] .stepDot {
+    background: var(--cpd-color-bg-action-primary-rest);
+    color: var(--cpd-color-icon-on-solid-primary);
+    animation: ring 1.4s ease-out infinite;
+}
+
+.stepLabel {
+    color: var(--cpd-color-text-secondary);
+    font: var(--cpd-font-body-sm-medium);
+    white-space: nowrap;
+}
+
+.step[aria-current="step"] .stepLabel {
+    color: var(--cpd-color-text-primary);
+}
+
+.stepText {
+    overflow: hidden;
+    color: var(--cpd-color-text-primary);
+    font-family: var(--cpd-font-family-mono);
+    font-size: var(--cpd-font-size-body-xs);
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.step[data-failed="true"] .stepText {
+    color: var(--cpd-color-text-critical-primary);
+}
+
+.stepTime {
+    color: var(--cpd-color-text-secondary);
+    font: var(--cpd-font-body-xs-regular);
+    font-variant-numeric: tabular-nums;
+}
+
+@keyframes stepIn {
+    from {
+        opacity: 0;
+        transform: translateY(-4px);
+    }
+}
+
+@keyframes ring {
+    from {
+        box-shadow: 0 0 0 0 var(--cpd-color-border-accent-subtle);
+    }
+    to {
+        box-shadow: 0 0 0 8px transparent;
+    }
+}
+
+/* The branch card */
+.branch {
+    display: flex;
+    flex-direction: column;
+    gap: var(--cpd-space-2x);
+    padding: var(--cpd-space-3x);
+    border: 1px solid var(--cpd-color-border-interactive-secondary);
+    border-radius: 8px;
+    background: var(--cpd-color-bg-canvas-default);
+}
+
+.chip,
+.chipMuted {
+    display: inline-flex;
+    gap: var(--cpd-space-1x);
+    align-items: center;
+    max-inline-size: 100%;
+    font: var(--cpd-font-body-xs-medium);
+}
+
+.chip {
+    padding: 2px var(--cpd-space-2x);
+    border-radius: 9999px;
+    background: var(--cpd-color-bg-subtle-primary);
+    color: var(--cpd-color-text-primary);
+}
+
+.chip code {
+    overflow: hidden;
+    font-family: var(--cpd-font-family-mono);
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.chip[data-kind="branch"] {
+    background: var(--cpd-color-bg-accent-subtle);
+    color: var(--cpd-color-text-action-accent);
+}
+
+.chip[data-kind="pushed"] {
+    background: var(--cpd-color-bg-success-subtle);
+    color: var(--cpd-color-text-success-primary);
+}
+
+.chip[data-kind="failed"] {
+    background: var(--cpd-color-bg-critical-subtle);
+    color: var(--cpd-color-text-critical-primary);
+}
+
+.chipMuted {
+    color: var(--cpd-color-text-secondary);
+}
+
+.pushError {
+    color: var(--cpd-color-text-critical-primary);
+    font-family: var(--cpd-font-family-mono);
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+/* The diff viewer */
+.diff {
+    display: flex;
+    flex-direction: column;
+    gap: var(--cpd-space-2x);
+}
+
+.diffTotal {
+    display: flex;
+    gap: var(--cpd-space-2x);
+    align-items: baseline;
+}
+
+.diffStatus {
+    color: var(--cpd-color-text-secondary);
+}
+
+.diffError {
+    color: var(--cpd-color-text-critical-primary);
+}
+
+.additions {
+    color: var(--cpd-color-text-success-primary);
+    font: var(--cpd-font-body-xs-semibold);
+    font-variant-numeric: tabular-nums;
+}
+
+.deletions {
+    color: var(--cpd-color-text-critical-primary);
+    font: var(--cpd-font-body-xs-semibold);
+    font-variant-numeric: tabular-nums;
+}
+
+.diffFile {
+    overflow: hidden;
+    border: 1px solid var(--cpd-color-border-interactive-secondary);
+    border-radius: 8px;
+}
+
+.diffHeader {
+    display: flex;
+    gap: var(--cpd-space-2x);
+    align-items: center;
+    padding: var(--cpd-space-1-5x) var(--cpd-space-3x);
+    background: var(--cpd-color-bg-subtle-secondary);
+    cursor: pointer;
+}
+
+.diffHeader:focus-visible {
+    outline: 2px solid var(--cpd-color-border-focused);
+    outline-offset: -2px;
+}
+
+.fileStatus {
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    inline-size: 18px;
+    block-size: 18px;
+    border-radius: 4px;
+    font: var(--cpd-font-body-xs-semibold);
+    text-transform: uppercase;
+}
+
+.fileStatus[data-status="added"] {
+    background: var(--cpd-color-bg-success-subtle);
+    color: var(--cpd-color-text-success-primary);
+}
+
+.fileStatus[data-status="modified"],
+.fileStatus[data-status="renamed"] {
+    background: var(--cpd-color-bg-info-subtle);
+    color: var(--cpd-color-text-info-primary);
+}
+
+.fileStatus[data-status="deleted"] {
+    background: var(--cpd-color-bg-critical-subtle);
+    color: var(--cpd-color-text-critical-primary);
+}
+
+.filePath {
+    flex: 1;
+    min-inline-size: 0;
+    overflow: hidden;
+    font-family: var(--cpd-font-family-mono);
+    font-size: var(--cpd-font-size-body-xs);
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    direction: rtl;
+    text-align: start;
+}
+
+.bar {
+    display: inline-flex;
+    gap: 1px;
+}
+
+.bar span {
+    inline-size: 8px;
+    block-size: 8px;
+    border-radius: 2px;
+    background: var(--cpd-color-bg-subtle-primary);
+}
+
+.bar span[data-type="add"] {
+    background: var(--cpd-color-icon-success-primary);
+}
+
+.bar span[data-type="remove"] {
+    background: var(--cpd-color-icon-critical-primary);
+}
+
+.diffLines {
+    max-block-size: 360px;
+    margin: 0;
+    overflow: auto;
+    background: var(--cpd-color-bg-canvas-default);
+    font-family: var(--cpd-font-family-mono);
+    font-size: var(--cpd-font-size-body-xs);
+    line-height: 1.5;
+}
+
+.diffLine {
+    display: block;
+    padding-inline: var(--cpd-space-3x);
+    white-space: pre;
+}
+
+.diffLine[data-type="add"] {
+    background: var(--cpd-color-bg-success-subtle);
+}
+
+.diffLine[data-type="remove"] {
+    background: var(--cpd-color-bg-critical-subtle);
+}
+
+.diffLine[data-type="hunk"] {
+    background: var(--cpd-color-bg-info-subtle);
+    color: var(--cpd-color-text-info-primary);
+}
+
+/* Telling the chat */
+.chatReport {
+    display: flex;
+    flex-direction: column;
+    gap: var(--cpd-space-2x);
+}
+
+.chatReportLabel {
+    font: var(--cpd-font-body-sm-medium);
+}
+
+.chatReportText {
+    box-sizing: border-box;
+    inline-size: 100%;
+    padding: var(--cpd-space-2x) var(--cpd-space-3x);
+    border: 1px solid var(--cpd-color-border-interactive-primary);
+    border-radius: 8px;
+    background: var(--cpd-color-bg-canvas-default);
+    color: var(--cpd-color-text-primary);
+    font: var(--cpd-font-body-md-regular);
+    resize: vertical;
+}
+
+.chatReportText:focus-visible {
+    outline: 2px solid var(--cpd-color-border-focused);
+    outline-offset: 1px;
+}
+
+.reportSent {
+    display: flex;
+    gap: var(--cpd-space-1x);
+    align-items: center;
+    color: var(--cpd-color-text-success-primary);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .step,
+    .step[aria-current="step"] .stepDot {
+        animation: none;
+    }
+}

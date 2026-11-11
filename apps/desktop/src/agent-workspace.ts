@@ -7,12 +7,13 @@ Please see LICENSE files in the repository root for full details.
 
 // The tools the agent uses to work on a task in the workspace, the local folder of a project the user chose.
 //
-// The tools only read and write files inside the workspace, and never inside its .git folder. There is no tool to
-// run commands, so the agent can't commit, push or run anything: its changes stay in the working tree for the user
-// to review.
+// The tools only read and write files inside the workspace, and never inside its .git folder. Commands can only be
+// run when the autopilot works in a worktree of its own, and only those the user allowed exactly.
 
+import { exec } from "node:child_process";
 import fs from "node:fs/promises";
 import path from "node:path";
+import type { AgentRunStep, AgentRunStepKind } from "shared-types";
 
 /** A tool as the providers describe it: a name, what it does, and a JSON schema of its input */
 export interface WorkspaceToolDefinition {
@@ -39,6 +40,15 @@ const MAX_MATCHES = 100;
 
 /** How many entries workspace_list returns at most */
 const MAX_ENTRIES = 500;
+
+/** How long a command may run */
+const COMMAND_TIMEOUT_MS = 10 * 60 * 1000;
+
+/** How much of the output of a command the agent gets, from its end, where errors usually are */
+const MAX_COMMAND_OUTPUT = 12000;
+
+/** The longest text of a step */
+const MAX_STEP_TEXT = 300;
 
 const READ_TOOLS: WorkspaceToolDefinition[] = [
     {
@@ -111,24 +121,68 @@ const WRITE_TOOLS: WorkspaceToolDefinition[] = [
 ];
 
 /**
+ * The tool to run a command, described with the commands the user allowed.
+ */
+function buildRunTool(commands: readonly string[]): WorkspaceToolDefinition {
+    return {
+        name: "workspace_run",
+        description:
+            "Run a command in the project root, such as tests or a build, and get its exit code and the end of its " +
+            "output. Only these exact commands are allowed:\n" +
+            commands.map((command) => `- ${command}`).join("\n"),
+        inputSchema: {
+            type: "object",
+            properties: { command: { type: "string", description: "One of the allowed commands, exactly" } },
+            required: ["command"],
+        },
+    };
+}
+
+/** Options of the tools */
+export interface WorkspaceToolsOptions {
+    /** The commands the agent may run with workspace_run, only when it may write; none by default */
+    commands?: readonly string[];
+    /** Called for each tool the agent uses, when it starts and once it is done */
+    onStep?: (step: AgentRunStep) => void;
+}
+
+const STEP_KINDS: Record<string, AgentRunStepKind> = {
+    workspace_list: "list",
+    workspace_read: "read",
+    workspace_search: "search",
+    workspace_write: "write",
+    workspace_edit: "edit",
+    workspace_run: "command",
+};
+
+/**
  * Files of one workspace, as the agent sees them through its tools.
  */
 export class WorkspaceTools {
     /** The files the agent changed, relative to the workspace, in the order it first changed them */
     public readonly changedFiles = new Set<string>();
 
+    private readonly commands: readonly string[];
+
     /**
      * @param root - The absolute path of the workspace
      * @param allowWrite - Whether the agent may change files, or only read them
+     * @param options - The allowed commands, and who to tell about each step
      */
     public constructor(
         private readonly root: string,
         private readonly allowWrite: boolean,
-    ) {}
+        private readonly options: WorkspaceToolsOptions = {},
+    ) {
+        this.commands = allowWrite ? (options.commands ?? []).map((command) => command.trim()).filter(Boolean) : [];
+    }
 
     /** The tools the agent may use */
     public get definitions(): WorkspaceToolDefinition[] {
-        return this.allowWrite ? [...READ_TOOLS, ...WRITE_TOOLS] : READ_TOOLS;
+        if (!this.allowWrite) return READ_TOOLS;
+        const tools = [...READ_TOOLS, ...WRITE_TOOLS];
+        if (this.commands.length > 0) tools.push(buildRunTool(this.commands));
+        return tools;
     }
 
     /**
@@ -136,6 +190,17 @@ export class WorkspaceTools {
      */
     public async run(name: string, input: unknown): Promise<string> {
         const args = (typeof input === "object" && input !== null ? input : {}) as Record<string, unknown>;
+        const kind = STEP_KINDS[name];
+        const text = describeStep(args);
+        const result = await this.runTool(name, args);
+        if (kind) {
+            const failed = result.startsWith("Error:") || (kind === "command" && !result.startsWith("Exit code 0"));
+            this.options.onStep?.({ kind, text, at: Date.now(), ...(failed && { failed }) });
+        }
+        return result;
+    }
+
+    private async runTool(name: string, args: Record<string, unknown>): Promise<string> {
         try {
             switch (name) {
                 case "workspace_list":
@@ -154,11 +219,48 @@ export class WorkspaceTools {
                         stringArg(args, "old_text"),
                         stringArg(args, "new_text"),
                     );
+                case "workspace_run":
+                    if (this.commands.length === 0) break;
+                    return await this.runCommand(stringArg(args, "command"));
             }
             return `Error: there is no tool ${name}`;
         } catch (e) {
             return `Error: ${e instanceof Error ? e.message : String(e)}`;
         }
+    }
+
+    /**
+     * Run one of the allowed commands in the workspace.
+     * @returns the exit code and the end of the output, or an error if the command is not allowed
+     */
+    private async runCommand(command: string): Promise<string> {
+        const trimmed = command.trim();
+        if (!this.commands.includes(trimmed)) {
+            throw new Error(`"${trimmed}" is not allowed. Allowed: ${this.commands.join(" | ")}`);
+        }
+        const cwd = await fs.realpath(this.root);
+        return new Promise((resolve) => {
+            exec(
+                trimmed,
+                {
+                    cwd,
+                    timeout: COMMAND_TIMEOUT_MS,
+                    maxBuffer: 64 * 1024 * 1024,
+                    windowsHide: true,
+                    env: { ...process.env, CI: "1", GIT_TERMINAL_PROMPT: "0" },
+                },
+                (error, stdout, stderr) => {
+                    const code = error ? (typeof error.code === "number" ? error.code : 1) : 0;
+                    const killed = error?.killed ? " (stopped: it took too long)" : "";
+                    const output = `${stdout}${stderr ? `\n${stderr}` : ""}`.trim();
+                    const shown =
+                        output.length > MAX_COMMAND_OUTPUT
+                            ? `… ${output.length - MAX_COMMAND_OUTPUT} characters left out\n${output.slice(-MAX_COMMAND_OUTPUT)}`
+                            : output;
+                    resolve(`Exit code ${code}${killed}\n${shown || "(no output)"}`);
+                },
+            );
+        });
     }
 
     /**
@@ -266,6 +368,12 @@ export class WorkspaceTools {
             .split(path.sep)
             .join("/");
     }
+}
+
+/** What a step of the agent was about, for the user to follow its work */
+function describeStep(args: Record<string, unknown>): string {
+    const value = [args.command, args.pattern, args.path].find((arg) => typeof arg === "string");
+    return (typeof value === "string" ? value : "").trim().slice(0, MAX_STEP_TEXT);
 }
 
 function stringArg(args: Record<string, unknown>, name: string): string {

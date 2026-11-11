@@ -7,7 +7,15 @@ Please see LICENSE files in the repository root for full details.
 
 import { TypedEventEmitter } from "matrix-js-sdk/src/matrix";
 import { logger } from "matrix-js-sdk/src/logger";
-import type { AgentErrorCode, AgentNewTask, AgentTask, AgentTaskRunMode } from "shared-types";
+import type {
+    AgentErrorCode,
+    AgentFileDiff,
+    AgentNewTask,
+    AgentResult,
+    AgentTask,
+    AgentTaskProgress,
+    AgentTaskRunMode,
+} from "shared-types";
 
 import type { AgentApi } from "./AgentApi";
 
@@ -32,6 +40,7 @@ export class AgentTaskStore extends TypedEventEmitter<AgentTaskStoreEvent, Event
     private agent?: AgentApi;
     private userId?: string;
     private list: AgentTask[] = [];
+    private stopFollowingProgress?: () => void;
 
     public static get instance(): AgentTaskStore {
         AgentTaskStore.internalInstance ??= new AgentTaskStore();
@@ -59,11 +68,14 @@ export class AgentTaskStore extends TypedEventEmitter<AgentTaskStoreEvent, Event
      * @param userId - The Matrix user whose list to read
      */
     public async start(agent: AgentApi | undefined, userId: string): Promise<void> {
+        this.stopFollowingProgress?.();
+        this.stopFollowingProgress = undefined;
         this.agent = agent;
         this.userId = userId;
         this.list = [];
         this.emit(AgentTaskStoreEvent.Update);
         if (!agent) return;
+        this.stopFollowingProgress = agent.onTaskProgress(this.onProgress);
 
         const result = await agent.getTasks(userId);
         // Another user may have logged in meanwhile
@@ -77,6 +89,8 @@ export class AgentTaskStore extends TypedEventEmitter<AgentTaskStoreEvent, Event
     }
 
     public stop(): void {
+        this.stopFollowingProgress?.();
+        this.stopFollowingProgress = undefined;
         this.agent = undefined;
         this.userId = undefined;
         this.list = [];
@@ -155,7 +169,7 @@ export class AgentTaskStore extends TypedEventEmitter<AgentTaskStoreEvent, Event
         if (!agent || !userId || !task || task.run?.state === "running") return;
 
         const startedAt = Date.now();
-        this.replace({ ...task, run: { mode, state: "running", startedAt } });
+        this.replace({ ...task, run: { mode, state: "running", startedAt, steps: [] } });
         const result = await agent.runTask(userId, taskId, mode).catch((e) => {
             logger.warn(`Could not run the task ${taskId}`, e);
             return { ok: false as const, error: "unavailable" as const, message: undefined };
@@ -190,6 +204,55 @@ export class AgentTaskStore extends TypedEventEmitter<AgentTaskStoreEvent, Event
         logger.warn(`Could not open the task ${taskId} in the coding CLI: ${result.error}`, result.message);
         return result.error;
     }
+
+    /**
+     * Get the changes the autopilot made on its branch for a task.
+     * @returns the changes of each file, or why they couldn't be read
+     */
+    public async getDiff(taskId: string): Promise<AgentResult<AgentFileDiff[]>> {
+        const { agent, userId } = this;
+        if (!agent || !userId) return { ok: false, error: "unavailable" };
+        const result = await agent.getTaskDiff(userId, taskId).catch((e) => {
+            logger.warn(`Could not get the changes of the task ${taskId}`, e);
+            return { ok: false as const, error: "unavailable" as const, message: undefined };
+        });
+        if (!result.ok) logger.warn(`Could not get the changes of the task ${taskId}: ${result.error}`, result.message);
+        return result;
+    }
+
+    /**
+     * Remove the worktree the autopilot did a task in. Its branch is kept if it has a commit.
+     */
+    public async removeWorktree(taskId: string): Promise<void> {
+        const { agent, userId } = this;
+        if (!agent || !userId) return;
+        const result = await agent.removeTaskWorktree(userId, taskId);
+        if (this.agent !== agent) return;
+        if (result.ok) this.replace(result.data);
+        else logger.warn(`Could not remove the worktree of the task ${taskId}: ${result.error}`, result.message);
+    }
+
+    /**
+     * Open the worktree the autopilot did a task in with the file manager.
+     * @returns why it couldn't be opened, or undefined if it was
+     */
+    public async openFolder(taskId: string): Promise<AgentErrorCode | undefined> {
+        const { agent, userId } = this;
+        if (!agent || !userId) return "unavailable";
+        const result = await agent.openTaskFolder(userId, taskId);
+        if (result.ok) return undefined;
+        logger.warn(`Could not open the folder of the task ${taskId}: ${result.error}`, result.message);
+        return result.error;
+    }
+
+    /** Show each step of the agent's work as it happens */
+    private readonly onProgress = ({ userId, taskId, run }: AgentTaskProgress): void => {
+        if (userId !== this.userId) return;
+        const task = this.getTask(taskId);
+        // A late step must not take back the end of a run
+        if (!task || (task.run && task.run.startedAt === run.startedAt && task.run.state !== "running")) return;
+        this.replace({ ...task, run });
+    };
 
     private replace(task: AgentTask): void {
         this.list = this.list.map((other) => (other.id === task.id ? task : other));

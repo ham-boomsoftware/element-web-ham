@@ -44,6 +44,11 @@ textarea.control {
     resize: vertical;
 }
 
+.commands {
+    font-family: var(--cpd-font-family-mono);
+    font-size: var(--cpd-font-size-body-sm);
+}
+
 .error {
     color: var(--cpd-color-text-critical-primary);
 }

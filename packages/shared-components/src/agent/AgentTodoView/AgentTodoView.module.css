@@ -140,8 +140,43 @@
     }
 }
 
+/* The autopilot gets an accent edge that shimmers while it works */
+.report[data-mode="autopilot"] {
+    position: relative;
+    overflow: hidden;
+    border: 1px solid var(--cpd-color-border-accent-subtle);
+}
+
+.report[data-mode="autopilot"][data-state="running"]::before {
+    content: "";
+    position: absolute;
+    inset-block-start: 0;
+    inset-inline: 0;
+    block-size: 2px;
+    background: linear-gradient(
+        90deg,
+        transparent,
+        var(--cpd-color-icon-accent-primary),
+        var(--cpd-color-icon-info-primary),
+        transparent
+    );
+    background-size: 50% 100%;
+    background-repeat: no-repeat;
+    animation: shimmer 1.6s linear infinite;
+}
+
+@keyframes shimmer {
+    from {
+        background-position: -100% 0;
+    }
+    to {
+        background-position: 200% 0;
+    }
+}
+
 @media (prefers-reduced-motion: reduce) {
-    .report[data-state="running"] .reportIcon {
+    .report[data-state="running"] .reportIcon,
+    .report[data-mode="autopilot"][data-state="running"]::before {
         animation: none;
     }
 }

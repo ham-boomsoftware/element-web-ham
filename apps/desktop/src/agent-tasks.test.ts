@@ -13,19 +13,25 @@ import type { AgentTask, AgentTaskDetectionRequest } from "shared-types";
 
 import {
     addAgentTasks,
+    buildCommitMessage,
     buildDetectionSystemPrompt,
     buildRunSystemPrompt,
     deleteAgentTask,
     detectAgentTasks,
+    getAgentTaskDiff,
     getAgentTasks,
+    openAgentTaskFolder,
     parseDetectedTasks,
     pickAgentWorkspace,
+    removeAgentTaskWorktree,
     runAgentTask,
+    setTaskProgressListener,
     updateAgentTask,
 } from "./agent-tasks.js";
 import { stopCopilot } from "./agent.js";
+import { git } from "./agent-autopilot.js";
 
-const { storeData, anthropic, copilot, dialog } = vi.hoisted(() => ({
+const { storeData, anthropic, copilot, dialog, paths, shell } = vi.hoisted(() => ({
     storeData: {} as Record<string, unknown>,
     anthropic: { messagesCreate: vi.fn() },
     copilot: {
@@ -35,15 +41,18 @@ const { storeData, anthropic, copilot, dialog } = vi.hoisted(() => ({
         deleteSession: vi.fn(async () => {}),
     },
     dialog: { showOpenDialog: vi.fn() },
+    paths: { userData: "/roaming/Element" },
+    shell: { openPath: vi.fn(async () => "") },
 }));
 
 vi.mock("electron", () => ({
-    app: { getPath: vi.fn(() => "/roaming/Element") },
+    app: { getPath: vi.fn(() => paths.userData) },
     safeStorage: {
         isEncryptionAvailable: () => true,
         decryptString: (buffer: Buffer) => buffer.toString().replace(/^encrypted:/, ""),
     },
     dialog,
+    shell,
 }));
 vi.mock("electron-store", () => ({
     default: vi.fn(function (this: Record<string, unknown>) {
@@ -278,6 +287,8 @@ describe("agent tasks", () => {
     describe("parsing found tasks", () => {
         it.each([
             ['[{"title": "A", "details": "B"}]', [{ title: "A", details: "B" }]],
+            ['[{"title": "A", "coding": true}]', [{ title: "A", details: "", coding: true }]],
+            ['[{"title": "A", "coding": "yes"}]', [{ title: "A", details: "" }]],
             ['Here you go:\n[{"title": " A "}]', [{ title: "A", details: "" }]],
             ['[{"title": ""}, "text", {"details": "x"}, {"title": "Keep"}]', [{ title: "Keep", details: "" }]],
             ["[]", []],
@@ -449,6 +460,174 @@ describe("agent tasks", () => {
         it("tells the agent not to change anything when it only looks into a task", () => {
             expect(buildRunSystemPrompt("investigate", "/work")).toContain("Don't change anything");
             expect(buildRunSystemPrompt("implement", "/work")).toContain("You can't run commands, commit or push");
+        });
+    });
+
+    describe("the autopilot", () => {
+        const IDENTITY = ["-c", "user.name=Test", "-c", "user.email=test@example.org"];
+        let remote: string;
+
+        beforeEach(async () => {
+            // The worktrees are kept with the data of the agent, which goes to the temporary folder here
+            paths.userData = path.join(workspace, "..", `${path.basename(workspace)}-data`, "Element");
+            vi.stubEnv("LOCALAPPDATA", path.dirname(paths.userData));
+            remote = `${workspace}-remote.git`;
+            await git(workspace, ["init", "-q", "-b", "main"]);
+            await git(workspace, ["add", "-A"]);
+            await git(workspace, [...IDENTITY, "commit", "-q", "-m", "Initial"]);
+            await git(workspace, ["init", "-q", "--bare", remote]);
+            await git(workspace, ["remote", "add", "origin", remote]);
+            connect("claude");
+        });
+
+        afterEach(async () => {
+            setTaskProgressListener(undefined);
+            vi.unstubAllEnvs();
+            await fs.rm(remote, { recursive: true, force: true });
+            await fs.rm(path.dirname(paths.userData), { recursive: true, force: true });
+            paths.userData = "/roaming/Element";
+        });
+
+        function addCodingTask(): string {
+            const added = addAgentTasks(USER, [
+                {
+                    title: "Fix the login",
+                    details: "It always fails",
+                    coding: true,
+                    source: { roomId: "!team:example.org", roomName: "Team", sender: "Bob" },
+                },
+            ]);
+            return added.ok ? added.data[0].id : "";
+        }
+
+        it("does the task on a branch of its own, runs allowed commands, commits, pushes and reports each step", async () => {
+            const command = 'node -e "console.log(1)"';
+            storeData.settings = { workspacePath: workspace, autopilotCommands: [command] };
+            const id = addCodingTask();
+            const progress = vi.fn();
+            setTaskProgressListener(progress);
+            anthropic.messagesCreate
+                .mockResolvedValueOnce({
+                    stop_reason: "tool_use",
+                    content: [
+                        {
+                            type: "tool_use",
+                            id: "use-1",
+                            name: "workspace_edit",
+                            input: { path: "login.ts", old_text: "false", new_text: "true" },
+                        },
+                        { type: "tool_use", id: "use-2", name: "workspace_run", input: { command } },
+                    ],
+                })
+                .mockResolvedValueOnce(claudeText("login() returns true now"));
+
+            const result = await runAgentTask(USER, id, "autopilot");
+
+            expect(result).toMatchObject({
+                ok: true,
+                data: {
+                    coding: true,
+                    run: {
+                        mode: "autopilot",
+                        state: "finished",
+                        changedFiles: ["login.ts"],
+                        branch: { name: expect.stringMatching(/^pilot\/fix-the-login-/), base: "main", pushed: true },
+                    },
+                },
+            });
+            const run = result.ok ? result.data.run! : undefined;
+            expect(run?.steps?.map((step) => [step.kind, step.failed ?? false])).toEqual([
+                ["git", false],
+                ["edit", false],
+                ["command", false],
+                ["git", false],
+                ["git", false],
+            ]);
+            const tools = anthropic.messagesCreate.mock.calls[0][0].tools.map((tool: { name: string }) => tool.name);
+            expect(tools).toContain("workspace_run");
+            expect(anthropic.messagesCreate.mock.calls[0][0].system).toContain("branch of your own");
+
+            // The working tree of the user is untouched; the change is on the pushed branch
+            expect(await fs.readFile(path.join(workspace, "login.ts"), "utf8")).toBe(
+                "export const login = () => false;\n",
+            );
+            const branch = run!.branch!;
+            expect(
+                (await git(workspace, [`--git-dir=${remote}`, "log", "-1", "--format=%s", branch.name])).trim(),
+            ).toBe("Fix the login");
+
+            // Each step went to the renderer as it happened, with the run still going on
+            expect(progress).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    userId: USER,
+                    taskId: id,
+                    run: expect.objectContaining({ state: "running" }),
+                }),
+            );
+            expect(progress.mock.calls.at(-1)?.[0].run).toMatchObject({ state: "finished" });
+
+            expect(await getAgentTaskDiff(USER, id)).toMatchObject({
+                ok: true,
+                data: [{ path: "login.ts", additions: 1, deletions: 1 }],
+            });
+            expect(await openAgentTaskFolder(USER, id)).toEqual({ ok: true, data: undefined });
+            expect(shell.openPath).toHaveBeenCalledWith(branch.worktreePath);
+
+            expect(await removeAgentTaskWorktree(USER, id)).toMatchObject({
+                ok: true,
+                data: { run: { branch: { name: branch.name, worktreePath: undefined } } },
+            });
+            await expect(fs.access(branch.worktreePath!)).rejects.toThrow();
+            expect(await openAgentTaskFolder(USER, id)).toMatchObject({ ok: false, error: "not_found" });
+        });
+
+        it("does not commit when the agent fails, and keeps the worktree to look at", async () => {
+            storeData.settings = { workspacePath: workspace };
+            const id = addCodingTask();
+            anthropic.messagesCreate.mockRejectedValue(new Error("overloaded"));
+
+            const result = await runAgentTask(USER, id, "autopilot");
+
+            expect(result).toMatchObject({ ok: true, data: { run: { state: "failed", error: "unavailable" } } });
+            const branch = result.ok ? result.data.run!.branch! : undefined;
+            expect(branch?.commit).toBeUndefined();
+            await fs.access(branch!.worktreePath!);
+            // Deleting the task removes its worktree, and its branch, which has no commit
+            deleteAgentTask(USER, id);
+            await vi.waitFor(async () => {
+                await expect(fs.access(branch!.worktreePath!)).rejects.toThrow();
+                expect((await git(workspace, ["branch", "--list", branch!.name])).trim()).toBe("");
+            });
+        });
+
+        it("fails with no_repository when the workspace is not in a git repository", async () => {
+            await fs.rm(path.join(workspace, ".git"), { recursive: true, force: true });
+            storeData.settings = { workspacePath: workspace };
+            const id = addCodingTask();
+
+            const result = await runAgentTask(USER, id, "autopilot");
+
+            expect(result).toMatchObject({ ok: true, data: { run: { state: "failed", error: "no_repository" } } });
+            expect(anthropic.messagesCreate).not.toHaveBeenCalled();
+            expect(await getAgentTaskDiff(USER, id)).toMatchObject({ ok: false, error: "no_repository" });
+        });
+
+        it("writes the commit message from the task and the report", () => {
+            const message = buildCommitMessage(
+                {
+                    id: "1",
+                    title: "Fix  the\nlogin",
+                    details: "",
+                    done: false,
+                    createdAt: 0,
+                    source: { roomId: "!r", roomName: "Team", sender: "Bob" },
+                },
+                " Changed login.ts ",
+            );
+
+            expect(message).toBe(
+                "Fix the login\n\nChanged login.ts\n\nRequested by Bob in Team.\n\nDone by the Element Pilot autopilot.",
+            );
         });
     });
 });

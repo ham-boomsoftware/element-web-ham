@@ -6,9 +6,13 @@ Please see LICENSE files in the repository root for full details.
 */
 
 import React, { type JSX } from "react";
+import { MsgType } from "matrix-js-sdk/src/matrix";
+import type { RoomMessageEventContent } from "matrix-js-sdk/src/types";
 import { AgentTodoView, useCreateAutoDisposedViewModel } from "@element-hq/web-shared-components";
 
 import { _t } from "../../../languageHandler";
+import { MatrixClientPeg } from "../../../MatrixClientPeg";
+import { AGENT_MESSAGE_KEY } from "../../../agent/AgentReplyListener";
 import BaseDialog from "./BaseDialog";
 import { AgentTodoViewModel } from "../../../viewmodels/agent/AgentTodoViewModel";
 import { AgentTaskStore } from "../../../agent/AgentTaskStore";
@@ -42,6 +46,16 @@ export function AgentTodoDialog({ agent, onFinished }: Readonly<Props>): JSX.Ele
                         metricsTrigger: undefined,
                     });
                     onFinished();
+                },
+                onSendToChat: async (roomId, eventId, text) => {
+                    const content = {
+                        msgtype: MsgType.Text,
+                        body: text,
+                        // The agent's listeners leave this message alone, like the other messages of the agent
+                        [AGENT_MESSAGE_KEY]: true,
+                        ...(eventId ? { "m.relates_to": { "m.in_reply_to": { event_id: eventId } } } : {}),
+                    };
+                    await MatrixClientPeg.safeGet().sendMessage(roomId, content as RoomMessageEventContent);
                 },
             }),
     );

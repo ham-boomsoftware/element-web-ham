@@ -40,7 +40,7 @@ const READ_MSGTYPES: ReadonlySet<string | undefined> = new Set<string | undefine
  * mention the user. The rules of the rooms ({@link AgentRoomStore}) change that: a room set to `tasks_only` is
  * read in full, also when task detection is turned off, and a room set to `ignore` is not read at all. When the
  * user turned it on in the settings, the agent also looks into each new task in the workspace by itself, without
- * changing anything.
+ * changing anything, and the autopilot does each new coding task on a branch of its own.
  *
  * Only new messages are read: those sent before the client started are left alone.
  */
@@ -173,8 +173,12 @@ export class AgentTaskListener {
                     },
                 })),
             );
-            if (status.autoInvestigate && status.workspacePath) {
-                for (const task of added) void store.runTask(task.id, "investigate");
+            if (status.workspacePath) {
+                for (const task of added) {
+                    // The autopilot does coding tasks on a branch of its own; others are only looked into
+                    if (status.autopilot && task.coding) void store.runTask(task.id, "autopilot");
+                    else if (status.autoInvestigate) void store.runTask(task.id, "investigate");
+                }
             }
         } catch (e) {
             logger.warn(`Agent could not look for tasks in ${room.roomId}`, e);

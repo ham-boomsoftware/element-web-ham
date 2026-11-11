@@ -35,6 +35,16 @@ export interface AgentSettings {
     taskDetection: boolean;
     /** Whether the agent looks into each new task in the workspace by itself, without changing anything */
     autoInvestigate: boolean;
+    /**
+     * Whether the autopilot does each new coding task by itself: on a branch of its own in a separate worktree of
+     * the workspace, which it commits and pushes.
+     */
+    autopilot: boolean;
+    /**
+     * The commands the autopilot may run in its worktree, such as tests or a build, one per entry. A command runs
+     * only if it is exactly one of these.
+     */
+    autopilotCommands: string[];
     /** The local folder of the project the agent works on for tasks, or undefined if none is set */
     workspacePath?: string;
     /** The coding CLI that is opened in a terminal to do a task */
@@ -160,6 +170,8 @@ export interface AgentDetectedTask {
     title: string;
     /** What exactly is asked, with the context needed to do it */
     details: string;
+    /** Whether it is a change to the code of a software project, which the autopilot can do */
+    coding?: boolean;
 }
 
 /**
@@ -179,8 +191,57 @@ export interface AgentTaskSource {
  * How the agent works on a task.
  * - `investigate`: it reads the workspace and reports what to do, with a ticket text, without changing anything.
  * - `implement`: it changes files in the workspace to do the task. It never commits.
+ * - `autopilot`: it does the task on a branch of its own, in a separate git worktree of the workspace, can run the
+ *   commands the user allowed there, and commits and pushes the branch at the end.
  */
-export type AgentTaskRunMode = "investigate" | "implement";
+export type AgentTaskRunMode = "investigate" | "implement" | "autopilot";
+
+/**
+ * What a step of the agent's work was.
+ * - `list`, `read`, `search`: it looked at the project.
+ * - `write`, `edit`: it changed a file.
+ * - `command`: it ran one of the allowed commands.
+ * - `git`: the autopilot prepared, committed or pushed its branch.
+ */
+export type AgentRunStepKind = "list" | "read" | "search" | "write" | "edit" | "command" | "git";
+
+/**
+ * One step of the agent's work on a task, shown while it works.
+ */
+export interface AgentRunStep {
+    kind: AgentRunStepKind;
+    /** What the step was about: a file, a search pattern, a command or a git action */
+    text: string;
+    at: number;
+    /** Whether it failed */
+    failed?: boolean;
+}
+
+/**
+ * The branch the autopilot did a task on.
+ */
+export interface AgentRunBranch {
+    /** The name of the branch, such as `pilot/fix-login-1a2b3c` */
+    name: string;
+    /** The branch or commit it started from */
+    base: string;
+    /** The commit it started from */
+    baseCommit: string;
+    /** The folder of the git repository of the workspace */
+    repositoryPath: string;
+    /** The folder of the worktree, or undefined once it was removed */
+    worktreePath?: string;
+    /** The commit with the changes, if there were any */
+    commit?: string;
+    /** Whether the branch was pushed */
+    pushed: boolean;
+    /** The remote it was pushed to */
+    remote?: string;
+    /** Why it couldn't be pushed */
+    pushError?: string;
+    /** A link to open a pull request for the branch, if the remote is on a known host */
+    pullRequestUrl?: string;
+}
 
 /**
  * The latest work of the agent on a task.
@@ -196,6 +257,43 @@ export interface AgentTaskRun {
     changedFiles?: string[];
     /** Why the run failed */
     error?: AgentErrorCode;
+    /** The steps of the work, oldest first */
+    steps?: AgentRunStep[];
+    /** The branch of the autopilot */
+    branch?: AgentRunBranch;
+}
+
+/**
+ * The work of the agent on a task changed while it works.
+ */
+export interface AgentTaskProgress {
+    userId: string;
+    taskId: string;
+    run: AgentTaskRun;
+}
+
+/**
+ * One line of a file diff.
+ * - `context`: unchanged.
+ * - `add`, `remove`: added or removed.
+ * - `hunk`: the header of a block of changes, such as `@@ -1,4 +1,5 @@`.
+ */
+export interface AgentDiffLine {
+    type: "context" | "add" | "remove" | "hunk";
+    text: string;
+}
+
+/**
+ * The changes of one file on the branch of the autopilot.
+ */
+export interface AgentFileDiff {
+    path: string;
+    status: "added" | "modified" | "deleted" | "renamed";
+    additions: number;
+    deletions: number;
+    lines: AgentDiffLine[];
+    /** Whether lines were left out because the diff is too long, or the file is binary */
+    truncated: boolean;
 }
 
 /**
@@ -209,6 +307,8 @@ export interface AgentTask {
     createdAt: number;
     /** The message that asked for it; undefined for a task the user added */
     source?: AgentTaskSource;
+    /** Whether it is a change to the code of a software project, which the autopilot can do */
+    coding?: boolean;
     /** The latest work of the agent on it */
     run?: AgentTaskRun;
 }
@@ -216,7 +316,7 @@ export interface AgentTask {
 /**
  * The fields of a new task.
  */
-export type AgentNewTask = Pick<AgentTask, "title" | "details" | "source">;
+export type AgentNewTask = Pick<AgentTask, "title" | "details" | "source" | "coding">;
 
 /**
  * The fields of a task the user can change.
@@ -242,6 +342,7 @@ export interface AgentModel {
  * - `no_workspace`: no workspace is set, or its folder doesn't exist.
  * - `not_found`: the task doesn't exist.
  * - `busy`: the agent is already working on the task.
+ * - `no_repository`: the workspace is not in a git repository, or git failed.
  * - `unavailable`: the provider could not be reached or failed.
  * - `invalid_request`: the command was called with invalid arguments.
  */
@@ -254,6 +355,7 @@ export type AgentErrorCode =
     | "no_workspace"
     | "not_found"
     | "busy"
+    | "no_repository"
     | "unavailable"
     | "invalid_request";
 

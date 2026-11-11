@@ -86,6 +86,10 @@ describe("AgentReplyListener", () => {
             runTask: vi.fn(),
             pickFolder: vi.fn(),
             openTaskInCli: vi.fn(),
+            onTaskProgress: vi.fn(() => () => {}),
+            getTaskDiff: vi.fn(),
+            removeTaskWorktree: vi.fn(),
+            openTaskFolder: vi.fn(),
         };
         listener = new AgentReplyListener();
         listener.start(client, agent);

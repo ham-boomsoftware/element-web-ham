@@ -8,6 +8,7 @@ Please see LICENSE files in the repository root for full details.
 import { logger } from "matrix-js-sdk/src/logger";
 import {
     BaseViewModel,
+    type AgentTodoBranch,
     type AgentTodoFilter,
     type AgentTodoItem,
     type AgentTodoRunError,
@@ -15,11 +16,12 @@ import {
     type AgentTodoViewModel as AgentTodoViewModelInterface,
     type AgentTodoViewSnapshot,
 } from "@element-hq/web-shared-components";
-import type { AgentErrorCode, AgentTask } from "shared-types";
+import type { AgentErrorCode, AgentRunBranch, AgentTask } from "shared-types";
 
 import type { AgentApi } from "../../agent/AgentApi";
 import { type AgentTaskStore, AgentTaskStoreEvent } from "../../agent/AgentTaskStore";
-import { formatDate } from "../../DateUtils";
+import { formatDate, formatFullTime } from "../../DateUtils";
+import { _t } from "../../languageHandler";
 
 export interface AgentTodoViewModelProps {
     /** The to-do list */
@@ -28,18 +30,62 @@ export interface AgentTodoViewModelProps {
     agent: AgentApi;
     /** Open a chat at a message */
     onOpenChat: (roomId: string, eventId?: string) => void;
+    /** Send a message to a chat, as a reply to a message if there is one; rejects if it couldn't be sent */
+    onSendToChat: (roomId: string, eventId: string | undefined, text: string) => Promise<void>;
 }
+
+/** How long the summary in a report to a chat may be */
+const MAX_REPORT_SUMMARY = 600;
 
 /** Turn the error of the platform into one the to-do list can show */
 export function toRunError(error: AgentErrorCode | undefined): AgentTodoRunError {
     switch (error) {
         case "no_workspace":
+        case "no_repository":
         case "not_connected":
         case "rate_limited":
             return error;
         default:
             return "unknown";
     }
+}
+
+/** The branch of the autopilot as the to-do list shows it */
+function toTodoBranch(branch: AgentRunBranch): AgentTodoBranch {
+    return {
+        name: branch.name,
+        base: branch.base,
+        commit: branch.commit?.slice(0, 7),
+        pushed: branch.pushed,
+        pushError: branch.pushError,
+        pullRequestUrl: branch.pushed ? branch.pullRequestUrl : undefined,
+        hasWorktree: Boolean(branch.worktreePath),
+    };
+}
+
+/**
+ * What to tell the chat a task came from about the agent's work, for the user to change before sending.
+ * @returns the text, or undefined if there is nothing to tell or no chat to tell it
+ */
+export function buildChatReport(task: AgentTask): string | undefined {
+    const run = task.run;
+    if (!task.source?.roomId || run?.state !== "finished") return undefined;
+    const lines = [_t("agent_todo_list|chat_report_done", { title: task.title })];
+    const summary = run.summary?.trim();
+    if (summary) {
+        lines.push(
+            "",
+            summary.length > MAX_REPORT_SUMMARY ? `${summary.slice(0, MAX_REPORT_SUMMARY).trimEnd()}…` : summary,
+        );
+    }
+    const branch = run.branch;
+    if (branch?.commit) {
+        lines.push("", _t("agent_todo_list|chat_report_branch", { branch: branch.name }));
+        if (branch.pushed && branch.pullRequestUrl) {
+            lines.push(_t("agent_todo_list|chat_report_pull_request", { url: branch.pullRequestUrl }));
+        }
+    }
+    return lines.join("\n");
 }
 
 /** A task as the to-do list shows it */
@@ -59,7 +105,15 @@ export function toTodoItem(task: AgentTask): AgentTodoItem {
             summary: task.run.summary,
             changedFiles: task.run.changedFiles ?? [],
             error: task.run.state === "failed" ? toRunError(task.run.error) : undefined,
+            steps: (task.run.steps ?? []).map((step) => ({
+                kind: step.kind,
+                text: step.text,
+                time: formatFullTime(new Date(step.at)),
+                failed: Boolean(step.failed),
+            })),
+            branch: task.run.branch && toTodoBranch(task.run.branch),
         },
+        chatReport: buildChatReport(task),
     };
 }
 
@@ -122,6 +176,10 @@ export class AgentTodoViewModel
 
     private readonly onStoreUpdate = (): void => {
         this.snapshot.merge(AgentTodoViewModel.computeList(this.props.store, this.snapshot.current.filter));
+        // The changes shown are out of date once the autopilot works on the task again
+        const { diff } = this.snapshot.current;
+        if (diff && this.props.store.getTask(diff.id)?.run?.state === "running")
+            this.snapshot.merge({ diff: undefined });
     };
 
     public setFilter = (filter: AgentTodoFilter): void => {
@@ -184,6 +242,53 @@ export class AgentTodoViewModel
                 launch: { id, state: "opened" },
                 projects: withoutDuplicates([project, ...this.snapshot.current.projects]),
             });
+        })();
+    };
+
+    public toggleDiff = (id: string): void => {
+        if (this.snapshot.current.diff?.id === id) {
+            this.snapshot.merge({ diff: undefined });
+            return;
+        }
+        this.snapshot.merge({ diff: { id, state: "loading", files: [] } });
+        void (async () => {
+            const result = await this.props.store.getDiff(id);
+            // Only if these changes are still the ones asked for
+            if (this.isDisposed || this.snapshot.current.diff?.id !== id) return;
+            this.snapshot.merge({
+                diff: result.ok ? { id, state: "loaded", files: result.data } : { id, state: "failed", files: [] },
+            });
+        })();
+    };
+
+    public openWorktree = (id: string): void => {
+        void this.props.store.openFolder(id);
+    };
+
+    public continueInCli = (id: string): void => {
+        const folder = this.props.store.getTask(id)?.run?.branch?.worktreePath;
+        if (folder) void this.props.store.openInCli(id, folder, "");
+    };
+
+    public removeWorktree = (id: string): void => {
+        if (this.snapshot.current.diff?.id === id) this.snapshot.merge({ diff: undefined });
+        void this.props.store.removeWorktree(id);
+    };
+
+    public reportToChat = (id: string, text: string): void => {
+        const source = this.props.store.getTask(id)?.source;
+        if (!source?.roomId) return;
+        this.snapshot.merge({ chatReport: { id, state: "sending" } });
+        void (async () => {
+            let sent = true;
+            try {
+                await this.props.onSendToChat(source.roomId, source.eventId, text);
+            } catch (e) {
+                logger.warn(`Could not tell the chat of the task ${id}`, e);
+                sent = false;
+            }
+            if (this.isDisposed) return;
+            this.snapshot.merge({ chatReport: { id, state: sent ? "sent" : "failed" } });
         })();
     };
 }

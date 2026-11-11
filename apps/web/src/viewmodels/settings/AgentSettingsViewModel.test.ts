@@ -25,6 +25,8 @@ describe("AgentSettingsViewModel", () => {
                 replySuggestions: true,
                 taskDetection: true,
                 autoInvestigate: false,
+                autopilot: false,
+                autopilotCommands: [],
                 codingCli: "claude",
                 connected: { claude: true, copilot: false },
                 recentProjects: [],
@@ -38,6 +40,8 @@ describe("AgentSettingsViewModel", () => {
                     replySuggestions: true,
                     taskDetection: true,
                     autoInvestigate: false,
+                    autopilot: false,
+                    autopilotCommands: [],
                     codingCli: "claude" as const,
                     ...changes,
                     // An empty folder forgets it, as the platform does
@@ -63,6 +67,10 @@ describe("AgentSettingsViewModel", () => {
             runTask: vi.fn(),
             pickFolder: vi.fn(),
             openTaskInCli: vi.fn(),
+            onTaskProgress: vi.fn(() => () => {}),
+            getTaskDiff: vi.fn(),
+            removeTaskWorktree: vi.fn(),
+            openTaskFolder: vi.fn(),
         };
     }
 
@@ -94,6 +102,8 @@ describe("AgentSettingsViewModel", () => {
                 instructions: "Be brief.",
                 taskDetection: true,
                 autoInvestigate: false,
+                autopilot: false,
+                autopilotCommands: [],
                 workspacePath: "/home/alice/project",
             });
             expect(agent.listModels).toHaveBeenCalledWith("claude");
@@ -211,6 +221,16 @@ describe("AgentSettingsViewModel", () => {
             vm.setAutoInvestigate(true);
             await vi.waitFor(() => expect(vm.getSnapshot().autoInvestigate).toBe(true));
             expect(agent.setSettings).toHaveBeenCalledWith({ autoInvestigate: true });
+        });
+
+        it("turns on the autopilot and saves the commands it may run", async () => {
+            vm.setAutopilot(true);
+            await vi.waitFor(() => expect(vm.getSnapshot().autopilot).toBe(true));
+            expect(agent.setSettings).toHaveBeenCalledWith({ autopilot: true });
+
+            vm.saveAutopilotCommands(["pnpm install", "pnpm test"]);
+            await vi.waitFor(() => expect(vm.getSnapshot().autopilotCommands).toEqual(["pnpm install", "pnpm test"]));
+            expect(agent.setSettings).toHaveBeenCalledWith({ autopilotCommands: ["pnpm install", "pnpm test"] });
         });
 
         it("chooses the coding CLI", async () => {

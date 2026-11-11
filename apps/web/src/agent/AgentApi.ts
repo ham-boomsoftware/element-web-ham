@@ -7,6 +7,7 @@ Please see LICENSE files in the repository root for full details.
 
 import type {
     AgentDetectedTask,
+    AgentFileDiff,
     AgentModel,
     AgentNewTask,
     AgentProvider,
@@ -21,6 +22,7 @@ import type {
     AgentTask,
     AgentTaskChanges,
     AgentTaskDetectionRequest,
+    AgentTaskProgress,
     AgentTaskRunMode,
 } from "shared-types";
 
@@ -88,10 +90,25 @@ export interface AgentApi {
     /** Find requests to the user in the new messages of a chat */
     detectTasks(request: AgentTaskDetectionRequest): Promise<AgentResult<AgentDetectedTask[]>>;
     /**
-     * Let the agent work on a task in the workspace. It never commits.
+     * Let the agent work on a task: look into it, change the workspace without committing, or, as the autopilot,
+     * do it on a branch of its own in a separate worktree, which it commits and pushes.
      * @returns the task with the finished or failed run
      */
     runTask(userId: string, taskId: string, mode: AgentTaskRunMode): Promise<AgentResult<AgentTask>>;
+    /**
+     * Follow the work of the agent on tasks: the listener gets each change of a run while the agent works.
+     * @returns a function to stop following
+     */
+    onTaskProgress(listener: (progress: AgentTaskProgress) => void): () => void;
+    /** Get the changes the autopilot made on its branch for a task */
+    getTaskDiff(userId: string, taskId: string): Promise<AgentResult<AgentFileDiff[]>>;
+    /**
+     * Remove the worktree the autopilot did a task in; a committed branch is kept.
+     * @returns the task without the worktree
+     */
+    removeTaskWorktree(userId: string, taskId: string): Promise<AgentResult<AgentTask>>;
+    /** Open the worktree the autopilot did a task in with the file manager */
+    openTaskFolder(userId: string, taskId: string): Promise<AgentResult<void>>;
     /**
      * Let the user choose a project folder, without changing the settings.
      * @returns the chosen folder, or undefined if the user cancelled

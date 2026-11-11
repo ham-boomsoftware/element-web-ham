@@ -88,6 +88,10 @@ export interface AgentSettingsViewSnapshot {
     taskDetection: boolean;
     /** Whether the agent looks into each new task in the project folder by itself */
     autoInvestigate: boolean;
+    /** Whether the autopilot does each new coding task by itself, on a branch of its own */
+    autopilot: boolean;
+    /** The commands the autopilot may run in its worktree, exactly as written */
+    autopilotCommands: string[];
     /** The folder of the project the agent works on for tasks, if one is chosen */
     workspacePath?: string;
     /** The coding CLI that "Do it" opens in a terminal */
@@ -115,6 +119,10 @@ export interface AgentSettingsViewActions {
     setTaskDetection: (enabled: boolean) => void;
     /** Turn looking into new tasks by itself on or off */
     setAutoInvestigate: (enabled: boolean) => void;
+    /** Turn doing new coding tasks with the autopilot by itself on or off */
+    setAutopilot: (enabled: boolean) => void;
+    /** Save the commands the autopilot may run */
+    saveAutopilotCommands: (commands: string[]) => void;
     /** Let the user choose the project folder */
     chooseWorkspace: () => void;
     /** Forget the project folder */
@@ -153,19 +161,30 @@ export function AgentSettingsView({ vm }: Readonly<AgentSettingsViewProps>): JSX
         replySuggestions,
         taskDetection,
         autoInvestigate,
+        autopilot,
+        autopilotCommands,
         workspacePath,
         codingCli,
         error,
     } = useViewModel(vm);
     const [credential, setCredential] = useState("");
     const [instructionsDraft, setInstructionsDraft] = useState(instructions);
+    const savedCommands = autopilotCommands.join("\n");
+    const [commandsDraft, setCommandsDraft] = useState(savedCommands);
 
     // Show the saved instructions once they are loaded
     useEffect(() => setInstructionsDraft(instructions), [instructions]);
+    useEffect(() => setCommandsDraft(savedCommands), [savedCommands]);
     // A credential typed for one provider is never sent to the other
     useEffect(() => setCredential(""), [provider]);
 
     if (isLoading) return <Text>{_t("common|loading")}</Text>;
+
+    // One command per line; blank lines and surrounding spaces don't count
+    const draftCommands = commandsDraft
+        .split("\n")
+        .map((command) => command.trim())
+        .filter(Boolean);
 
     const isConnected = connected[provider];
     // The keys are written out so that the translation tooling finds them
@@ -349,6 +368,19 @@ export function AgentSettingsView({ vm }: Readonly<AgentSettingsViewProps>): JSX
                     <Label>{_t("settings|agent|auto_investigate")}</Label>
                     <HelpMessage>{_t("settings|agent|auto_investigate_description")}</HelpMessage>
                 </InlineField>
+                <InlineField
+                    name="autopilot"
+                    control={
+                        <ToggleControl
+                            checked={autopilot}
+                            disabled={isBusy || !workspacePath}
+                            onChange={(ev) => vm.setAutopilot(ev.currentTarget.checked)}
+                        />
+                    }
+                >
+                    <Label>{_t("settings|agent|autopilot")}</Label>
+                    <HelpMessage>{_t("settings|agent|autopilot_description")}</HelpMessage>
+                </InlineField>
             </Root>
 
             <Flex direction="column" gap="var(--cpd-space-2x)">
@@ -378,6 +410,36 @@ export function AgentSettingsView({ vm }: Readonly<AgentSettingsViewProps>): JSX
                         {errorMessages.no_workspace}
                     </Text>
                 )}
+            </Flex>
+
+            <Flex direction="column" gap="var(--cpd-space-2x)">
+                <label className={styles.label} htmlFor="mx_AgentSettings_autopilotCommands">
+                    {_t("settings|agent|autopilot_commands")}
+                </label>
+                <textarea
+                    id="mx_AgentSettings_autopilotCommands"
+                    className={`${styles.control} ${styles.commands}`}
+                    rows={4}
+                    value={commandsDraft}
+                    disabled={isBusy}
+                    spellCheck={false}
+                    placeholder={"pnpm install\npnpm test"}
+                    aria-describedby="mx_AgentSettings_autopilotCommands_help"
+                    onChange={(ev) => setCommandsDraft(ev.currentTarget.value)}
+                />
+                <Text id="mx_AgentSettings_autopilotCommands_help" size="sm" className={styles.description}>
+                    {_t("settings|agent|autopilot_commands_description")}
+                </Text>
+                <Flex justify="end">
+                    <Button
+                        kind="primary"
+                        size="md"
+                        disabled={isBusy || draftCommands.join("\n") === savedCommands}
+                        onClick={() => vm.saveAutopilotCommands(draftCommands)}
+                    >
+                        {_t("settings|agent|autopilot_commands_save")}
+                    </Button>
+                </Flex>
             </Flex>
 
             <Flex direction="column" gap="var(--cpd-space-2x)">

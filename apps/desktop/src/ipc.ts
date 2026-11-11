@@ -30,12 +30,19 @@ import {
     addAgentTasks,
     deleteAgentTask,
     detectAgentTasks,
+    getAgentTaskDiff,
     getAgentTasks,
+    openAgentTaskFolder,
     pickAgentWorkspace,
+    removeAgentTaskWorktree,
     runAgentTask,
+    setTaskProgressListener,
     updateAgentTask,
 } from "./agent-tasks.js";
 import { openAgentTaskInCli, pickAgentFolder } from "./agent-cli.js";
+
+// The renderer follows the work of the agent on a task step by step
+setTaskProgressListener((progress) => global.mainWindow?.webContents.send("agentTaskProgress", progress));
 
 let focusHandlerAttached = false;
 ipcMain.on("loudNotification", function (): void {
@@ -252,6 +259,15 @@ ipcMain.on("ipcCall", async function (_ev: IpcMainEvent, payload) {
             break;
         case "agentRunTask":
             ret = await runAgentTask(args[0], args[1], args[2]);
+            break;
+        case "agentGetTaskDiff":
+            ret = await getAgentTaskDiff(args[0], args[1]);
+            break;
+        case "agentRemoveTaskWorktree":
+            ret = await removeAgentTaskWorktree(args[0], args[1]);
+            break;
+        case "agentOpenTaskFolder":
+            ret = await openAgentTaskFolder(args[0], args[1]);
             break;
         case "agentPickFolder":
             ret = await pickAgentFolder();

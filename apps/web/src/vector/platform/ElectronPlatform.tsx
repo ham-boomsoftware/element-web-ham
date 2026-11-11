@@ -19,6 +19,7 @@ import {
 import React from "react";
 import { logger } from "matrix-js-sdk/src/logger";
 import { uniqueId } from "lodash";
+import type { AgentTaskProgress } from "shared-types";
 
 import BasePlatform, { UpdateCheckStatus, type UpdateStatus } from "../../BasePlatform";
 import type { AgentApi } from "../../agent/AgentApi";
@@ -99,6 +100,8 @@ export default class ElectronPlatform extends BasePlatform {
     private config!: IConfigOptions;
     private supportedSettings?: Record<string, boolean>;
     private clientStartedPromiseWithResolvers = Promise.withResolvers<void>();
+    /** Who follows the work of the agent on tasks, see {@link AgentApi.onTaskProgress} */
+    private readonly taskProgressListeners = new Set<(progress: AgentTaskProgress) => void>();
 
     public constructor() {
         super();
@@ -149,6 +152,10 @@ export default class ElectronPlatform extends BasePlatform {
         });
 
         this.electron.on("update-downloaded", this.onUpdateDownloaded);
+
+        this.electron.on("agentTaskProgress", (ev, progress: AgentTaskProgress) => {
+            for (const listener of this.taskProgressListeners) listener(progress);
+        });
 
         this.electron.on("preferences", () => {
             dis.fire(Action.ViewUserSettings);
@@ -526,6 +533,13 @@ export default class ElectronPlatform extends BasePlatform {
         deleteTask: (userId, taskId) => this.ipc.call("agentDeleteTask", userId, taskId),
         detectTasks: (request) => this.ipc.call("agentDetectTasks", request),
         runTask: (userId, taskId, mode) => this.ipc.call("agentRunTask", userId, taskId, mode),
+        onTaskProgress: (listener) => {
+            this.taskProgressListeners.add(listener);
+            return () => this.taskProgressListeners.delete(listener);
+        },
+        getTaskDiff: (userId, taskId) => this.ipc.call("agentGetTaskDiff", userId, taskId),
+        removeTaskWorktree: (userId, taskId) => this.ipc.call("agentRemoveTaskWorktree", userId, taskId),
+        openTaskFolder: (userId, taskId) => this.ipc.call("agentOpenTaskFolder", userId, taskId),
         pickFolder: () => this.ipc.call("agentPickFolder"),
         openTaskInCli: (userId, taskId, folder, instructions) =>
             this.ipc.call("agentOpenTaskInCli", userId, taskId, folder, instructions),

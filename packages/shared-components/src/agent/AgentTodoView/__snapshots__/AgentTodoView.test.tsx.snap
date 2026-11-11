@@ -1,5 +1,393 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
+exports[`AgentTodoView > Storybook snapshots > renders a branch that couldn't be pushed 1`] = `
+<div>
+  <div
+    class="Flex-module_flex AgentTodoView-module_view"
+    style="--mx-flex-display: flex; --mx-flex-direction: column; --mx-flex-align: start; --mx-flex-justify: start; --mx-flex-gap: var(--cpd-space-4x); --mx-flex-wrap: nowrap;"
+  >
+    <div
+      aria-label="Show tasks"
+      class="Flex-module_flex"
+      role="group"
+      style="--mx-flex-display: flex; --mx-flex-direction: row; --mx-flex-align: start; --mx-flex-justify: start; --mx-flex-gap: var(--cpd-space-2x); --mx-flex-wrap: nowrap;"
+    >
+      <button
+        aria-pressed="true"
+        class="AgentTodoView-module_filter"
+        type="button"
+      >
+        Open (3)
+      </button>
+      <button
+        aria-pressed="false"
+        class="AgentTodoView-module_filter"
+        type="button"
+      >
+        Done (1)
+      </button>
+    </div>
+    <form
+      class="AgentTodoView-module_addForm"
+    >
+      <input
+        aria-label="New task"
+        class="AgentTodoView-module_addInput"
+        placeholder="Add a task…"
+        value=""
+      />
+      <button
+        aria-disabled="true"
+        class="_button_1nw83_8"
+        data-kind="primary"
+        data-size="md"
+        role="button"
+        tabindex="0"
+        type="submit"
+      >
+        Add
+      </button>
+    </form>
+    <ul
+      aria-label="To-do list"
+      class="AgentTodoView-module_list"
+    >
+      <li
+        class="AgentTodoView-module_item"
+        data-done="false"
+      >
+        <div
+          class="Flex-module_flex"
+          style="--mx-flex-display: flex; --mx-flex-direction: row; --mx-flex-align: start; --mx-flex-justify: start; --mx-flex-gap: var(--cpd-space-3x); --mx-flex-wrap: nowrap;"
+        >
+          <div
+            class="_container_153f2_10 AgentTodoView-module_checkbox"
+          >
+            <input
+              aria-label="Mark Update the README as done"
+              class="_input_153f2_18"
+              type="checkbox"
+            />
+            <div
+              class="_ui_153f2_19"
+            >
+              <svg
+                aria-hidden="true"
+                fill="currentColor"
+                height="1em"
+                viewBox="0 0 24 24"
+                width="1em"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  d="M9.55 17.575q-.2 0-.375-.062a.9.9 0 0 1-.325-.213L4.55 13q-.274-.274-.262-.713.012-.437.287-.712a.95.95 0 0 1 .7-.275q.425 0 .7.275L9.55 15.15l8.475-8.475q.274-.275.713-.275.437 0 .712.275.275.274.275.713 0 .437-.275.712l-9.2 9.2q-.15.15-.325.212a1.1 1.1 0 0 1-.375.063"
+                />
+              </svg>
+            </div>
+          </div>
+          <div
+            class="Flex-module_flex AgentTodoView-module_content"
+            style="--mx-flex-display: flex; --mx-flex-direction: column; --mx-flex-align: start; --mx-flex-justify: start; --mx-flex-gap: var(--cpd-space-1x); --mx-flex-wrap: nowrap;"
+          >
+            <p
+              class="_typography_6v6n8_153 _font-body-md-semibold_6v6n8_55 AgentTodoView-module_title"
+            >
+              Update the README
+            </p>
+            <p
+              class="_typography_6v6n8_153 _font-body-sm-regular_6v6n8_31 AgentTodoView-module_meta"
+            >
+              Added by you · Mon, 9 Nov, 08:00
+            </p>
+            <div
+              class="Flex-module_flex AgentTodoView-module_actions"
+              style="--mx-flex-display: flex; --mx-flex-direction: row; --mx-flex-align: start; --mx-flex-justify: start; --mx-flex-gap: var(--cpd-space-2x); --mx-flex-wrap: wrap;"
+            >
+              <button
+                aria-disabled="false"
+                class="_button_1nw83_8"
+                data-kind="secondary"
+                data-size="md"
+                role="button"
+                tabindex="0"
+              >
+                Look into it
+              </button>
+              <button
+                aria-expanded="false"
+                class="_button_1nw83_8"
+                data-kind="secondary"
+                data-size="md"
+                role="button"
+                tabindex="0"
+              >
+                Do it
+              </button>
+              <button
+                aria-disabled="false"
+                class="_button_1nw83_8 _has-icon_1nw83_60"
+                data-kind="primary"
+                data-size="md"
+                role="button"
+                tabindex="0"
+              >
+                <svg
+                  aria-hidden="true"
+                  fill="currentColor"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  width="20"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    d="M9.5 2 11 6.5 15.5 8 11 9.5 9.5 14 8 9.5 3.5 8 8 6.5zm9.5 9 1 3 3 1-3 1-1 3-1-3-3-1 3-1zm-7 6 .75 2.25L15 20l-2.25.75L12 23l-.75-2.25L9 20l2.25-.75z"
+                  />
+                </svg>
+                Autopilot
+              </button>
+              <button
+                class="_button_1nw83_8 _destructive_1nw83_110"
+                data-kind="tertiary"
+                data-size="md"
+                role="button"
+                tabindex="0"
+              >
+                Delete
+              </button>
+            </div>
+            <section
+              aria-busy="false"
+              aria-label="Report of the agent"
+              class="AgentTodoView-module_report"
+              data-mode="autopilot"
+              data-state="finished"
+            >
+              <div
+                class="Flex-module_flex"
+                style="--mx-flex-display: flex; --mx-flex-direction: row; --mx-flex-align: center; --mx-flex-justify: start; --mx-flex-gap: var(--cpd-space-2x); --mx-flex-wrap: nowrap;"
+              >
+                <svg
+                  aria-hidden="true"
+                  class="AgentTodoView-module_reportIcon"
+                  fill="currentColor"
+                  height="16px"
+                  viewBox="0 0 24 24"
+                  width="16px"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    d="M9.5 2 11 6.5 15.5 8 11 9.5 9.5 14 8 9.5 3.5 8 8 6.5zm9.5 9 1 3 3 1-3 1-1 3-1-3-3-1 3-1zm-7 6 .75 2.25L15 20l-2.25.75L12 23l-.75-2.25L9 20l2.25-.75z"
+                  />
+                </svg>
+                <p
+                  class="_typography_6v6n8_153 _font-body-sm-semibold_6v6n8_36"
+                >
+                  What the autopilot did
+                </p>
+              </div>
+              <div
+                class="AgentTodoAutopilot-module_timeline"
+              >
+                <ol
+                  aria-label="Steps of the agent"
+                  aria-live="polite"
+                  class="AgentTodoAutopilot-module_steps"
+                >
+                  <li
+                    class="AgentTodoAutopilot-module_step"
+                    data-failed="false"
+                    data-kind="edit"
+                  >
+                    <span
+                      class="AgentTodoAutopilot-module_stepDot"
+                    >
+                      <svg
+                        aria-hidden="true"
+                        fill="currentColor"
+                        height="14px"
+                        viewBox="0 0 24 24"
+                        width="14px"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <path
+                          clip-rule="evenodd"
+                          d="M15.706 2.637a2 2 0 0 1 2.829 0l2.828 2.828a2 2 0 0 1 0 2.829L9.605 20.052a1 1 0 0 1-.465.263L3.483 21.73a1 1 0 0 1-1.212-1.213l1.414-5.657a1 1 0 0 1 .263-.465zm1.224 7.262L14.102 7.07l-8.544 8.544-.943 3.771 3.771-.943z"
+                          fill-rule="evenodd"
+                        />
+                      </svg>
+                    </span>
+                    <span
+                      class="AgentTodoAutopilot-module_stepLabel"
+                    >
+                      Edited
+                    </span>
+                    <code
+                      class="AgentTodoAutopilot-module_stepText"
+                      title="README.md"
+                    >
+                      README.md
+                    </code>
+                    <time
+                      class="AgentTodoAutopilot-module_stepTime"
+                    >
+                      08:01:10
+                    </time>
+                  </li>
+                </ol>
+              </div>
+              <p
+                class="_typography_6v6n8_153 _font-body-sm-regular_6v6n8_31 AgentTodoView-module_summary"
+              >
+                Added the new build steps to the README.
+              </p>
+              <div
+                aria-label="Branch of the autopilot"
+                class="AgentTodoAutopilot-module_branch"
+                role="group"
+              >
+                <div
+                  class="Flex-module_flex"
+                  style="--mx-flex-display: flex; --mx-flex-direction: row; --mx-flex-align: center; --mx-flex-justify: start; --mx-flex-gap: var(--cpd-space-2x); --mx-flex-wrap: wrap;"
+                >
+                  <span
+                    class="AgentTodoAutopilot-module_chip"
+                    data-kind="branch"
+                  >
+                    <svg
+                      aria-hidden="true"
+                      fill="currentColor"
+                      height="14px"
+                      viewBox="0 0 24 24"
+                      width="14px"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <path
+                        d="M9.01 5v1H11c.333 0 1 0 1.5.5S13 7.667 13 8v7.01c0 .54.45.99.99.99H15v-1a2 2 0 0 1 2-2h3a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-3a2 2 0 0 1-2-2v-1h-1.01C12.34 18 11 16.66 11 15.01V9c0-1 0-1-1-1H9v1a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5c0-1.1.9-2 2-2h3.01a2 2 0 0 1 2 2"
+                      />
+                    </svg>
+                    <code>
+                      pilot/update-the-readme-d4e5f6
+                    </code>
+                  </span>
+                  <span
+                    class="AgentTodoAutopilot-module_chipMuted"
+                  >
+                    from main
+                  </span>
+                  <span
+                    class="AgentTodoAutopilot-module_chip"
+                    data-kind="commit"
+                  >
+                    <code>
+                      8c1d0b7
+                    </code>
+                  </span>
+                  <span
+                    class="AgentTodoAutopilot-module_chip"
+                    data-kind="failed"
+                    title="remote: Permission to example/app.git denied."
+                  >
+                    <svg
+                      aria-hidden="true"
+                      fill="currentColor"
+                      height="14px"
+                      viewBox="0 0 24 24"
+                      width="14px"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <path
+                        d="M12.713 17.713A.97.97 0 0 1 12 18a.97.97 0 0 1-.713-.288A.97.97 0 0 1 11 17q0-.424.287-.712A.97.97 0 0 1 12 16q.424 0 .713.288.287.287.287.712 0 .424-.287.712m0-3.999A.97.97 0 0 1 12 14a.97.97 0 0 1-.713-.287A.97.97 0 0 1 11 13V9q0-.424.287-.713A.97.97 0 0 1 12 8q.424 0 .713.287Q13 8.576 13 9v4q0 .424-.287.713"
+                      />
+                      <path
+                        clip-rule="evenodd"
+                        d="M10.264 3.039c.767-1.344 2.705-1.344 3.472 0l8.554 14.969c.762 1.333-.2 2.992-1.736 2.992H3.446c-1.535 0-2.498-1.659-1.736-2.992zM3.446 19 12 4.031 20.554 19z"
+                        fill-rule="evenodd"
+                      />
+                    </svg>
+                    Not pushed
+                  </span>
+                </div>
+                <p
+                  class="_typography_6v6n8_153 _font-body-sm-regular_6v6n8_31 AgentTodoAutopilot-module_pushError"
+                >
+                  remote: Permission to example/app.git denied.
+                </p>
+                <div
+                  class="Flex-module_flex"
+                  style="--mx-flex-display: flex; --mx-flex-direction: row; --mx-flex-align: start; --mx-flex-justify: start; --mx-flex-gap: var(--cpd-space-2x); --mx-flex-wrap: wrap;"
+                >
+                  <button
+                    aria-expanded="false"
+                    class="_button_1nw83_8"
+                    data-kind="secondary"
+                    data-size="sm"
+                    role="button"
+                    tabindex="0"
+                  >
+                    Show changes
+                  </button>
+                  <button
+                    class="_button_1nw83_8 _has-icon_1nw83_60"
+                    data-kind="tertiary"
+                    data-size="sm"
+                    role="button"
+                    tabindex="0"
+                  >
+                    <svg
+                      aria-hidden="true"
+                      fill="currentColor"
+                      height="20"
+                      viewBox="0 0 24 24"
+                      width="20"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <path
+                        d="M4 20q-.824 0-1.412-.587A1.93 1.93 0 0 1 2 18V6q0-.824.587-1.412A1.93 1.93 0 0 1 4 4h6l2 2h8q.824 0 1.413.588Q22 7.175 22 8v10q0 .824-.587 1.413A1.93 1.93 0 0 1 20 20zm0-2h16V8h-8.825l-2-2H4z"
+                      />
+                    </svg>
+                    Open folder
+                  </button>
+                  <button
+                    class="_button_1nw83_8 _has-icon_1nw83_60"
+                    data-kind="tertiary"
+                    data-size="sm"
+                    role="button"
+                    tabindex="0"
+                  >
+                    <svg
+                      aria-hidden="true"
+                      fill="currentColor"
+                      height="20"
+                      viewBox="0 0 24 24"
+                      width="20"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <path
+                        d="m8.825 12 1.475-1.475q.3-.3.3-.7t-.3-.7-.713-.3-.712.3L6.7 11.3q-.15.15-.213.325a1.1 1.1 0 0 0-.062.375q0 .2.063.375a.9.9 0 0 0 .212.325l2.175 2.175q.3.3.713.3.412 0 .712-.3t.3-.7-.3-.7zm6.35 0L13.7 13.475q-.3.3-.3.7t.3.7.713.3.712-.3L17.3 12.7q.15-.15.212-.325.063-.175.063-.375t-.062-.375a.9.9 0 0 0-.213-.325l-2.175-2.175a1 1 0 0 0-1.425 0q-.3.3-.3.7t.3.7zM5 21q-.824 0-1.412-.587A1.93 1.93 0 0 1 3 19V5q0-.824.587-1.412A1.93 1.93 0 0 1 5 3h14q.824 0 1.413.587Q21 4.176 21 5v14q0 .824-.587 1.413A1.93 1.93 0 0 1 19 21zm0-2h14V5H5z"
+                      />
+                    </svg>
+                    Continue in the CLI
+                  </button>
+                  <button
+                    class="_button_1nw83_8 _destructive_1nw83_110"
+                    data-kind="tertiary"
+                    data-size="sm"
+                    role="button"
+                    tabindex="0"
+                  >
+                    Remove worktree
+                  </button>
+                </div>
+              </div>
+            </section>
+          </div>
+        </div>
+      </li>
+    </ul>
+  </div>
+</div>
+`;
+
 exports[`AgentTodoView > Storybook snapshots > renders an empty list 1`] = `
 <div>
   <div
@@ -53,6 +441,453 @@ exports[`AgentTodoView > Storybook snapshots > renders an empty list 1`] = `
     >
       Nothing to do. Requests from your chats show up here.
     </p>
+  </div>
+</div>
+`;
+
+exports[`AgentTodoView > Storybook snapshots > renders the autopilot at work 1`] = `
+<div>
+  <div
+    class="Flex-module_flex AgentTodoView-module_view"
+    style="--mx-flex-display: flex; --mx-flex-direction: column; --mx-flex-align: start; --mx-flex-justify: start; --mx-flex-gap: var(--cpd-space-4x); --mx-flex-wrap: nowrap;"
+  >
+    <div
+      aria-label="Show tasks"
+      class="Flex-module_flex"
+      role="group"
+      style="--mx-flex-display: flex; --mx-flex-direction: row; --mx-flex-align: start; --mx-flex-justify: start; --mx-flex-gap: var(--cpd-space-2x); --mx-flex-wrap: nowrap;"
+    >
+      <button
+        aria-pressed="true"
+        class="AgentTodoView-module_filter"
+        type="button"
+      >
+        Open (3)
+      </button>
+      <button
+        aria-pressed="false"
+        class="AgentTodoView-module_filter"
+        type="button"
+      >
+        Done (1)
+      </button>
+    </div>
+    <form
+      class="AgentTodoView-module_addForm"
+    >
+      <input
+        aria-label="New task"
+        class="AgentTodoView-module_addInput"
+        placeholder="Add a task…"
+        value=""
+      />
+      <button
+        aria-disabled="true"
+        class="_button_1nw83_8"
+        data-kind="primary"
+        data-size="md"
+        role="button"
+        tabindex="0"
+        type="submit"
+      >
+        Add
+      </button>
+    </form>
+    <ul
+      aria-label="To-do list"
+      class="AgentTodoView-module_list"
+    >
+      <li
+        class="AgentTodoView-module_item"
+        data-done="false"
+      >
+        <div
+          class="Flex-module_flex"
+          style="--mx-flex-display: flex; --mx-flex-direction: row; --mx-flex-align: start; --mx-flex-justify: start; --mx-flex-gap: var(--cpd-space-3x); --mx-flex-wrap: nowrap;"
+        >
+          <div
+            class="_container_153f2_10 AgentTodoView-module_checkbox"
+          >
+            <input
+              aria-label="Mark Fix the typo on the login page as done"
+              class="_input_153f2_18"
+              type="checkbox"
+            />
+            <div
+              class="_ui_153f2_19"
+            >
+              <svg
+                aria-hidden="true"
+                fill="currentColor"
+                height="1em"
+                viewBox="0 0 24 24"
+                width="1em"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  d="M9.55 17.575q-.2 0-.375-.062a.9.9 0 0 1-.325-.213L4.55 13q-.274-.274-.262-.713.012-.437.287-.712a.95.95 0 0 1 .7-.275q.425 0 .7.275L9.55 15.15l8.475-8.475q.274-.275.713-.275.437 0 .712.275.275.274.275.713 0 .437-.275.712l-9.2 9.2q-.15.15-.325.212a1.1 1.1 0 0 1-.375.063"
+                />
+              </svg>
+            </div>
+          </div>
+          <div
+            class="Flex-module_flex AgentTodoView-module_content"
+            style="--mx-flex-display: flex; --mx-flex-direction: column; --mx-flex-align: start; --mx-flex-justify: start; --mx-flex-gap: var(--cpd-space-1x); --mx-flex-wrap: nowrap;"
+          >
+            <p
+              class="_typography_6v6n8_153 _font-body-md-semibold_6v6n8_55 AgentTodoView-module_title"
+            >
+              Fix the typo on the login page
+            </p>
+            <p
+              class="_typography_6v6n8_153 _font-body-sm-regular_6v6n8_31 AgentTodoView-module_meta"
+            >
+              Dave in Dave · Mon, 9 Nov, 09:30
+            </p>
+            <p
+              class="_typography_6v6n8_153 _font-body-sm-regular_6v6n8_31 AgentTodoView-module_details"
+            >
+              Dave: it says 'Sign inn'.
+            </p>
+            <div
+              class="Flex-module_flex AgentTodoView-module_actions"
+              style="--mx-flex-display: flex; --mx-flex-direction: row; --mx-flex-align: start; --mx-flex-justify: start; --mx-flex-gap: var(--cpd-space-2x); --mx-flex-wrap: wrap;"
+            >
+              <button
+                class="_button_1nw83_8"
+                data-kind="tertiary"
+                data-size="md"
+                role="button"
+                tabindex="0"
+              >
+                Open chat
+              </button>
+              <button
+                aria-disabled="true"
+                class="_button_1nw83_8"
+                data-kind="secondary"
+                data-size="md"
+                role="button"
+                tabindex="0"
+              >
+                Look into it
+              </button>
+              <button
+                aria-expanded="false"
+                class="_button_1nw83_8"
+                data-kind="secondary"
+                data-size="md"
+                role="button"
+                tabindex="0"
+              >
+                Do it
+              </button>
+              <button
+                aria-disabled="true"
+                class="_button_1nw83_8 _has-icon_1nw83_60"
+                data-kind="primary"
+                data-size="md"
+                role="button"
+                tabindex="0"
+              >
+                <svg
+                  aria-hidden="true"
+                  fill="currentColor"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  width="20"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    d="M9.5 2 11 6.5 15.5 8 11 9.5 9.5 14 8 9.5 3.5 8 8 6.5zm9.5 9 1 3 3 1-3 1-1 3-1-3-3-1 3-1zm-7 6 .75 2.25L15 20l-2.25.75L12 23l-.75-2.25L9 20l2.25-.75z"
+                  />
+                </svg>
+                Autopilot
+              </button>
+              <button
+                class="_button_1nw83_8 _destructive_1nw83_110"
+                data-kind="tertiary"
+                data-size="md"
+                role="button"
+                tabindex="0"
+              >
+                Delete
+              </button>
+            </div>
+            <section
+              aria-busy="true"
+              aria-label="Report of the agent"
+              class="AgentTodoView-module_report"
+              data-mode="autopilot"
+              data-state="running"
+            >
+              <div
+                class="Flex-module_flex"
+                style="--mx-flex-display: flex; --mx-flex-direction: row; --mx-flex-align: center; --mx-flex-justify: start; --mx-flex-gap: var(--cpd-space-2x); --mx-flex-wrap: nowrap;"
+              >
+                <svg
+                  aria-hidden="true"
+                  class="AgentTodoView-module_reportIcon"
+                  fill="currentColor"
+                  height="16px"
+                  viewBox="0 0 24 24"
+                  width="16px"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    d="M9.5 2 11 6.5 15.5 8 11 9.5 9.5 14 8 9.5 3.5 8 8 6.5zm9.5 9 1 3 3 1-3 1-1 3-1-3-3-1 3-1zm-7 6 .75 2.25L15 20l-2.25.75L12 23l-.75-2.25L9 20l2.25-.75z"
+                  />
+                </svg>
+                <p
+                  class="_typography_6v6n8_153 _font-body-sm-semibold_6v6n8_36"
+                >
+                  The autopilot is working on it…
+                </p>
+              </div>
+              <div
+                class="AgentTodoAutopilot-module_timeline"
+              >
+                <ol
+                  aria-label="Steps of the agent"
+                  aria-live="polite"
+                  class="AgentTodoAutopilot-module_steps"
+                >
+                  <li
+                    class="AgentTodoAutopilot-module_step"
+                    data-failed="false"
+                    data-kind="list"
+                  >
+                    <span
+                      class="AgentTodoAutopilot-module_stepDot"
+                    >
+                      <svg
+                        aria-hidden="true"
+                        fill="currentColor"
+                        height="14px"
+                        viewBox="0 0 24 24"
+                        width="14px"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <path
+                          d="M4.5 7.5q-.618 0-1.06-.44A1.44 1.44 0 0 1 3 6q0-.618.44-1.06.442-.44 1.06-.44t1.06.44Q6 5.383 6 6t-.44 1.06q-.44.44-1.06.44m4.788 11.213Q9.575 19 10 19h10q.424 0 .712-.288A.97.97 0 0 0 21 18a.97.97 0 0 0-.288-.712A.97.97 0 0 0 20 17H10a.97.97 0 0 0-.713.288A.97.97 0 0 0 9 18q0 .424.287.712m.001-5.999Q9.575 13 10 13h10q.424 0 .712-.287A.97.97 0 0 0 21 12a.97.97 0 0 0-.288-.713A.97.97 0 0 0 20 11H10a.97.97 0 0 0-.713.287A.97.97 0 0 0 9 12q0 .424.287.713m.001-6Q9.575 7 10 7h10q.424 0 .712-.287A.97.97 0 0 0 21 6a.97.97 0 0 0-.288-.713A.97.97 0 0 0 20 5H10a.97.97 0 0 0-.713.287A.97.97 0 0 0 9 6q0 .424.287.713M3.44 19.06q.442.44 1.06.44t1.06-.44Q6 18.62 6 18t-.44-1.06a1.45 1.45 0 0 0-1.06-.44q-.618 0-1.06.44Q3 17.38 3 18t.44 1.06M4.5 13.5q-.618 0-1.06-.44A1.45 1.45 0 0 1 3 12q0-.619.44-1.06.442-.44 1.06-.44t1.06.44Q6 11.383 6 12t-.44 1.06q-.44.44-1.06.44"
+                        />
+                      </svg>
+                    </span>
+                    <span
+                      class="AgentTodoAutopilot-module_stepLabel"
+                    >
+                      Listed
+                    </span>
+                    <code
+                      class="AgentTodoAutopilot-module_stepText"
+                      title="."
+                    >
+                      .
+                    </code>
+                    <time
+                      class="AgentTodoAutopilot-module_stepTime"
+                    >
+                      10:02:11
+                    </time>
+                  </li>
+                  <li
+                    class="AgentTodoAutopilot-module_step"
+                    data-failed="false"
+                    data-kind="search"
+                  >
+                    <span
+                      class="AgentTodoAutopilot-module_stepDot"
+                    >
+                      <svg
+                        aria-hidden="true"
+                        fill="currentColor"
+                        height="14px"
+                        viewBox="0 0 24 24"
+                        width="14px"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <path
+                          d="M15.05 16.463a7.5 7.5 0 1 1 1.414-1.414l3.243 3.244a1 1 0 0 1-1.414 1.414zM16 10.5a5.5 5.5 0 1 0-11 0 5.5 5.5 0 0 0 11 0"
+                        />
+                      </svg>
+                    </span>
+                    <span
+                      class="AgentTodoAutopilot-module_stepLabel"
+                    >
+                      Searched
+                    </span>
+                    <code
+                      class="AgentTodoAutopilot-module_stepText"
+                      title="Sign inn"
+                    >
+                      Sign inn
+                    </code>
+                    <time
+                      class="AgentTodoAutopilot-module_stepTime"
+                    >
+                      10:02:14
+                    </time>
+                  </li>
+                  <li
+                    class="AgentTodoAutopilot-module_step"
+                    data-failed="false"
+                    data-kind="read"
+                  >
+                    <span
+                      class="AgentTodoAutopilot-module_stepDot"
+                    >
+                      <svg
+                        aria-hidden="true"
+                        fill="currentColor"
+                        height="14px"
+                        viewBox="0 0 24 24"
+                        width="14px"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <path
+                          d="M9 18h6q.424 0 .713-.288A.97.97 0 0 0 16 17a.97.97 0 0 0-.287-.712A.97.97 0 0 0 15 16H9a.97.97 0 0 0-.713.288A.97.97 0 0 0 8 17q0 .424.287.712Q8.576 18 9 18m0-4h6q.424 0 .713-.287A.97.97 0 0 0 16 13a.97.97 0 0 0-.287-.713A.97.97 0 0 0 15 12H9a.97.97 0 0 0-.713.287A.97.97 0 0 0 8 13q0 .424.287.713Q8.576 14 9 14m-3 8q-.824 0-1.412-.587A1.93 1.93 0 0 1 4 20V4q0-.824.588-1.412A1.93 1.93 0 0 1 6 2h7.175a1.98 1.98 0 0 1 1.4.575l4.85 4.85q.275.275.425.638.15.361.15.762V20q0 .824-.587 1.413A1.93 1.93 0 0 1 18 22zm7-14V4H6v16h12V9h-4a.97.97 0 0 1-.713-.287A.97.97 0 0 1 13 8"
+                        />
+                      </svg>
+                    </span>
+                    <span
+                      class="AgentTodoAutopilot-module_stepLabel"
+                    >
+                      Read
+                    </span>
+                    <code
+                      class="AgentTodoAutopilot-module_stepText"
+                      title="src/components/LoginForm.tsx"
+                    >
+                      src/components/LoginForm.tsx
+                    </code>
+                    <time
+                      class="AgentTodoAutopilot-module_stepTime"
+                    >
+                      10:02:15
+                    </time>
+                  </li>
+                  <li
+                    class="AgentTodoAutopilot-module_step"
+                    data-failed="false"
+                    data-kind="edit"
+                  >
+                    <span
+                      class="AgentTodoAutopilot-module_stepDot"
+                    >
+                      <svg
+                        aria-hidden="true"
+                        fill="currentColor"
+                        height="14px"
+                        viewBox="0 0 24 24"
+                        width="14px"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <path
+                          clip-rule="evenodd"
+                          d="M15.706 2.637a2 2 0 0 1 2.829 0l2.828 2.828a2 2 0 0 1 0 2.829L9.605 20.052a1 1 0 0 1-.465.263L3.483 21.73a1 1 0 0 1-1.212-1.213l1.414-5.657a1 1 0 0 1 .263-.465zm1.224 7.262L14.102 7.07l-8.544 8.544-.943 3.771 3.771-.943z"
+                          fill-rule="evenodd"
+                        />
+                      </svg>
+                    </span>
+                    <span
+                      class="AgentTodoAutopilot-module_stepLabel"
+                    >
+                      Edited
+                    </span>
+                    <code
+                      class="AgentTodoAutopilot-module_stepText"
+                      title="src/components/LoginForm.tsx"
+                    >
+                      src/components/LoginForm.tsx
+                    </code>
+                    <time
+                      class="AgentTodoAutopilot-module_stepTime"
+                    >
+                      10:02:31
+                    </time>
+                  </li>
+                  <li
+                    aria-current="step"
+                    class="AgentTodoAutopilot-module_step"
+                    data-failed="false"
+                    data-kind="command"
+                  >
+                    <span
+                      class="AgentTodoAutopilot-module_stepDot"
+                    >
+                      <svg
+                        aria-hidden="true"
+                        fill="currentColor"
+                        height="14px"
+                        viewBox="0 0 24 24"
+                        width="14px"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <path
+                          d="m8.825 12 1.475-1.475q.3-.3.3-.7t-.3-.7-.713-.3-.712.3L6.7 11.3q-.15.15-.213.325a1.1 1.1 0 0 0-.062.375q0 .2.063.375a.9.9 0 0 0 .212.325l2.175 2.175q.3.3.713.3.412 0 .712-.3t.3-.7-.3-.7zm6.35 0L13.7 13.475q-.3.3-.3.7t.3.7.713.3.712-.3L17.3 12.7q.15-.15.212-.325.063-.175.063-.375t-.062-.375a.9.9 0 0 0-.213-.325l-2.175-2.175a1 1 0 0 0-1.425 0q-.3.3-.3.7t.3.7zM5 21q-.824 0-1.412-.587A1.93 1.93 0 0 1 3 19V5q0-.824.587-1.412A1.93 1.93 0 0 1 5 3h14q.824 0 1.413.587Q21 4.176 21 5v14q0 .824-.587 1.413A1.93 1.93 0 0 1 19 21zm0-2h14V5H5z"
+                        />
+                      </svg>
+                    </span>
+                    <span
+                      class="AgentTodoAutopilot-module_stepLabel"
+                    >
+                      Ran
+                    </span>
+                    <code
+                      class="AgentTodoAutopilot-module_stepText"
+                      title="pnpm install"
+                    >
+                      pnpm install
+                    </code>
+                    <time
+                      class="AgentTodoAutopilot-module_stepTime"
+                    >
+                      10:02:40
+                    </time>
+                  </li>
+                </ol>
+              </div>
+              <div
+                aria-label="Branch of the autopilot"
+                class="AgentTodoAutopilot-module_branch"
+                role="group"
+              >
+                <div
+                  class="Flex-module_flex"
+                  style="--mx-flex-display: flex; --mx-flex-direction: row; --mx-flex-align: center; --mx-flex-justify: start; --mx-flex-gap: var(--cpd-space-2x); --mx-flex-wrap: wrap;"
+                >
+                  <span
+                    class="AgentTodoAutopilot-module_chip"
+                    data-kind="branch"
+                  >
+                    <svg
+                      aria-hidden="true"
+                      fill="currentColor"
+                      height="14px"
+                      viewBox="0 0 24 24"
+                      width="14px"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <path
+                        d="M9.01 5v1H11c.333 0 1 0 1.5.5S13 7.667 13 8v7.01c0 .54.45.99.99.99H15v-1a2 2 0 0 1 2-2h3a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-3a2 2 0 0 1-2-2v-1h-1.01C12.34 18 11 16.66 11 15.01V9c0-1 0-1-1-1H9v1a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5c0-1.1.9-2 2-2h3.01a2 2 0 0 1 2 2"
+                      />
+                    </svg>
+                    <code>
+                      pilot/fix-the-typo-a1b2c3
+                    </code>
+                  </span>
+                  <span
+                    class="AgentTodoAutopilot-module_chipMuted"
+                  >
+                    from main
+                  </span>
+                </div>
+              </div>
+            </section>
+          </div>
+        </div>
+      </li>
+    </ul>
   </div>
 </div>
 `;
@@ -331,6 +1166,28 @@ exports[`AgentTodoView > Storybook snapshots > renders the list without a worksp
                 Do it
               </button>
               <button
+                aria-disabled="true"
+                class="_button_1nw83_8 _has-icon_1nw83_60"
+                data-kind="primary"
+                data-size="md"
+                role="button"
+                tabindex="0"
+              >
+                <svg
+                  aria-hidden="true"
+                  fill="currentColor"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  width="20"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    d="M9.5 2 11 6.5 15.5 8 11 9.5 9.5 14 8 9.5 3.5 8 8 6.5zm9.5 9 1 3 3 1-3 1-1 3-1-3-3-1 3-1zm-7 6 .75 2.25L15 20l-2.25.75L12 23l-.75-2.25L9 20l2.25-.75z"
+                  />
+                </svg>
+                Autopilot
+              </button>
+              <button
                 class="_button_1nw83_8 _destructive_1nw83_110"
                 data-kind="tertiary"
                 data-size="md"
@@ -429,6 +1286,28 @@ exports[`AgentTodoView > Storybook snapshots > renders the list without a worksp
                 Do it
               </button>
               <button
+                aria-disabled="true"
+                class="_button_1nw83_8 _has-icon_1nw83_60"
+                data-kind="primary"
+                data-size="md"
+                role="button"
+                tabindex="0"
+              >
+                <svg
+                  aria-hidden="true"
+                  fill="currentColor"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  width="20"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    d="M9.5 2 11 6.5 15.5 8 11 9.5 9.5 14 8 9.5 3.5 8 8 6.5zm9.5 9 1 3 3 1-3 1-1 3-1-3-3-1 3-1zm-7 6 .75 2.25L15 20l-2.25.75L12 23l-.75-2.25L9 20l2.25-.75z"
+                  />
+                </svg>
+                Autopilot
+              </button>
+              <button
                 class="_button_1nw83_8 _destructive_1nw83_110"
                 data-kind="tertiary"
                 data-size="md"
@@ -442,6 +1321,7 @@ exports[`AgentTodoView > Storybook snapshots > renders the list without a worksp
               aria-busy="false"
               aria-label="Report of the agent"
               class="AgentTodoView-module_report"
+              data-mode="investigate"
               data-state="finished"
             >
               <div
@@ -466,6 +1346,92 @@ exports[`AgentTodoView > Storybook snapshots > renders the list without a worksp
                 >
                   What the agent found
                 </p>
+              </div>
+              <div
+                class="AgentTodoAutopilot-module_timeline"
+              >
+                <ol
+                  aria-label="Steps of the agent"
+                  aria-live="polite"
+                  class="AgentTodoAutopilot-module_steps"
+                >
+                  <li
+                    class="AgentTodoAutopilot-module_step"
+                    data-failed="false"
+                    data-kind="search"
+                  >
+                    <span
+                      class="AgentTodoAutopilot-module_stepDot"
+                    >
+                      <svg
+                        aria-hidden="true"
+                        fill="currentColor"
+                        height="14px"
+                        viewBox="0 0 24 24"
+                        width="14px"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <path
+                          d="M15.05 16.463a7.5 7.5 0 1 1 1.414-1.414l3.243 3.244a1 1 0 0 1-1.414 1.414zM16 10.5a5.5 5.5 0 1 0-11 0 5.5 5.5 0 0 0 11 0"
+                        />
+                      </svg>
+                    </span>
+                    <span
+                      class="AgentTodoAutopilot-module_stepLabel"
+                    >
+                      Searched
+                    </span>
+                    <code
+                      class="AgentTodoAutopilot-module_stepText"
+                      title="theme"
+                    >
+                      theme
+                    </code>
+                    <time
+                      class="AgentTodoAutopilot-module_stepTime"
+                    >
+                      11:03
+                    </time>
+                  </li>
+                  <li
+                    class="AgentTodoAutopilot-module_step"
+                    data-failed="false"
+                    data-kind="read"
+                  >
+                    <span
+                      class="AgentTodoAutopilot-module_stepDot"
+                    >
+                      <svg
+                        aria-hidden="true"
+                        fill="currentColor"
+                        height="14px"
+                        viewBox="0 0 24 24"
+                        width="14px"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <path
+                          d="M9 18h6q.424 0 .713-.288A.97.97 0 0 0 16 17a.97.97 0 0 0-.287-.712A.97.97 0 0 0 15 16H9a.97.97 0 0 0-.713.288A.97.97 0 0 0 8 17q0 .424.287.712Q8.576 18 9 18m0-4h6q.424 0 .713-.287A.97.97 0 0 0 16 13a.97.97 0 0 0-.287-.713A.97.97 0 0 0 15 12H9a.97.97 0 0 0-.713.287A.97.97 0 0 0 8 13q0 .424.287.713Q8.576 14 9 14m-3 8q-.824 0-1.412-.587A1.93 1.93 0 0 1 4 20V4q0-.824.588-1.412A1.93 1.93 0 0 1 6 2h7.175a1.98 1.98 0 0 1 1.4.575l4.85 4.85q.275.275.425.638.15.361.15.762V20q0 .824-.587 1.413A1.93 1.93 0 0 1 18 22zm7-14V4H6v16h12V9h-4a.97.97 0 0 1-.713-.287A.97.97 0 0 1 13 8"
+                        />
+                      </svg>
+                    </span>
+                    <span
+                      class="AgentTodoAutopilot-module_stepLabel"
+                    >
+                      Read
+                    </span>
+                    <code
+                      class="AgentTodoAutopilot-module_stepText"
+                      title="src/settings/ThemeWatcher.ts"
+                    >
+                      src/settings/ThemeWatcher.ts
+                    </code>
+                    <time
+                      class="AgentTodoAutopilot-module_stepTime"
+                    >
+                      11:03
+                    </time>
+                  </li>
+                </ol>
               </div>
               <p
                 class="_typography_6v6n8_153 _font-body-sm-regular_6v6n8_31 AgentTodoView-module_summary"
@@ -551,6 +1517,28 @@ The default changed in ThemeWatcher.ts; the snapshots still have the old one.
                 Do it
               </button>
               <button
+                aria-disabled="true"
+                class="_button_1nw83_8 _has-icon_1nw83_60"
+                data-kind="primary"
+                data-size="md"
+                role="button"
+                tabindex="0"
+              >
+                <svg
+                  aria-hidden="true"
+                  fill="currentColor"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  width="20"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    d="M9.5 2 11 6.5 15.5 8 11 9.5 9.5 14 8 9.5 3.5 8 8 6.5zm9.5 9 1 3 3 1-3 1-1 3-1-3-3-1 3-1zm-7 6 .75 2.25L15 20l-2.25.75L12 23l-.75-2.25L9 20l2.25-.75z"
+                  />
+                </svg>
+                Autopilot
+              </button>
+              <button
                 class="_button_1nw83_8 _destructive_1nw83_110"
                 data-kind="tertiary"
                 data-size="md"
@@ -564,6 +1552,7 @@ The default changed in ThemeWatcher.ts; the snapshots still have the old one.
               aria-busy="true"
               aria-label="Report of the agent"
               class="AgentTodoView-module_report"
+              data-mode="implement"
               data-state="running"
             >
               <div
@@ -588,6 +1577,29 @@ The default changed in ThemeWatcher.ts; the snapshots still have the old one.
                 >
                   The agent is working on it…
                 </p>
+              </div>
+              <div
+                class="AgentTodoAutopilot-module_timeline"
+              >
+                <ol
+                  aria-label="Steps of the agent"
+                  aria-live="polite"
+                  class="AgentTodoAutopilot-module_steps"
+                >
+                  <li
+                    aria-current="step"
+                    class="AgentTodoAutopilot-module_step"
+                  >
+                    <span
+                      class="AgentTodoAutopilot-module_stepDot"
+                    />
+                    <span
+                      class="AgentTodoAutopilot-module_stepLabel"
+                    >
+                      Starting…
+                    </span>
+                  </li>
+                </ol>
               </div>
             </section>
           </div>
@@ -736,6 +1748,28 @@ exports[`AgentTodoView > Storybook snapshots > renders the open tasks 1`] = `
                 Do it
               </button>
               <button
+                aria-disabled="false"
+                class="_button_1nw83_8 _has-icon_1nw83_60"
+                data-kind="primary"
+                data-size="md"
+                role="button"
+                tabindex="0"
+              >
+                <svg
+                  aria-hidden="true"
+                  fill="currentColor"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  width="20"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    d="M9.5 2 11 6.5 15.5 8 11 9.5 9.5 14 8 9.5 3.5 8 8 6.5zm9.5 9 1 3 3 1-3 1-1 3-1-3-3-1 3-1zm-7 6 .75 2.25L15 20l-2.25.75L12 23l-.75-2.25L9 20l2.25-.75z"
+                  />
+                </svg>
+                Autopilot
+              </button>
+              <button
                 class="_button_1nw83_8 _destructive_1nw83_110"
                 data-kind="tertiary"
                 data-size="md"
@@ -834,6 +1868,28 @@ exports[`AgentTodoView > Storybook snapshots > renders the open tasks 1`] = `
                 Do it
               </button>
               <button
+                aria-disabled="false"
+                class="_button_1nw83_8 _has-icon_1nw83_60"
+                data-kind="primary"
+                data-size="md"
+                role="button"
+                tabindex="0"
+              >
+                <svg
+                  aria-hidden="true"
+                  fill="currentColor"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  width="20"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    d="M9.5 2 11 6.5 15.5 8 11 9.5 9.5 14 8 9.5 3.5 8 8 6.5zm9.5 9 1 3 3 1-3 1-1 3-1-3-3-1 3-1zm-7 6 .75 2.25L15 20l-2.25.75L12 23l-.75-2.25L9 20l2.25-.75z"
+                  />
+                </svg>
+                Autopilot
+              </button>
+              <button
                 class="_button_1nw83_8 _destructive_1nw83_110"
                 data-kind="tertiary"
                 data-size="md"
@@ -847,6 +1903,7 @@ exports[`AgentTodoView > Storybook snapshots > renders the open tasks 1`] = `
               aria-busy="false"
               aria-label="Report of the agent"
               class="AgentTodoView-module_report"
+              data-mode="investigate"
               data-state="finished"
             >
               <div
@@ -871,6 +1928,92 @@ exports[`AgentTodoView > Storybook snapshots > renders the open tasks 1`] = `
                 >
                   What the agent found
                 </p>
+              </div>
+              <div
+                class="AgentTodoAutopilot-module_timeline"
+              >
+                <ol
+                  aria-label="Steps of the agent"
+                  aria-live="polite"
+                  class="AgentTodoAutopilot-module_steps"
+                >
+                  <li
+                    class="AgentTodoAutopilot-module_step"
+                    data-failed="false"
+                    data-kind="search"
+                  >
+                    <span
+                      class="AgentTodoAutopilot-module_stepDot"
+                    >
+                      <svg
+                        aria-hidden="true"
+                        fill="currentColor"
+                        height="14px"
+                        viewBox="0 0 24 24"
+                        width="14px"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <path
+                          d="M15.05 16.463a7.5 7.5 0 1 1 1.414-1.414l3.243 3.244a1 1 0 0 1-1.414 1.414zM16 10.5a5.5 5.5 0 1 0-11 0 5.5 5.5 0 0 0 11 0"
+                        />
+                      </svg>
+                    </span>
+                    <span
+                      class="AgentTodoAutopilot-module_stepLabel"
+                    >
+                      Searched
+                    </span>
+                    <code
+                      class="AgentTodoAutopilot-module_stepText"
+                      title="theme"
+                    >
+                      theme
+                    </code>
+                    <time
+                      class="AgentTodoAutopilot-module_stepTime"
+                    >
+                      11:03
+                    </time>
+                  </li>
+                  <li
+                    class="AgentTodoAutopilot-module_step"
+                    data-failed="false"
+                    data-kind="read"
+                  >
+                    <span
+                      class="AgentTodoAutopilot-module_stepDot"
+                    >
+                      <svg
+                        aria-hidden="true"
+                        fill="currentColor"
+                        height="14px"
+                        viewBox="0 0 24 24"
+                        width="14px"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <path
+                          d="M9 18h6q.424 0 .713-.288A.97.97 0 0 0 16 17a.97.97 0 0 0-.287-.712A.97.97 0 0 0 15 16H9a.97.97 0 0 0-.713.288A.97.97 0 0 0 8 17q0 .424.287.712Q8.576 18 9 18m0-4h6q.424 0 .713-.287A.97.97 0 0 0 16 13a.97.97 0 0 0-.287-.713A.97.97 0 0 0 15 12H9a.97.97 0 0 0-.713.287A.97.97 0 0 0 8 13q0 .424.287.713Q8.576 14 9 14m-3 8q-.824 0-1.412-.587A1.93 1.93 0 0 1 4 20V4q0-.824.588-1.412A1.93 1.93 0 0 1 6 2h7.175a1.98 1.98 0 0 1 1.4.575l4.85 4.85q.275.275.425.638.15.361.15.762V20q0 .824-.587 1.413A1.93 1.93 0 0 1 18 22zm7-14V4H6v16h12V9h-4a.97.97 0 0 1-.713-.287A.97.97 0 0 1 13 8"
+                        />
+                      </svg>
+                    </span>
+                    <span
+                      class="AgentTodoAutopilot-module_stepLabel"
+                    >
+                      Read
+                    </span>
+                    <code
+                      class="AgentTodoAutopilot-module_stepText"
+                      title="src/settings/ThemeWatcher.ts"
+                    >
+                      src/settings/ThemeWatcher.ts
+                    </code>
+                    <time
+                      class="AgentTodoAutopilot-module_stepTime"
+                    >
+                      11:03
+                    </time>
+                  </li>
+                </ol>
               </div>
               <p
                 class="_typography_6v6n8_153 _font-body-sm-regular_6v6n8_31 AgentTodoView-module_summary"
@@ -956,6 +2099,28 @@ The default changed in ThemeWatcher.ts; the snapshots still have the old one.
                 Do it
               </button>
               <button
+                aria-disabled="true"
+                class="_button_1nw83_8 _has-icon_1nw83_60"
+                data-kind="primary"
+                data-size="md"
+                role="button"
+                tabindex="0"
+              >
+                <svg
+                  aria-hidden="true"
+                  fill="currentColor"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  width="20"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    d="M9.5 2 11 6.5 15.5 8 11 9.5 9.5 14 8 9.5 3.5 8 8 6.5zm9.5 9 1 3 3 1-3 1-1 3-1-3-3-1 3-1zm-7 6 .75 2.25L15 20l-2.25.75L12 23l-.75-2.25L9 20l2.25-.75z"
+                  />
+                </svg>
+                Autopilot
+              </button>
+              <button
                 class="_button_1nw83_8 _destructive_1nw83_110"
                 data-kind="tertiary"
                 data-size="md"
@@ -969,6 +2134,7 @@ The default changed in ThemeWatcher.ts; the snapshots still have the old one.
               aria-busy="true"
               aria-label="Report of the agent"
               class="AgentTodoView-module_report"
+              data-mode="implement"
               data-state="running"
             >
               <div
@@ -993,6 +2159,29 @@ The default changed in ThemeWatcher.ts; the snapshots still have the old one.
                 >
                   The agent is working on it…
                 </p>
+              </div>
+              <div
+                class="AgentTodoAutopilot-module_timeline"
+              >
+                <ol
+                  aria-label="Steps of the agent"
+                  aria-live="polite"
+                  class="AgentTodoAutopilot-module_steps"
+                >
+                  <li
+                    aria-current="step"
+                    class="AgentTodoAutopilot-module_step"
+                  >
+                    <span
+                      class="AgentTodoAutopilot-module_stepDot"
+                    />
+                    <span
+                      class="AgentTodoAutopilot-module_stepLabel"
+                    >
+                      Starting…
+                    </span>
+                  </li>
+                </ol>
               </div>
             </section>
           </div>
@@ -1141,6 +2330,28 @@ exports[`AgentTodoView > Storybook snapshots > renders the reports of the agent 
                 Do it
               </button>
               <button
+                aria-disabled="false"
+                class="_button_1nw83_8 _has-icon_1nw83_60"
+                data-kind="primary"
+                data-size="md"
+                role="button"
+                tabindex="0"
+              >
+                <svg
+                  aria-hidden="true"
+                  fill="currentColor"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  width="20"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    d="M9.5 2 11 6.5 15.5 8 11 9.5 9.5 14 8 9.5 3.5 8 8 6.5zm9.5 9 1 3 3 1-3 1-1 3-1-3-3-1 3-1zm-7 6 .75 2.25L15 20l-2.25.75L12 23l-.75-2.25L9 20l2.25-.75z"
+                  />
+                </svg>
+                Autopilot
+              </button>
+              <button
                 class="_button_1nw83_8 _destructive_1nw83_110"
                 data-kind="tertiary"
                 data-size="md"
@@ -1154,6 +2365,7 @@ exports[`AgentTodoView > Storybook snapshots > renders the reports of the agent 
               aria-busy="false"
               aria-label="Report of the agent"
               class="AgentTodoView-module_report"
+              data-mode="implement"
               data-state="finished"
             >
               <div
@@ -1288,6 +2500,28 @@ exports[`AgentTodoView > Storybook snapshots > renders the reports of the agent 
                 Do it
               </button>
               <button
+                aria-disabled="false"
+                class="_button_1nw83_8 _has-icon_1nw83_60"
+                data-kind="primary"
+                data-size="md"
+                role="button"
+                tabindex="0"
+              >
+                <svg
+                  aria-hidden="true"
+                  fill="currentColor"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  width="20"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    d="M9.5 2 11 6.5 15.5 8 11 9.5 9.5 14 8 9.5 3.5 8 8 6.5zm9.5 9 1 3 3 1-3 1-1 3-1-3-3-1 3-1zm-7 6 .75 2.25L15 20l-2.25.75L12 23l-.75-2.25L9 20l2.25-.75z"
+                  />
+                </svg>
+                Autopilot
+              </button>
+              <button
                 class="_button_1nw83_8 _destructive_1nw83_110"
                 data-kind="tertiary"
                 data-size="md"
@@ -1301,6 +2535,7 @@ exports[`AgentTodoView > Storybook snapshots > renders the reports of the agent 
               aria-busy="false"
               aria-label="Report of the agent"
               class="AgentTodoView-module_report"
+              data-mode="investigate"
               data-state="failed"
             >
               <div
@@ -1325,6 +2560,851 @@ exports[`AgentTodoView > Storybook snapshots > renders the reports of the agent 
                 >
                   The provider is limiting requests, or your plan's allowance is used up. Try again later.
                 </p>
+              </div>
+            </section>
+          </div>
+        </div>
+      </li>
+    </ul>
+  </div>
+</div>
+`;
+
+exports[`AgentTodoView > Storybook snapshots > renders what the autopilot did 1`] = `
+<div>
+  <div
+    class="Flex-module_flex AgentTodoView-module_view"
+    style="--mx-flex-display: flex; --mx-flex-direction: column; --mx-flex-align: start; --mx-flex-justify: start; --mx-flex-gap: var(--cpd-space-4x); --mx-flex-wrap: nowrap;"
+  >
+    <div
+      aria-label="Show tasks"
+      class="Flex-module_flex"
+      role="group"
+      style="--mx-flex-display: flex; --mx-flex-direction: row; --mx-flex-align: start; --mx-flex-justify: start; --mx-flex-gap: var(--cpd-space-2x); --mx-flex-wrap: nowrap;"
+    >
+      <button
+        aria-pressed="true"
+        class="AgentTodoView-module_filter"
+        type="button"
+      >
+        Open (3)
+      </button>
+      <button
+        aria-pressed="false"
+        class="AgentTodoView-module_filter"
+        type="button"
+      >
+        Done (1)
+      </button>
+    </div>
+    <form
+      class="AgentTodoView-module_addForm"
+    >
+      <input
+        aria-label="New task"
+        class="AgentTodoView-module_addInput"
+        placeholder="Add a task…"
+        value=""
+      />
+      <button
+        aria-disabled="true"
+        class="_button_1nw83_8"
+        data-kind="primary"
+        data-size="md"
+        role="button"
+        tabindex="0"
+        type="submit"
+      >
+        Add
+      </button>
+    </form>
+    <ul
+      aria-label="To-do list"
+      class="AgentTodoView-module_list"
+    >
+      <li
+        class="AgentTodoView-module_item"
+        data-done="false"
+      >
+        <div
+          class="Flex-module_flex"
+          style="--mx-flex-display: flex; --mx-flex-direction: row; --mx-flex-align: start; --mx-flex-justify: start; --mx-flex-gap: var(--cpd-space-3x); --mx-flex-wrap: nowrap;"
+        >
+          <div
+            class="_container_153f2_10 AgentTodoView-module_checkbox"
+          >
+            <input
+              aria-label="Mark Fix the typo on the login page as done"
+              class="_input_153f2_18"
+              type="checkbox"
+            />
+            <div
+              class="_ui_153f2_19"
+            >
+              <svg
+                aria-hidden="true"
+                fill="currentColor"
+                height="1em"
+                viewBox="0 0 24 24"
+                width="1em"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  d="M9.55 17.575q-.2 0-.375-.062a.9.9 0 0 1-.325-.213L4.55 13q-.274-.274-.262-.713.012-.437.287-.712a.95.95 0 0 1 .7-.275q.425 0 .7.275L9.55 15.15l8.475-8.475q.274-.275.713-.275.437 0 .712.275.275.274.275.713 0 .437-.275.712l-9.2 9.2q-.15.15-.325.212a1.1 1.1 0 0 1-.375.063"
+                />
+              </svg>
+            </div>
+          </div>
+          <div
+            class="Flex-module_flex AgentTodoView-module_content"
+            style="--mx-flex-display: flex; --mx-flex-direction: column; --mx-flex-align: start; --mx-flex-justify: start; --mx-flex-gap: var(--cpd-space-1x); --mx-flex-wrap: nowrap;"
+          >
+            <p
+              class="_typography_6v6n8_153 _font-body-md-semibold_6v6n8_55 AgentTodoView-module_title"
+            >
+              Fix the typo on the login page
+            </p>
+            <p
+              class="_typography_6v6n8_153 _font-body-sm-regular_6v6n8_31 AgentTodoView-module_meta"
+            >
+              Dave in Dave · Mon, 9 Nov, 09:30
+            </p>
+            <p
+              class="_typography_6v6n8_153 _font-body-sm-regular_6v6n8_31 AgentTodoView-module_details"
+            >
+              Dave: it says 'Sign inn'.
+            </p>
+            <div
+              class="Flex-module_flex AgentTodoView-module_actions"
+              style="--mx-flex-display: flex; --mx-flex-direction: row; --mx-flex-align: start; --mx-flex-justify: start; --mx-flex-gap: var(--cpd-space-2x); --mx-flex-wrap: wrap;"
+            >
+              <button
+                class="_button_1nw83_8"
+                data-kind="tertiary"
+                data-size="md"
+                role="button"
+                tabindex="0"
+              >
+                Open chat
+              </button>
+              <button
+                aria-disabled="false"
+                class="_button_1nw83_8"
+                data-kind="secondary"
+                data-size="md"
+                role="button"
+                tabindex="0"
+              >
+                Look into it
+              </button>
+              <button
+                aria-expanded="false"
+                class="_button_1nw83_8"
+                data-kind="secondary"
+                data-size="md"
+                role="button"
+                tabindex="0"
+              >
+                Do it
+              </button>
+              <button
+                aria-disabled="false"
+                class="_button_1nw83_8 _has-icon_1nw83_60"
+                data-kind="primary"
+                data-size="md"
+                role="button"
+                tabindex="0"
+              >
+                <svg
+                  aria-hidden="true"
+                  fill="currentColor"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  width="20"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    d="M9.5 2 11 6.5 15.5 8 11 9.5 9.5 14 8 9.5 3.5 8 8 6.5zm9.5 9 1 3 3 1-3 1-1 3-1-3-3-1 3-1zm-7 6 .75 2.25L15 20l-2.25.75L12 23l-.75-2.25L9 20l2.25-.75z"
+                  />
+                </svg>
+                Autopilot
+              </button>
+              <button
+                class="_button_1nw83_8 _destructive_1nw83_110"
+                data-kind="tertiary"
+                data-size="md"
+                role="button"
+                tabindex="0"
+              >
+                Delete
+              </button>
+            </div>
+            <section
+              aria-busy="false"
+              aria-label="Report of the agent"
+              class="AgentTodoView-module_report"
+              data-mode="autopilot"
+              data-state="finished"
+            >
+              <div
+                class="Flex-module_flex"
+                style="--mx-flex-display: flex; --mx-flex-direction: row; --mx-flex-align: center; --mx-flex-justify: start; --mx-flex-gap: var(--cpd-space-2x); --mx-flex-wrap: nowrap;"
+              >
+                <svg
+                  aria-hidden="true"
+                  class="AgentTodoView-module_reportIcon"
+                  fill="currentColor"
+                  height="16px"
+                  viewBox="0 0 24 24"
+                  width="16px"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    d="M9.5 2 11 6.5 15.5 8 11 9.5 9.5 14 8 9.5 3.5 8 8 6.5zm9.5 9 1 3 3 1-3 1-1 3-1-3-3-1 3-1zm-7 6 .75 2.25L15 20l-2.25.75L12 23l-.75-2.25L9 20l2.25-.75z"
+                  />
+                </svg>
+                <p
+                  class="_typography_6v6n8_153 _font-body-sm-semibold_6v6n8_36"
+                >
+                  What the autopilot did
+                </p>
+              </div>
+              <div
+                class="AgentTodoAutopilot-module_timeline"
+              >
+                <button
+                  class="AgentTodoAutopilot-module_moreSteps"
+                  type="button"
+                >
+                  Show all 10 steps
+                </button>
+                <ol
+                  aria-label="Steps of the agent"
+                  aria-live="polite"
+                  class="AgentTodoAutopilot-module_steps"
+                >
+                  <li
+                    class="AgentTodoAutopilot-module_step"
+                    data-failed="false"
+                    data-kind="command"
+                  >
+                    <span
+                      class="AgentTodoAutopilot-module_stepDot"
+                    >
+                      <svg
+                        aria-hidden="true"
+                        fill="currentColor"
+                        height="14px"
+                        viewBox="0 0 24 24"
+                        width="14px"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <path
+                          d="m8.825 12 1.475-1.475q.3-.3.3-.7t-.3-.7-.713-.3-.712.3L6.7 11.3q-.15.15-.213.325a1.1 1.1 0 0 0-.062.375q0 .2.063.375a.9.9 0 0 0 .212.325l2.175 2.175q.3.3.713.3.412 0 .712-.3t.3-.7-.3-.7zm6.35 0L13.7 13.475q-.3.3-.3.7t.3.7.713.3.712-.3L17.3 12.7q.15-.15.212-.325.063-.175.063-.375t-.062-.375a.9.9 0 0 0-.213-.325l-2.175-2.175a1 1 0 0 0-1.425 0q-.3.3-.3.7t.3.7zM5 21q-.824 0-1.412-.587A1.93 1.93 0 0 1 3 19V5q0-.824.587-1.412A1.93 1.93 0 0 1 5 3h14q.824 0 1.413.587Q21 4.176 21 5v14q0 .824-.587 1.413A1.93 1.93 0 0 1 19 21zm0-2h14V5H5z"
+                        />
+                      </svg>
+                    </span>
+                    <span
+                      class="AgentTodoAutopilot-module_stepLabel"
+                    >
+                      Ran
+                    </span>
+                    <code
+                      class="AgentTodoAutopilot-module_stepText"
+                      title="pnpm install"
+                    >
+                      pnpm install
+                    </code>
+                    <time
+                      class="AgentTodoAutopilot-module_stepTime"
+                    >
+                      10:02:40
+                    </time>
+                  </li>
+                  <li
+                    class="AgentTodoAutopilot-module_step"
+                    data-failed="true"
+                    data-kind="command"
+                  >
+                    <span
+                      class="AgentTodoAutopilot-module_stepDot"
+                    >
+                      <svg
+                        aria-hidden="true"
+                        fill="currentColor"
+                        height="14px"
+                        viewBox="0 0 24 24"
+                        width="14px"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <path
+                          d="M12 17q.424 0 .713-.288A.97.97 0 0 0 13 16a.97.97 0 0 0-.287-.713A.97.97 0 0 0 12 15a.97.97 0 0 0-.713.287A.97.97 0 0 0 11 16q0 .424.287.712.288.288.713.288m0-4q.424 0 .713-.287A.97.97 0 0 0 13 12V8a.97.97 0 0 0-.287-.713A.97.97 0 0 0 12 7a.97.97 0 0 0-.713.287A.97.97 0 0 0 11 8v4q0 .424.287.713.288.287.713.287m0 9a9.7 9.7 0 0 1-3.9-.788 10.1 10.1 0 0 1-3.175-2.137q-1.35-1.35-2.137-3.175A9.7 9.7 0 0 1 2 12q0-2.075.788-3.9a10.1 10.1 0 0 1 2.137-3.175q1.35-1.35 3.175-2.137A9.7 9.7 0 0 1 12 2q2.075 0 3.9.788a10.1 10.1 0 0 1 3.175 2.137q1.35 1.35 2.137 3.175A9.7 9.7 0 0 1 22 12a9.7 9.7 0 0 1-.788 3.9 10.1 10.1 0 0 1-2.137 3.175q-1.35 1.35-3.175 2.137A9.7 9.7 0 0 1 12 22"
+                        />
+                      </svg>
+                    </span>
+                    <span
+                      class="AgentTodoAutopilot-module_stepLabel"
+                    >
+                      Ran
+                    </span>
+                    <code
+                      class="AgentTodoAutopilot-module_stepText"
+                      title="pnpm test LoginForm"
+                    >
+                      pnpm test LoginForm
+                    </code>
+                    <time
+                      class="AgentTodoAutopilot-module_stepTime"
+                    >
+                      10:03:12
+                    </time>
+                  </li>
+                  <li
+                    class="AgentTodoAutopilot-module_step"
+                    data-failed="false"
+                    data-kind="edit"
+                  >
+                    <span
+                      class="AgentTodoAutopilot-module_stepDot"
+                    >
+                      <svg
+                        aria-hidden="true"
+                        fill="currentColor"
+                        height="14px"
+                        viewBox="0 0 24 24"
+                        width="14px"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <path
+                          clip-rule="evenodd"
+                          d="M15.706 2.637a2 2 0 0 1 2.829 0l2.828 2.828a2 2 0 0 1 0 2.829L9.605 20.052a1 1 0 0 1-.465.263L3.483 21.73a1 1 0 0 1-1.212-1.213l1.414-5.657a1 1 0 0 1 .263-.465zm1.224 7.262L14.102 7.07l-8.544 8.544-.943 3.771 3.771-.943z"
+                          fill-rule="evenodd"
+                        />
+                      </svg>
+                    </span>
+                    <span
+                      class="AgentTodoAutopilot-module_stepLabel"
+                    >
+                      Edited
+                    </span>
+                    <code
+                      class="AgentTodoAutopilot-module_stepText"
+                      title="src/components/LoginForm.test.tsx"
+                    >
+                      src/components/LoginForm.test.tsx
+                    </code>
+                    <time
+                      class="AgentTodoAutopilot-module_stepTime"
+                    >
+                      10:03:30
+                    </time>
+                  </li>
+                  <li
+                    class="AgentTodoAutopilot-module_step"
+                    data-failed="false"
+                    data-kind="command"
+                  >
+                    <span
+                      class="AgentTodoAutopilot-module_stepDot"
+                    >
+                      <svg
+                        aria-hidden="true"
+                        fill="currentColor"
+                        height="14px"
+                        viewBox="0 0 24 24"
+                        width="14px"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <path
+                          d="m8.825 12 1.475-1.475q.3-.3.3-.7t-.3-.7-.713-.3-.712.3L6.7 11.3q-.15.15-.213.325a1.1 1.1 0 0 0-.062.375q0 .2.063.375a.9.9 0 0 0 .212.325l2.175 2.175q.3.3.713.3.412 0 .712-.3t.3-.7-.3-.7zm6.35 0L13.7 13.475q-.3.3-.3.7t.3.7.713.3.712-.3L17.3 12.7q.15-.15.212-.325.063-.175.063-.375t-.062-.375a.9.9 0 0 0-.213-.325l-2.175-2.175a1 1 0 0 0-1.425 0q-.3.3-.3.7t.3.7zM5 21q-.824 0-1.412-.587A1.93 1.93 0 0 1 3 19V5q0-.824.587-1.412A1.93 1.93 0 0 1 5 3h14q.824 0 1.413.587Q21 4.176 21 5v14q0 .824-.587 1.413A1.93 1.93 0 0 1 19 21zm0-2h14V5H5z"
+                        />
+                      </svg>
+                    </span>
+                    <span
+                      class="AgentTodoAutopilot-module_stepLabel"
+                    >
+                      Ran
+                    </span>
+                    <code
+                      class="AgentTodoAutopilot-module_stepText"
+                      title="pnpm test LoginForm"
+                    >
+                      pnpm test LoginForm
+                    </code>
+                    <time
+                      class="AgentTodoAutopilot-module_stepTime"
+                    >
+                      10:03:58
+                    </time>
+                  </li>
+                  <li
+                    class="AgentTodoAutopilot-module_step"
+                    data-failed="false"
+                    data-kind="git"
+                  >
+                    <span
+                      class="AgentTodoAutopilot-module_stepDot"
+                    >
+                      <svg
+                        aria-hidden="true"
+                        fill="currentColor"
+                        height="14px"
+                        viewBox="0 0 24 24"
+                        width="14px"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <path
+                          d="M9.01 5v1H11c.333 0 1 0 1.5.5S13 7.667 13 8v7.01c0 .54.45.99.99.99H15v-1a2 2 0 0 1 2-2h3a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-3a2 2 0 0 1-2-2v-1h-1.01C12.34 18 11 16.66 11 15.01V9c0-1 0-1-1-1H9v1a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5c0-1.1.9-2 2-2h3.01a2 2 0 0 1 2 2"
+                        />
+                      </svg>
+                    </span>
+                    <span
+                      class="AgentTodoAutopilot-module_stepLabel"
+                    >
+                      Git
+                    </span>
+                    <code
+                      class="AgentTodoAutopilot-module_stepText"
+                      title="commit 3f9e2a1"
+                    >
+                      commit 3f9e2a1
+                    </code>
+                    <time
+                      class="AgentTodoAutopilot-module_stepTime"
+                    >
+                      10:04:01
+                    </time>
+                  </li>
+                  <li
+                    class="AgentTodoAutopilot-module_step"
+                    data-failed="false"
+                    data-kind="git"
+                  >
+                    <span
+                      class="AgentTodoAutopilot-module_stepDot"
+                    >
+                      <svg
+                        aria-hidden="true"
+                        fill="currentColor"
+                        height="14px"
+                        viewBox="0 0 24 24"
+                        width="14px"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <path
+                          d="M9.01 5v1H11c.333 0 1 0 1.5.5S13 7.667 13 8v7.01c0 .54.45.99.99.99H15v-1a2 2 0 0 1 2-2h3a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-3a2 2 0 0 1-2-2v-1h-1.01C12.34 18 11 16.66 11 15.01V9c0-1 0-1-1-1H9v1a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5c0-1.1.9-2 2-2h3.01a2 2 0 0 1 2 2"
+                        />
+                      </svg>
+                    </span>
+                    <span
+                      class="AgentTodoAutopilot-module_stepLabel"
+                    >
+                      Git
+                    </span>
+                    <code
+                      class="AgentTodoAutopilot-module_stepText"
+                      title="push origin pilot/fix-the-typo-a1b2c3"
+                    >
+                      push origin pilot/fix-the-typo-a1b2c3
+                    </code>
+                    <time
+                      class="AgentTodoAutopilot-module_stepTime"
+                    >
+                      10:04:03
+                    </time>
+                  </li>
+                </ol>
+              </div>
+              <p
+                class="_typography_6v6n8_153 _font-body-sm-regular_6v6n8_31 AgentTodoView-module_summary"
+              >
+                Fixed the label in the login form and added a test for it.
+              </p>
+              <div
+                aria-label="Branch of the autopilot"
+                class="AgentTodoAutopilot-module_branch"
+                role="group"
+              >
+                <div
+                  class="Flex-module_flex"
+                  style="--mx-flex-display: flex; --mx-flex-direction: row; --mx-flex-align: center; --mx-flex-justify: start; --mx-flex-gap: var(--cpd-space-2x); --mx-flex-wrap: wrap;"
+                >
+                  <span
+                    class="AgentTodoAutopilot-module_chip"
+                    data-kind="branch"
+                  >
+                    <svg
+                      aria-hidden="true"
+                      fill="currentColor"
+                      height="14px"
+                      viewBox="0 0 24 24"
+                      width="14px"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <path
+                        d="M9.01 5v1H11c.333 0 1 0 1.5.5S13 7.667 13 8v7.01c0 .54.45.99.99.99H15v-1a2 2 0 0 1 2-2h3a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-3a2 2 0 0 1-2-2v-1h-1.01C12.34 18 11 16.66 11 15.01V9c0-1 0-1-1-1H9v1a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5c0-1.1.9-2 2-2h3.01a2 2 0 0 1 2 2"
+                      />
+                    </svg>
+                    <code>
+                      pilot/fix-the-typo-a1b2c3
+                    </code>
+                  </span>
+                  <span
+                    class="AgentTodoAutopilot-module_chipMuted"
+                  >
+                    from main
+                  </span>
+                  <span
+                    class="AgentTodoAutopilot-module_chip"
+                    data-kind="commit"
+                  >
+                    <code>
+                      3f9e2a1
+                    </code>
+                  </span>
+                  <span
+                    class="AgentTodoAutopilot-module_chip"
+                    data-kind="pushed"
+                  >
+                    <svg
+                      aria-hidden="true"
+                      fill="currentColor"
+                      height="14px"
+                      viewBox="0 0 24 24"
+                      width="14px"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <path
+                        d="m10.6 13.8-2.15-2.15a.95.95 0 0 0-.7-.275.95.95 0 0 0-.7.275.95.95 0 0 0-.275.7q0 .425.275.7L9.9 15.9q.3.3.7.3t.7-.3l5.65-5.65a.95.95 0 0 0 .275-.7.95.95 0 0 0-.275-.7.95.95 0 0 0-.7-.275.95.95 0 0 0-.7.275zM12 22a9.7 9.7 0 0 1-3.9-.788 10.1 10.1 0 0 1-3.175-2.137q-1.35-1.35-2.137-3.175A9.7 9.7 0 0 1 2 12q0-2.075.788-3.9a10.1 10.1 0 0 1 2.137-3.175q1.35-1.35 3.175-2.137A9.7 9.7 0 0 1 12 2q2.075 0 3.9.788a10.1 10.1 0 0 1 3.175 2.137q1.35 1.35 2.137 3.175A9.7 9.7 0 0 1 22 12a9.7 9.7 0 0 1-.788 3.9 10.1 10.1 0 0 1-2.137 3.175q-1.35 1.35-3.175 2.137A9.7 9.7 0 0 1 12 22"
+                      />
+                    </svg>
+                    Pushed
+                  </span>
+                </div>
+                <div
+                  class="Flex-module_flex"
+                  style="--mx-flex-display: flex; --mx-flex-direction: row; --mx-flex-align: start; --mx-flex-justify: start; --mx-flex-gap: var(--cpd-space-2x); --mx-flex-wrap: wrap;"
+                >
+                  <a
+                    class="_button_1nw83_8 _has-icon_1nw83_60"
+                    data-kind="primary"
+                    data-size="sm"
+                    href="https://github.com/example/app/compare/main...pilot/fix-the-typo-a1b2c3"
+                    rel="noreferrer noopener"
+                    role="link"
+                    tabindex="0"
+                    target="_blank"
+                  >
+                    <svg
+                      aria-hidden="true"
+                      fill="currentColor"
+                      height="20"
+                      viewBox="0 0 24 24"
+                      width="20"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <path
+                        d="M17.924 6.617a1 1 0 0 1 .076.38V15a1 1 0 1 1-2 0V9.414l-8.293 8.293a1 1 0 0 1-1.414-1.414L14.586 8H9a1 1 0 0 1 0-2h8a1 1 0 0 1 .924.617"
+                      />
+                    </svg>
+                    Open pull request
+                  </a>
+                  <button
+                    aria-expanded="true"
+                    class="_button_1nw83_8"
+                    data-kind="secondary"
+                    data-size="sm"
+                    role="button"
+                    tabindex="0"
+                  >
+                    Hide changes
+                  </button>
+                  <button
+                    class="_button_1nw83_8 _has-icon_1nw83_60"
+                    data-kind="tertiary"
+                    data-size="sm"
+                    role="button"
+                    tabindex="0"
+                  >
+                    <svg
+                      aria-hidden="true"
+                      fill="currentColor"
+                      height="20"
+                      viewBox="0 0 24 24"
+                      width="20"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <path
+                        d="M4 20q-.824 0-1.412-.587A1.93 1.93 0 0 1 2 18V6q0-.824.587-1.412A1.93 1.93 0 0 1 4 4h6l2 2h8q.824 0 1.413.588Q22 7.175 22 8v10q0 .824-.587 1.413A1.93 1.93 0 0 1 20 20zm0-2h16V8h-8.825l-2-2H4z"
+                      />
+                    </svg>
+                    Open folder
+                  </button>
+                  <button
+                    class="_button_1nw83_8 _has-icon_1nw83_60"
+                    data-kind="tertiary"
+                    data-size="sm"
+                    role="button"
+                    tabindex="0"
+                  >
+                    <svg
+                      aria-hidden="true"
+                      fill="currentColor"
+                      height="20"
+                      viewBox="0 0 24 24"
+                      width="20"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <path
+                        d="m8.825 12 1.475-1.475q.3-.3.3-.7t-.3-.7-.713-.3-.712.3L6.7 11.3q-.15.15-.213.325a1.1 1.1 0 0 0-.062.375q0 .2.063.375a.9.9 0 0 0 .212.325l2.175 2.175q.3.3.713.3.412 0 .712-.3t.3-.7-.3-.7zm6.35 0L13.7 13.475q-.3.3-.3.7t.3.7.713.3.712-.3L17.3 12.7q.15-.15.212-.325.063-.175.063-.375t-.062-.375a.9.9 0 0 0-.213-.325l-2.175-2.175a1 1 0 0 0-1.425 0q-.3.3-.3.7t.3.7zM5 21q-.824 0-1.412-.587A1.93 1.93 0 0 1 3 19V5q0-.824.587-1.412A1.93 1.93 0 0 1 5 3h14q.824 0 1.413.587Q21 4.176 21 5v14q0 .824-.587 1.413A1.93 1.93 0 0 1 19 21zm0-2h14V5H5z"
+                      />
+                    </svg>
+                    Continue in the CLI
+                  </button>
+                  <button
+                    class="_button_1nw83_8 _destructive_1nw83_110"
+                    data-kind="tertiary"
+                    data-size="sm"
+                    role="button"
+                    tabindex="0"
+                  >
+                    Remove worktree
+                  </button>
+                </div>
+                <section
+                  aria-label="Changes of the autopilot"
+                  class="AgentTodoAutopilot-module_diff"
+                >
+                  <p
+                    class="_typography_6v6n8_153 _font-body-sm-semibold_6v6n8_36 AgentTodoAutopilot-module_diffTotal"
+                  >
+                    2 files changed
+                    <span
+                      class="AgentTodoAutopilot-module_additions"
+                    >
+                      +
+                      4
+                    </span>
+                    <span
+                      class="AgentTodoAutopilot-module_deletions"
+                    >
+                      −
+                      1
+                    </span>
+                  </p>
+                  <details
+                    class="AgentTodoAutopilot-module_diffFile"
+                    open=""
+                  >
+                    <summary
+                      class="AgentTodoAutopilot-module_diffHeader"
+                    >
+                      <span
+                        class="AgentTodoAutopilot-module_fileStatus"
+                        data-status="modified"
+                        title="Modified"
+                      >
+                        M
+                      </span>
+                      <code
+                        class="AgentTodoAutopilot-module_filePath"
+                      >
+                        src/components/LoginForm.tsx
+                      </code>
+                      <span
+                        class="AgentTodoAutopilot-module_additions"
+                      >
+                        +
+                        1
+                      </span>
+                      <span
+                        class="AgentTodoAutopilot-module_deletions"
+                      >
+                        −
+                        1
+                      </span>
+                      <span
+                        aria-hidden="true"
+                        class="AgentTodoAutopilot-module_bar"
+                      >
+                        <span
+                          data-type="add"
+                        />
+                        <span
+                          data-type="add"
+                        />
+                        <span
+                          data-type="add"
+                        />
+                        <span
+                          data-type="remove"
+                        />
+                        <span
+                          data-type="remove"
+                        />
+                      </span>
+                    </summary>
+                    <pre
+                      class="AgentTodoAutopilot-module_diffLines"
+                    >
+                      <span
+                        class="AgentTodoAutopilot-module_diffLine"
+                        data-type="hunk"
+                      >
+                        @@ -40,7 +40,7 @@ export function LoginForm()
+                        
+
+                      </span>
+                      <span
+                        class="AgentTodoAutopilot-module_diffLine"
+                        data-type="context"
+                      >
+                                 &lt;form onSubmit={onSubmit}&gt;
+                        
+
+                      </span>
+                      <span
+                        class="AgentTodoAutopilot-module_diffLine"
+                        data-type="remove"
+                      >
+                        -            &lt;Button type="submit"&gt;Sign inn&lt;/Button&gt;
+                        
+
+                      </span>
+                      <span
+                        class="AgentTodoAutopilot-module_diffLine"
+                        data-type="add"
+                      >
+                        +            &lt;Button type="submit"&gt;Sign in&lt;/Button&gt;
+                        
+
+                      </span>
+                      <span
+                        class="AgentTodoAutopilot-module_diffLine"
+                        data-type="context"
+                      >
+                                 &lt;/form&gt;
+                        
+
+                      </span>
+                    </pre>
+                  </details>
+                  <details
+                    class="AgentTodoAutopilot-module_diffFile"
+                    open=""
+                  >
+                    <summary
+                      class="AgentTodoAutopilot-module_diffHeader"
+                    >
+                      <span
+                        class="AgentTodoAutopilot-module_fileStatus"
+                        data-status="added"
+                        title="Added"
+                      >
+                        A
+                      </span>
+                      <code
+                        class="AgentTodoAutopilot-module_filePath"
+                      >
+                        src/components/LoginForm.test.tsx
+                      </code>
+                      <span
+                        class="AgentTodoAutopilot-module_additions"
+                      >
+                        +
+                        3
+                      </span>
+                      <span
+                        class="AgentTodoAutopilot-module_deletions"
+                      >
+                        −
+                        0
+                      </span>
+                      <span
+                        aria-hidden="true"
+                        class="AgentTodoAutopilot-module_bar"
+                      >
+                        <span
+                          data-type="add"
+                        />
+                        <span
+                          data-type="add"
+                        />
+                        <span
+                          data-type="add"
+                        />
+                        <span
+                          data-type="add"
+                        />
+                        <span
+                          data-type="add"
+                        />
+                      </span>
+                    </summary>
+                    <pre
+                      class="AgentTodoAutopilot-module_diffLines"
+                    >
+                      <span
+                        class="AgentTodoAutopilot-module_diffLine"
+                        data-type="hunk"
+                      >
+                        @@ -0,0 +1,3 @@
+                        
+
+                      </span>
+                      <span
+                        class="AgentTodoAutopilot-module_diffLine"
+                        data-type="add"
+                      >
+                        +it("says Sign in", () =&gt; {
+                        
+
+                      </span>
+                      <span
+                        class="AgentTodoAutopilot-module_diffLine"
+                        data-type="add"
+                      >
+                        +    expect(render(&lt;LoginForm /&gt;).getByText("Sign in")).toBeVisible();
+                        
+
+                      </span>
+                      <span
+                        class="AgentTodoAutopilot-module_diffLine"
+                        data-type="add"
+                      >
+                        +});
+                        
+
+                      </span>
+                    </pre>
+                  </details>
+                </section>
+              </div>
+              <div
+                class="Flex-module_flex"
+                style="--mx-flex-display: flex; --mx-flex-direction: row; --mx-flex-align: start; --mx-flex-justify: start; --mx-flex-gap: 0; --mx-flex-wrap: nowrap;"
+              >
+                <button
+                  class="_button_1nw83_8 _has-icon_1nw83_60"
+                  data-kind="secondary"
+                  data-size="sm"
+                  role="button"
+                  tabindex="0"
+                >
+                  <svg
+                    aria-hidden="true"
+                    fill="currentColor"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    width="20"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      d="m1.5 21.25 1.45-4.95a10.2 10.2 0 0 1-.712-2.1A10.2 10.2 0 0 1 2 12q0-2.075.788-3.9a10.1 10.1 0 0 1 2.137-3.175q1.35-1.35 3.175-2.137A9.7 9.7 0 0 1 12 2q2.075 0 3.9.788a10.1 10.1 0 0 1 3.175 2.137q1.35 1.35 2.137 3.175A9.7 9.7 0 0 1 22 12a9.7 9.7 0 0 1-.788 3.9 10.1 10.1 0 0 1-2.137 3.175q-1.35 1.35-3.175 2.137A9.7 9.7 0 0 1 12 22q-1.125 0-2.2-.238a10.2 10.2 0 0 1-2.1-.712L2.75 22.5a.94.94 0 0 1-1-.25.94.94 0 0 1-.25-1m2.45-1.2 3.2-.95a1 1 0 0 1 .275-.062q.15-.013.275-.013.225 0 .438.038.212.036.412.137a7.4 7.4 0 0 0 1.675.6Q11.1 20 12 20q3.35 0 5.675-2.325T20 12t-2.325-5.675T12 4 6.325 6.325 4 12q0 .9.2 1.775t.6 1.675q.176.325.188.688t-.088.712z"
+                    />
+                  </svg>
+                  Tell the chat
+                </button>
               </div>
             </section>
           </div>

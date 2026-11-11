@@ -13,6 +13,7 @@ import { type ViewModel, useViewModel } from "../../core/viewmodel";
 import { useI18n } from "../../core/i18n/i18nContext";
 import { Flex } from "../../core/utils/Flex";
 import styles from "./AgentTodoView.module.css";
+import { AgentTodoBranchCard, AgentTodoChatReportForm, AgentTodoTimeline } from "./AgentTodoAutopilot";
 
 /**
  * Which tasks are shown: those still to do, or those done.
@@ -23,17 +24,87 @@ export type AgentTodoFilter = "open" | "done";
  * How the agent works on a task.
  * - `investigate`: it looks into the project and reports what to do, with a ticket, without changing anything.
  * - `implement`: it changes files of the project to do the task, without committing.
+ * - `autopilot`: it does the task on a branch of its own in a separate worktree, runs the allowed commands there,
+ *   and commits and pushes the branch.
  */
-export type AgentTodoRunMode = "investigate" | "implement";
+export type AgentTodoRunMode = "investigate" | "implement" | "autopilot";
 
 /**
  * Why the agent couldn't work on a task.
  * - `no_workspace`: no project folder is set in the agent settings.
+ * - `no_repository`: the project folder is not in a git repository, which the autopilot needs.
  * - `not_connected`: no AI provider is connected.
  * - `rate_limited`: the provider asks to slow down, or the plan's allowance is used up.
  * - `unknown`: anything else.
  */
-export type AgentTodoRunError = "no_workspace" | "not_connected" | "rate_limited" | "unknown";
+export type AgentTodoRunError = "no_workspace" | "no_repository" | "not_connected" | "rate_limited" | "unknown";
+
+/**
+ * One step of the agent's work, as the timeline shows it.
+ */
+export interface AgentTodoStep {
+    /**
+     * What it did: looked at the project (`list`, `read`, `search`), changed a file (`write`, `edit`), ran a
+     * command (`command`), or worked on its branch (`git`).
+     */
+    kind: "list" | "read" | "search" | "write" | "edit" | "command" | "git";
+    /** The file, search, command or git action */
+    text: string;
+    /** When, ready for display */
+    time: string;
+    failed: boolean;
+}
+
+/**
+ * The branch the autopilot did a task on.
+ */
+export interface AgentTodoBranch {
+    name: string;
+    /** The branch it started from */
+    base: string;
+    /** The short ID of the commit with the changes, if there were any */
+    commit?: string;
+    pushed: boolean;
+    /** Why it couldn't be pushed */
+    pushError?: string;
+    /** A link to open a pull request for it */
+    pullRequestUrl?: string;
+    /** Whether its worktree is still there, to look at or continue in */
+    hasWorktree: boolean;
+}
+
+/**
+ * One file of the changes of the autopilot.
+ */
+export interface AgentTodoDiffFile {
+    path: string;
+    status: "added" | "modified" | "deleted" | "renamed";
+    additions: number;
+    deletions: number;
+    /** The lines of the diff: unchanged, added, removed, or the header of a block of changes */
+    lines: { type: "context" | "add" | "remove" | "hunk"; text: string }[];
+    /** Whether lines were left out because the diff is too long, or the file is binary */
+    truncated: boolean;
+}
+
+/**
+ * The changes of a task that are shown.
+ */
+export interface AgentTodoDiff {
+    /** The task */
+    id: string;
+    state: "loading" | "loaded" | "failed";
+    files: AgentTodoDiffFile[];
+}
+
+/**
+ * Telling the chat a task came from what the agent did.
+ */
+export interface AgentTodoChatReport {
+    /** The task */
+    id: string;
+    state: "sending" | "sent" | "failed";
+}
 
 /**
  * The coding CLI that "Do it" opens in a terminal: Claude Code or GitHub Copilot CLI.
@@ -70,6 +141,10 @@ export interface AgentTodoRun {
     changedFiles: string[];
     /** Why it failed */
     error?: AgentTodoRunError;
+    /** The steps of the work, oldest first */
+    steps: AgentTodoStep[];
+    /** The branch of the autopilot */
+    branch?: AgentTodoBranch;
 }
 
 /**
@@ -91,6 +166,8 @@ export interface AgentTodoItem {
     canOpenChat: boolean;
     /** The latest work of the agent on it */
     run?: AgentTodoRun;
+    /** What to tell the chat it came from about the work of the agent, to change before sending; none to tell */
+    chatReport?: string;
 }
 
 export interface AgentTodoViewSnapshot {
@@ -112,6 +189,10 @@ export interface AgentTodoViewSnapshot {
     cli: AgentTodoCli;
     /** The latest opening of a task in the coding CLI */
     launch?: AgentTodoLaunch;
+    /** The changes of a task that are shown */
+    diff?: AgentTodoDiff;
+    /** The latest report to a chat */
+    chatReport?: AgentTodoChatReport;
 }
 
 export interface AgentTodoViewActions {
@@ -133,6 +214,16 @@ export interface AgentTodoViewActions {
     chooseProject: () => void;
     /** Open a task in the coding CLI, in the chosen project folder, with the user's own prompt */
     openInCli: (id: string, instructions: string) => void;
+    /** Show the changes the autopilot made for a task, or hide them again */
+    toggleDiff: (id: string) => void;
+    /** Open the worktree of the autopilot with the file manager */
+    openWorktree: (id: string) => void;
+    /** Continue a task in the coding CLI, in the worktree of the autopilot */
+    continueInCli: (id: string) => void;
+    /** Remove the worktree of the autopilot; a committed branch is kept */
+    removeWorktree: (id: string) => void;
+    /** Tell the chat a task came from what the agent did */
+    reportToChat: (id: string, text: string) => void;
 }
 
 /**
@@ -148,7 +239,8 @@ export interface AgentTodoViewProps {
 /**
  * The user's to-do list: what others asked them to do in chats, collected by the agent, and what they added
  * themselves. The agent can look into a task in the user's project folder, and "Do it" opens the task in a
- * coding CLI in a terminal, in a project folder the user chooses, with a prompt of their own.
+ * coding CLI in a terminal, in a project folder the user chooses, with a prompt of their own. The autopilot does
+ * a task on a branch of its own, shows its steps as they happen, and then its commit, push and changes.
  *
  * @example
  * ```tsx
@@ -287,6 +379,15 @@ function AgentTodoEntry({ item, snapshot, vm }: Readonly<AgentTodoEntryProps>): 
                                 >
                                     {_t("agent_todo|implement")}
                                 </Button>
+                                <Button
+                                    kind="primary"
+                                    size="md"
+                                    Icon={AiIcon}
+                                    disabled={!snapshot.canRun || isRunning}
+                                    onClick={() => vm.runTask(id, "autopilot")}
+                                >
+                                    {_t("agent_todo|autopilot")}
+                                </Button>
                             </>
                         )}
                         <Button kind="tertiary" size="md" destructive onClick={() => vm.deleteTask(id)}>
@@ -302,7 +403,7 @@ function AgentTodoEntry({ item, snapshot, vm }: Readonly<AgentTodoEntryProps>): 
                             onCancel={() => setLaunchOpen(false)}
                         />
                     )}
-                    {run && <AgentTodoRunReport run={run} />}
+                    {run && <AgentTodoRunReport id={id} item={item} run={run} snapshot={snapshot} vm={vm} />}
                 </Flex>
             </Flex>
         </li>
@@ -408,30 +509,51 @@ function AgentTodoLaunchForm({ id, snapshot, vm, onCancel }: Readonly<AgentTodoL
     );
 }
 
-/** What the agent did on a task: that it is working, its report, or why it failed */
-function AgentTodoRunReport({ run }: Readonly<{ run: AgentTodoRun }>): JSX.Element {
+interface AgentTodoRunReportProps {
+    id: string;
+    item: AgentTodoItem;
+    run: AgentTodoRun;
+    snapshot: AgentTodoViewSnapshot;
+    vm: AgentTodoViewModel;
+}
+
+/**
+ * What the agent did on a task: that it is working, its steps, its report or why it failed, and for the
+ * autopilot its branch and changes.
+ */
+function AgentTodoRunReport({ id, item, run, snapshot, vm }: Readonly<AgentTodoRunReportProps>): JSX.Element {
     const { translate: _t } = useI18n();
     const errorMessages: Record<AgentTodoRunError, string> = {
         no_workspace: _t("agent_todo|error_no_workspace"),
+        no_repository: _t("agent_todo|error_no_repository"),
         not_connected: _t("agent_todo|error_not_connected"),
         rate_limited: _t("agent_todo|error_rate_limited"),
         unknown: _t("agent_todo|error_unknown"),
     };
+    const runningHeadings: Record<AgentTodoRunMode, string> = {
+        investigate: _t("agent_todo|running_investigate"),
+        implement: _t("agent_todo|running_implement"),
+        autopilot: _t("agent_todo|running_autopilot"),
+    };
+    const reportHeadings: Record<AgentTodoRunMode, string> = {
+        investigate: _t("agent_todo|report_investigate"),
+        implement: _t("agent_todo|report_implement"),
+        autopilot: _t("agent_todo|report_autopilot"),
+    };
+    const isRunning = run.state === "running";
     let heading: string;
-    if (run.state === "running") {
-        heading =
-            run.mode === "investigate" ? _t("agent_todo|running_investigate") : _t("agent_todo|running_implement");
-    } else if (run.state === "failed") {
-        heading = errorMessages[run.error ?? "unknown"];
-    } else {
-        heading = run.mode === "investigate" ? _t("agent_todo|report_investigate") : _t("agent_todo|report_implement");
-    }
+    if (isRunning) heading = runningHeadings[run.mode];
+    else if (run.state === "failed") heading = errorMessages[run.error ?? "unknown"];
+    else heading = reportHeadings[run.mode];
+    // The branch card shows the autopilot's changes, so the plain list is only for "implement"
+    const showChangedFiles = run.changedFiles.length > 0 && !run.branch;
 
     return (
         <section
             className={styles.report}
             data-state={run.state}
-            aria-busy={run.state === "running"}
+            data-mode={run.mode}
+            aria-busy={isRunning}
             aria-label={_t("agent_todo|report_label")}
         >
             <Flex align="center" gap="var(--cpd-space-2x)">
@@ -440,12 +562,13 @@ function AgentTodoRunReport({ run }: Readonly<{ run: AgentTodoRun }>): JSX.Eleme
                     {heading}
                 </Text>
             </Flex>
-            {run.state !== "running" && run.summary && (
+            <AgentTodoTimeline steps={run.steps} isRunning={isRunning} />
+            {!isRunning && run.summary && (
                 <Text size="sm" className={styles.summary}>
                     {run.summary}
                 </Text>
             )}
-            {run.changedFiles.length > 0 && (
+            {showChangedFiles && (
                 <>
                     <Text size="sm" weight="semibold">
                         {_t("agent_todo|changed_files")}
@@ -458,6 +581,18 @@ function AgentTodoRunReport({ run }: Readonly<{ run: AgentTodoRun }>): JSX.Eleme
                         ))}
                     </ul>
                 </>
+            )}
+            {run.branch && (
+                <AgentTodoBranchCard id={id} branch={run.branch} isRunning={isRunning} diff={snapshot.diff} vm={vm} />
+            )}
+            {!isRunning && item.chatReport && (
+                <AgentTodoChatReportForm
+                    key={item.chatReport}
+                    id={id}
+                    text={item.chatReport}
+                    report={snapshot.chatReport}
+                    vm={vm}
+                />
             )}
         </section>
     );

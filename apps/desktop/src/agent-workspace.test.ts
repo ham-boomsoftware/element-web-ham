@@ -8,7 +8,7 @@ Please see LICENSE files in the repository root for full details.
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { expect, describe, it, beforeEach, afterEach } from "vitest";
+import { expect, describe, it, beforeEach, afterEach, vi } from "vitest";
 
 import { WorkspaceTools } from "./agent-workspace.js";
 
@@ -143,5 +143,59 @@ describe("WorkspaceTools", () => {
 
         expect(await tools.run("workspace_read", { path: 3 })).toBe("Error: path must be a string");
         expect(await tools.run("workspace_read", null)).toBe("Error: path must be a string");
+    });
+
+    describe("running commands", () => {
+        const ALLOWED = "node -e \"console.log(require('fs').readdirSync('.').sort().join(','))\"";
+        const FAILING = "node -e \"console.error('broken'); process.exit(3)\"";
+
+        it("offers workspace_run with the allowed commands only when it may write", () => {
+            const reading = new WorkspaceTools(root, false, { commands: [ALLOWED] });
+            const writing = new WorkspaceTools(root, true, { commands: [ALLOWED] });
+
+            expect(reading.definitions.map((tool) => tool.name)).not.toContain("workspace_run");
+            expect(writing.definitions.at(-1)).toMatchObject({ name: "workspace_run" });
+            expect(writing.definitions.at(-1)?.description).toContain(`- ${ALLOWED}`);
+        });
+
+        it("runs an allowed command in the project and reports its exit code, output and step", async () => {
+            const onStep = vi.fn();
+            const tools = new WorkspaceTools(root, true, { commands: [ALLOWED, FAILING], onStep });
+
+            expect(await tools.run("workspace_run", { command: ` ${ALLOWED} ` })).toBe(
+                "Exit code 0\n.git,README.md,node_modules,src",
+            );
+            expect(await tools.run("workspace_run", { command: FAILING })).toBe("Exit code 3\nbroken");
+            expect(onStep.mock.calls.map(([step]) => [step.kind, step.text, step.failed])).toEqual([
+                ["command", ALLOWED, undefined],
+                ["command", FAILING, true],
+            ]);
+        });
+
+        it("refuses a command that is not exactly an allowed one", async () => {
+            const tools = new WorkspaceTools(root, true, { commands: [ALLOWED] });
+
+            expect(await tools.run("workspace_run", { command: `${ALLOWED} && echo hacked` })).toMatch(
+                /^Error: ".*" is not allowed/,
+            );
+            expect(await new WorkspaceTools(root, true).run("workspace_run", { command: ALLOWED })).toBe(
+                "Error: there is no tool workspace_run",
+            );
+        });
+    });
+
+    it("tells about each tool it runs", async () => {
+        const onStep = vi.fn();
+        const tools = new WorkspaceTools(root, true, { onStep });
+
+        await tools.run("workspace_read", { path: "src/app.ts" });
+        await tools.run("workspace_search", { pattern: "Hello", path: "src" });
+        await tools.run("workspace_edit", { path: "src/app.ts", old_text: "missing", new_text: "x" });
+
+        expect(onStep.mock.calls.map(([step]) => [step.kind, step.text, step.failed])).toEqual([
+            ["read", "src/app.ts", undefined],
+            ["search", "Hello", undefined],
+            ["edit", "src/app.ts", true],
+        ]);
     });
 });

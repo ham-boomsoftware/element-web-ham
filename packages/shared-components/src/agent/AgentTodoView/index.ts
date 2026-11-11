@@ -7,13 +7,18 @@
 
 export { AgentTodoView } from "./AgentTodoView";
 export type {
+    AgentTodoBranch,
+    AgentTodoChatReport,
     AgentTodoCli,
+    AgentTodoDiff,
+    AgentTodoDiffFile,
     AgentTodoFilter,
     AgentTodoItem,
     AgentTodoLaunch,
     AgentTodoRun,
     AgentTodoRunError,
     AgentTodoRunMode,
+    AgentTodoStep,
     AgentTodoViewActions,
     AgentTodoViewModel,
     AgentTodoViewProps,

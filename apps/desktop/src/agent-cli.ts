@@ -73,7 +73,11 @@ export async function openAgentTaskInCli(
         console.error("Failed to open the coding CLI", e);
         return failure("unavailable", e instanceof Error ? e.message : String(e));
     }
-    rememberProject(path.resolve(folder));
+    // The worktree of the autopilot is no project of its own to offer again
+    const worktree = task.run?.branch?.worktreePath;
+    if (!worktree || path.resolve(worktree).toLowerCase() !== path.resolve(folder).toLowerCase()) {
+        rememberProject(path.resolve(folder));
+    }
     return { ok: true, data: undefined };
 }
 

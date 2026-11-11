@@ -54,6 +54,8 @@ export class AgentSettingsViewModel
             replySuggestions: true,
             taskDetection: true,
             autoInvestigate: false,
+            autopilot: false,
+            autopilotCommands: [],
             codingCli: "claude",
         });
         void this.load();
@@ -74,6 +76,8 @@ export class AgentSettingsViewModel
             replySuggestions,
             taskDetection,
             autoInvestigate,
+            autopilot: status.autopilot,
+            autopilotCommands: status.autopilotCommands,
             workspacePath: status.workspacePath,
             codingCli: status.codingCli,
         });
@@ -195,6 +199,20 @@ export class AgentSettingsViewModel
         void (async () => {
             const result = await this.run(() => this.props.agent.setSettings({ autoInvestigate }));
             if (result?.ok) this.snapshot.merge({ autoInvestigate: result.data.autoInvestigate });
+        })();
+    };
+
+    public setAutopilot = (autopilot: boolean): void => {
+        void (async () => {
+            const result = await this.run(() => this.props.agent.setSettings({ autopilot }));
+            if (result?.ok) this.snapshot.merge({ autopilot: result.data.autopilot });
+        })();
+    };
+
+    public saveAutopilotCommands = (autopilotCommands: string[]): void => {
+        void (async () => {
+            const result = await this.run(() => this.props.agent.setSettings({ autopilotCommands }));
+            if (result?.ok) this.snapshot.merge({ autopilotCommands: result.data.autopilotCommands });
         })();
     };
 

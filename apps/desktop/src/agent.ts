@@ -66,8 +66,16 @@ const DEFAULT_SETTINGS: AgentSettings = {
     replySuggestions: true,
     taskDetection: true,
     autoInvestigate: false,
+    autopilot: false,
+    autopilotCommands: [],
     codingCli: "claude",
 };
+
+/** How many commands the autopilot may be allowed to run */
+const MAX_AUTOPILOT_COMMANDS = 50;
+
+/** The longest command the autopilot may be allowed to run */
+const MAX_AUTOPILOT_COMMAND_LENGTH = 500;
 
 const PROVIDERS: readonly AgentProvider[] = ["claude", "copilot"];
 
@@ -199,6 +207,8 @@ export function setAgentSettings(changes: unknown): AgentResult<AgentSettings> {
         replySuggestions,
         taskDetection,
         autoInvestigate,
+        autopilot,
+        autopilotCommands,
         workspacePath,
         codingCli,
     } = changes as Partial<AgentSettings>;
@@ -208,6 +218,17 @@ export function setAgentSettings(changes: unknown): AgentResult<AgentSettings> {
     if (replySuggestions !== undefined && typeof replySuggestions !== "boolean") return failure("invalid_request");
     if (taskDetection !== undefined && typeof taskDetection !== "boolean") return failure("invalid_request");
     if (autoInvestigate !== undefined && typeof autoInvestigate !== "boolean") return failure("invalid_request");
+    if (autopilot !== undefined && typeof autopilot !== "boolean") return failure("invalid_request");
+    if (
+        autopilotCommands !== undefined &&
+        (!Array.isArray(autopilotCommands) ||
+            autopilotCommands.length > MAX_AUTOPILOT_COMMANDS ||
+            !autopilotCommands.every(
+                (command) => typeof command === "string" && command.length <= MAX_AUTOPILOT_COMMAND_LENGTH,
+            ))
+    ) {
+        return failure("invalid_request");
+    }
     if (workspacePath !== undefined && typeof workspacePath !== "string") return failure("invalid_request");
     if (workspacePath && !isDirectory(workspacePath)) return failure("no_workspace");
     if (codingCli !== undefined && codingCli !== "claude" && codingCli !== "copilot") {
@@ -223,6 +244,10 @@ export function setAgentSettings(changes: unknown): AgentResult<AgentSettings> {
     if (replySuggestions !== undefined) settings.replySuggestions = replySuggestions;
     if (taskDetection !== undefined) settings.taskDetection = taskDetection;
     if (autoInvestigate !== undefined) settings.autoInvestigate = autoInvestigate;
+    if (autopilot !== undefined) settings.autopilot = autopilot;
+    if (autopilotCommands !== undefined) {
+        settings.autopilotCommands = [...new Set(autopilotCommands.map((command) => command.trim()).filter(Boolean))];
+    }
     if (workspacePath !== undefined) settings.workspacePath = workspacePath ? path.resolve(workspacePath) : undefined;
     if (codingCli !== undefined) settings.codingCli = codingCli;
     getAgentStore().set("settings", settings);

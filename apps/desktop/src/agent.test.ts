@@ -163,6 +163,8 @@ describe("agent", () => {
                 replySuggestions: true,
                 taskDetection: true,
                 autoInvestigate: false,
+                autopilot: false,
+                autopilotCommands: [],
                 codingCli: "claude",
                 connected: { claude: false, copilot: false },
                 recentProjects: [],
@@ -182,9 +184,17 @@ describe("agent", () => {
                     replySuggestions: true,
                     taskDetection: true,
                     autoInvestigate: false,
+                    autopilot: false,
+                    autopilotCommands: [],
                     codingCli: "claude",
                 },
             });
+        });
+
+        it("stores the autopilot settings with each allowed command once, trimmed", () => {
+            expect(
+                setAgentSettings({ autopilot: true, autopilotCommands: [" pnpm test ", "", "pnpm test", "pnpm lint"] }),
+            ).toMatchObject({ ok: true, data: { autopilot: true, autopilotCommands: ["pnpm test", "pnpm lint"] } });
         });
 
         it("stores the task settings and the workspace as an absolute path", () => {
@@ -215,6 +225,9 @@ describe("agent", () => {
             { replySuggestions: "yes" },
             { taskDetection: 1 },
             { autoInvestigate: "no" },
+            { autopilot: "yes" },
+            { autopilotCommands: "pnpm test" },
+            { autopilotCommands: [1] },
             { workspacePath: 3 },
             { codingCli: "cursor" },
         ])("refuses invalid settings %j", (changes) => {

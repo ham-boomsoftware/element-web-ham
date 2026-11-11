@@ -37,6 +37,8 @@ describe("<AgentSettingsView />", () => {
             "setReplySuggestions",
             "setTaskDetection",
             "setAutoInvestigate",
+            "setAutopilot",
+            "saveAutopilotCommands",
             "chooseWorkspace",
             "clearWorkspace",
             "setCodingCli",
@@ -194,6 +196,33 @@ describe("<AgentSettingsView />", () => {
 
         await user.click(screen.getByRole("button", { name: "Remove" }));
         expect(WithWorkspace.args.clearWorkspace).toHaveBeenCalled();
+    });
+
+    it("turns the autopilot on and off, and saves the commands it may run", async () => {
+        const user = userEvent.setup();
+        render(<WithWorkspace />);
+
+        const toggle = screen.getByRole("switch", { name: "Autopilot for coding tasks" });
+        expect(toggle).toBeChecked();
+        await user.click(toggle);
+        expect(WithWorkspace.args.setAutopilot).toHaveBeenCalledWith(false);
+
+        const commands = screen.getByRole("textbox", { name: "Commands the autopilot may run" });
+        expect(commands).toHaveValue("pnpm install\npnpm test");
+        const save = screen.getByRole("button", { name: "Save commands" });
+        expect(save).toBeDisabled();
+        await user.type(commands, "\n\n  pnpm lint  ");
+        await user.click(save);
+        expect(WithWorkspace.args.saveAutopilotCommands).toHaveBeenCalledWith([
+            "pnpm install",
+            "pnpm test",
+            "pnpm lint",
+        ]);
+    });
+
+    it("needs a project folder for the autopilot", () => {
+        render(<Connected />);
+        expect(screen.getByRole("switch", { name: "Autopilot for coding tasks" })).toBeDisabled();
     });
 
     it("chooses the coding CLI that does tasks", async () => {
