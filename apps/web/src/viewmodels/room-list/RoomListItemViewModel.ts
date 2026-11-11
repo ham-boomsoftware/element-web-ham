@@ -16,6 +16,7 @@ import {
 import { ClientEvent, KnownMembership, RoomEvent } from "matrix-js-sdk/src/matrix";
 import { CallType } from "matrix-js-sdk/src/webrtc/call";
 import { logger } from "matrix-js-sdk/src/logger";
+import type { AgentRoomRule } from "shared-types";
 
 import type { Room, MatrixClient, RoomMember, ClientEventHandlerMap } from "matrix-js-sdk/src/matrix";
 import type { RoomNotificationState } from "../../stores/notifications/RoomNotificationState";
@@ -391,9 +392,10 @@ export class RoomListItemViewModel
         // In the flat list the favourites keep the position the user drags them to (see RecencySorter). With
         // sections, a room is dragged onto a section header instead.
         const canReorder = isFavourite && !areSectionsEnabled && canChangeSection;
-        // The agent replies to direct messages only, and only on platforms that have one
-        const canUseAgent = isDm && AgentRoomStore.instance.isAvailable;
-        const isAgent = canUseAgent && AgentRoomStore.instance.isAgentRoom(room.roomId);
+        // Rules for the agent can be set on platforms that have one; it replies by itself in direct messages only
+        const canUseAgent = AgentRoomStore.instance.isAvailable;
+        const canAgentReply = canUseAgent && isDm;
+        const agentRule = canUseAgent ? AgentRoomStore.instance.getRule(room.roomId) : undefined;
 
         return {
             id: room.roomId,
@@ -428,7 +430,8 @@ export class RoomListItemViewModel
             canChangeSection,
             canReorder,
             canUseAgent,
-            isAgent,
+            canAgentReply,
+            agentRule,
         };
     }
 
@@ -527,8 +530,8 @@ export class RoomListItemViewModel
         }
     };
 
-    public onToggleAgent = (): void => {
-        void AgentRoomStore.instance.setAgentRoom(this.props.room.roomId, !this.snapshot.current.isAgent);
+    public onSetAgentRule = (rule: AgentRoomRule | undefined): void => {
+        void AgentRoomStore.instance.setRule(this.props.room.roomId, rule);
     };
 
     private onCustomSectionsChange = (): void => {

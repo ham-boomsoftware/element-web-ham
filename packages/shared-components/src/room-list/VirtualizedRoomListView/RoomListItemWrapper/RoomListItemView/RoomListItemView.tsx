@@ -8,6 +8,7 @@
 import React, { type JSX, memo, useEffect, useRef, useState, type ReactNode, type Ref } from "react";
 import classNames from "classnames";
 import { useMergeRefs } from "react-merge-refs";
+import type { AgentRoomRule } from "shared-types";
 
 import { Flex } from "../../../../core/utils/Flex";
 import { type NotificationDecorationData } from "./NotificationDecoration";
@@ -111,10 +112,12 @@ export interface RoomListItemViewSnapshot {
      * (the favourites in the flat list), instead of being placed by its latest message.
      */
     canReorder: boolean;
-    /** Whether the room can be marked for the agent to reply in: a direct message, on a platform with an agent */
+    /** Whether a rule for the agent can be set for the room: on a platform with an agent */
     canUseAgent: boolean;
-    /** Whether the agent replies in this room */
-    isAgent: boolean;
+    /** Whether the agent can reply in the room by itself: a direct message, on a platform with an agent */
+    canAgentReply: boolean;
+    /** What the agent does in this room, or undefined if the room follows the agent settings */
+    agentRule?: AgentRoomRule;
 }
 
 /**
@@ -146,8 +149,8 @@ export interface RoomListItemViewActions {
     onToggleSection: (tag: string) => void;
     /** Called when removing the room from a section */
     onRemoveFromSection: () => void;
-    /** Called to mark the room for the agent to reply in, or to unmark it */
-    onToggleAgent: () => void;
+    /** Called to set what the agent does in the room, or with undefined to let the room follow the agent settings */
+    onSetAgentRule: (rule: AgentRoomRule | undefined) => void;
 }
 
 /**

@@ -58,6 +58,20 @@ export interface AgentStatus extends AgentSettings {
 }
 
 /**
+ * What the agent does in a room, if the user set a rule for it. A room without a rule follows the settings.
+ * - `auto_reply`: the agent replies by itself. Direct messages only.
+ * - `tasks_only`: no reply suggestions and no replies; requests are looked for in every message, also in group
+ *   chats where the user isn't mentioned.
+ * - `ignore`: the agent does nothing in the room.
+ */
+export type AgentRoomRule = "auto_reply" | "tasks_only" | "ignore";
+
+/**
+ * The rules of a user's rooms, by room ID. Rooms without a rule are left out.
+ */
+export type AgentRoomRules = Record<string, AgentRoomRule>;
+
+/**
  * One message of the conversation the agent replies to.
  * `assistant` is a message of the user the agent writes for, `user` a message of their chat partner.
  */

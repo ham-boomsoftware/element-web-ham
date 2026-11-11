@@ -74,8 +74,8 @@ const agent = vi.hoisted(() => ({
     connectAgent: vi.fn(),
     disconnectAgent: vi.fn(),
     listAgentModels: vi.fn(),
-    getAgentRooms: vi.fn(),
-    setAgentRoom: vi.fn(),
+    getAgentRoomRules: vi.fn(),
+    setAgentRoomRule: vi.fn(),
     generateAgentReply: vi.fn(),
     generateAgentSuggestions: vi.fn(),
 }));
@@ -387,8 +387,8 @@ describe("ipc agent commands", () => {
         ["agentConnect", agent.connectAgent, ["claude", "sk-ant-test"]],
         ["agentDisconnect", agent.disconnectAgent, ["copilot"]],
         ["agentListModels", agent.listAgentModels, ["claude"]],
-        ["agentGetRooms", agent.getAgentRooms, ["@alice:example.org"]],
-        ["agentSetRoom", agent.setAgentRoom, ["@alice:example.org", "!dm:example.org", true]],
+        ["agentGetRoomRules", agent.getAgentRoomRules, ["@alice:example.org"]],
+        ["agentSetRoomRule", agent.setAgentRoomRule, ["@alice:example.org", "!dm:example.org", "auto_reply"]],
         ["agentGenerateReply", agent.generateAgentReply, [{ ownName: "Alice", partnerName: "Bob", turns: [] }]],
         [
             "agentGenerateSuggestions",

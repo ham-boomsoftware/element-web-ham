@@ -492,54 +492,54 @@ describe("RoomListItemViewModel", () => {
         beforeEach(() => {
             vi.spyOn(DMRoomMap.shared(), "getUserIdForRoomId").mockReturnValue("@user:server");
             vi.spyOn(AgentRoomStore.instance, "isAvailable", "get").mockReturnValue(true);
-            vi.spyOn(AgentRoomStore.instance, "isAgentRoom").mockReturnValue(false);
+            vi.spyOn(AgentRoomStore.instance, "getRule").mockReturnValue(undefined);
         });
 
-        it("lets a direct message be marked for the agent", () => {
+        it("lets the agent reply by itself in a direct message", () => {
             viewModel = new RoomListItemViewModel({ room, client: matrixClient });
-            expect(viewModel.getSnapshot()).toMatchObject({ canUseAgent: true, isAgent: false });
+            expect(viewModel.getSnapshot()).toMatchObject({ canUseAgent: true, canAgentReply: true });
+            expect(viewModel.getSnapshot().agentRule).toBeUndefined();
         });
 
-        it("shows a direct message marked for the agent", () => {
-            vi.mocked(AgentRoomStore.instance.isAgentRoom).mockReturnValue(true);
+        it("offers the other rules, but no replies, in a room that is not a direct message", () => {
+            vi.mocked(DMRoomMap.shared().getUserIdForRoomId).mockReturnValue(undefined);
+            vi.mocked(AgentRoomStore.instance.getRule).mockReturnValue("tasks_only");
 
             viewModel = new RoomListItemViewModel({ room, client: matrixClient });
-            expect(viewModel.getSnapshot().isAgent).toBe(true);
+            expect(viewModel.getSnapshot()).toMatchObject({
+                canUseAgent: true,
+                canAgentReply: false,
+                agentRule: "tasks_only",
+            });
         });
 
-        it.each([
-            [
-                "a room that is not a direct message",
-                () => vi.mocked(DMRoomMap.shared().getUserIdForRoomId).mockReturnValue(undefined),
-            ],
-            [
-                "a platform without an agent",
-                () => vi.spyOn(AgentRoomStore.instance, "isAvailable", "get").mockReturnValue(false),
-            ],
-        ])("doesn't offer the agent for %s", (_, setUp) => {
-            setUp();
-            vi.mocked(AgentRoomStore.instance.isAgentRoom).mockReturnValue(true);
+        it("doesn't offer the agent on a platform without one", () => {
+            vi.spyOn(AgentRoomStore.instance, "isAvailable", "get").mockReturnValue(false);
+            vi.mocked(AgentRoomStore.instance.getRule).mockReturnValue("auto_reply");
 
             viewModel = new RoomListItemViewModel({ room, client: matrixClient });
-            expect(viewModel.getSnapshot()).toMatchObject({ canUseAgent: false, isAgent: false });
+            expect(viewModel.getSnapshot()).toMatchObject({ canUseAgent: false, canAgentReply: false });
+            expect(viewModel.getSnapshot().agentRule).toBeUndefined();
         });
 
-        it("toggles the mark of the room", () => {
-            const setAgentRoom = vi.spyOn(AgentRoomStore.instance, "setAgentRoom").mockResolvedValue();
+        it("sets the rule of the room", () => {
+            const setRule = vi.spyOn(AgentRoomStore.instance, "setRule").mockResolvedValue();
             viewModel = new RoomListItemViewModel({ room, client: matrixClient });
 
-            viewModel.onToggleAgent();
+            viewModel.onSetAgentRule("ignore");
+            viewModel.onSetAgentRule(undefined);
 
-            expect(setAgentRoom).toHaveBeenCalledWith(room.roomId, true);
+            expect(setRule).toHaveBeenCalledWith(room.roomId, "ignore");
+            expect(setRule).toHaveBeenCalledWith(room.roomId, undefined);
         });
 
-        it("updates when the marks change", () => {
+        it("updates when the rules change", () => {
             viewModel = new RoomListItemViewModel({ room, client: matrixClient });
 
-            vi.mocked(AgentRoomStore.instance.isAgentRoom).mockReturnValue(true);
+            vi.mocked(AgentRoomStore.instance.getRule).mockReturnValue("auto_reply");
             AgentRoomStore.instance.emit(AgentRoomStoreEvent.Update);
 
-            expect(viewModel.getSnapshot().isAgent).toBe(true);
+            expect(viewModel.getSnapshot().agentRule).toBe("auto_reply");
         });
     });
 

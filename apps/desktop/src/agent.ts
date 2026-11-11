@@ -11,7 +11,7 @@ Please see LICENSE files in the repository root for full details.
 // credentials stay in the main process.
 //
 // Everything the agent keeps stays on this computer: its settings, the credentials (encrypted with safeStorage)
-// and the marked rooms are in a store of their own, in a directory that is never synced to other computers.
+// and the room rules are in a store of their own, in a directory that is never synced to other computers.
 
 import fs from "node:fs";
 import path from "node:path";
@@ -25,6 +25,8 @@ import type {
     AgentProvider,
     AgentReplyRequest,
     AgentResult,
+    AgentRoomRule,
+    AgentRoomRules,
     AgentSettings,
     AgentStatus,
     AgentSuggestionsRequest,
@@ -68,12 +70,19 @@ const DEFAULT_SETTINGS: AgentSettings = {
 
 const PROVIDERS: readonly AgentProvider[] = ["claude", "copilot"];
 
+const ROOM_RULES: readonly AgentRoomRule[] = ["auto_reply", "tasks_only", "ignore"];
+
 export interface AgentStoreData {
     settings?: AgentSettings;
     /** The credential of each connected provider, encrypted with safeStorage and base64-encoded */
     secrets?: Partial<Record<AgentProvider, string>>;
-    /** The rooms the agent replies in, by the Matrix user they belong to */
+    /**
+     * The rooms the agent replied in before there were room rules, by the Matrix user they belong to. They count as
+     * `auto_reply` until the user changes a rule, which moves them to {@link roomRules}.
+     */
     rooms?: Record<string, string[]>;
+    /** The rules of the rooms, by the Matrix user they belong to */
+    roomRules?: Record<string, AgentRoomRules>;
     /** The to-do list, by the Matrix user it belongs to */
     tasks?: Record<string, AgentTask[]>;
     /** The project folders tasks were last opened in with the coding CLI, most recent first */
@@ -240,35 +249,53 @@ export async function disconnectAgent(provider: unknown): Promise<AgentResult<vo
     return { ok: true, data: undefined };
 }
 
-/**
- * Get the rooms the agent replies in.
- * @param userId - The Matrix user the rooms belong to
- */
-export function getAgentRooms(userId: unknown): AgentResult<string[]> {
-    if (typeof userId !== "string" || !userId) return failure("invalid_request");
-    return { ok: true, data: getAgentStore().get("rooms")?.[userId] ?? [] };
+function isRoomRule(value: unknown): value is AgentRoomRule {
+    return ROOM_RULES.includes(value as AgentRoomRule);
 }
 
 /**
- * Mark a room for the agent to reply in, or unmark it.
+ * The room rules of a user. Rooms marked for replies before there were rules count as `auto_reply`.
+ */
+function readRoomRules(userId: string): AgentRoomRules {
+    const rules = getAgentStore().get("roomRules")?.[userId];
+    if (rules) return { ...rules };
+    const legacyRooms = getAgentStore().get("rooms")?.[userId] ?? [];
+    return Object.fromEntries(legacyRooms.map((roomId) => [roomId, "auto_reply" as const]));
+}
+
+/**
+ * Get the rules of a user's rooms.
+ * @param userId - The Matrix user the rooms belong to
+ */
+export function getAgentRoomRules(userId: unknown): AgentResult<AgentRoomRules> {
+    if (typeof userId !== "string" || !userId) return failure("invalid_request");
+    return { ok: true, data: readRoomRules(userId) };
+}
+
+/**
+ * Set the rule of a room, or remove it so that the room follows the settings again.
  * @param userId - The Matrix user the room belongs to
  * @param roomId - The room
- * @param enabled - Whether the agent replies in the room
- * @returns the rooms the agent replies in afterwards
+ * @param rule - The new rule, or null to remove it
+ * @returns the rules of the user's rooms afterwards
  */
-export function setAgentRoom(userId: unknown, roomId: unknown, enabled: unknown): AgentResult<string[]> {
+export function setAgentRoomRule(userId: unknown, roomId: unknown, rule: unknown): AgentResult<AgentRoomRules> {
     if (typeof userId !== "string" || !userId || typeof roomId !== "string" || !roomId) {
         return failure("invalid_request");
     }
-    if (typeof enabled !== "boolean") return failure("invalid_request");
+    if (rule !== null && !isRoomRule(rule)) return failure("invalid_request");
 
-    const rooms = { ...getAgentStore().get("rooms") };
-    const userRooms = new Set(rooms[userId]);
-    if (enabled) userRooms.add(roomId);
-    else userRooms.delete(roomId);
-    rooms[userId] = [...userRooms];
-    getAgentStore().set("rooms", rooms);
-    return { ok: true, data: rooms[userId] };
+    const userRules = readRoomRules(userId);
+    if (rule) userRules[roomId] = rule;
+    else delete userRules[roomId];
+    getAgentStore().set("roomRules", { ...getAgentStore().get("roomRules"), [userId]: userRules });
+    // The marks from before the rules are now part of the rules
+    const legacyRooms = getAgentStore().get("rooms");
+    if (legacyRooms?.[userId]) {
+        const { [userId]: _migrated, ...otherUsers } = legacyRooms;
+        getAgentStore().set("rooms", otherUsers);
+    }
+    return { ok: true, data: userRules };
 }
 
 /**

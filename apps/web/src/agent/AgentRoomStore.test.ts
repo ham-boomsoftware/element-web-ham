@@ -23,8 +23,11 @@ describe("AgentRoomStore", () => {
             connect: vi.fn(),
             disconnect: vi.fn(),
             listModels: vi.fn(),
-            getRooms: vi.fn().mockResolvedValue({ ok: true, data: ["!a:example.org"] }),
-            setRoom: vi.fn(async (_userId, roomId, enabled) => ({ ok: true as const, data: enabled ? [roomId] : [] })),
+            getRoomRules: vi.fn().mockResolvedValue({ ok: true, data: { "!a:example.org": "auto_reply" } }),
+            setRoomRule: vi.fn(async (_userId, roomId, rule) => ({
+                ok: true as const,
+                data: rule ? { [roomId]: rule } : {},
+            })),
             generateReply: vi.fn(),
             generateSuggestions: vi.fn(),
             pickWorkspace: vi.fn(),
@@ -44,75 +47,82 @@ describe("AgentRoomStore", () => {
         store.stop();
     });
 
-    it("reads the marked rooms of the user from the platform", async () => {
+    it("reads the room rules of the user from the platform", async () => {
         const onUpdate = vi.fn();
         store.on(AgentRoomStoreEvent.Update, onUpdate);
 
         await store.start(agent, ALICE);
 
-        expect(agent.getRooms).toHaveBeenCalledWith(ALICE);
+        expect(agent.getRoomRules).toHaveBeenCalledWith(ALICE);
         expect(store.isAvailable).toBe(true);
+        expect(store.getRule("!a:example.org")).toBe("auto_reply");
         expect(store.isAgentRoom("!a:example.org")).toBe(true);
+        expect(store.getRule("!b:example.org")).toBeUndefined();
         expect(store.isAgentRoom("!b:example.org")).toBe(false);
         expect(onUpdate).toHaveBeenCalled();
     });
 
-    it("marks nothing on a platform without an agent", async () => {
+    it("has no rules on a platform without an agent", async () => {
         await store.start(undefined, ALICE);
 
         expect(store.isAvailable).toBe(false);
-        expect(store.isAgentRoom("!a:example.org")).toBe(false);
+        expect(store.getRule("!a:example.org")).toBeUndefined();
     });
 
-    it("marks and unmarks a room, saving it on the platform", async () => {
+    it("sets and removes the rule of a room, saving it on the platform", async () => {
         await store.start(agent, ALICE);
 
-        const marking = store.setAgentRoom("!b:example.org", true);
-        // The mark shows before the platform has saved it
-        expect(store.isAgentRoom("!b:example.org")).toBe(true);
-        await marking;
-        expect(agent.setRoom).toHaveBeenCalledWith(ALICE, "!b:example.org", true);
+        const setting = store.setRule("!b:example.org", "ignore");
+        // The rule shows before the platform has saved it
+        expect(store.isIgnored("!b:example.org")).toBe(true);
+        await setting;
+        expect(agent.setRoomRule).toHaveBeenCalledWith(ALICE, "!b:example.org", "ignore");
 
-        await store.setAgentRoom("!a:example.org", false);
-        expect(agent.setRoom).toHaveBeenCalledWith(ALICE, "!a:example.org", false);
-        expect(store.isAgentRoom("!a:example.org")).toBe(false);
+        await store.setRule("!b:example.org", "tasks_only");
+        expect(store.getRule("!b:example.org")).toBe("tasks_only");
+        expect(store.isIgnored("!b:example.org")).toBe(false);
+
+        await store.setRule("!a:example.org", undefined);
+        expect(agent.setRoomRule).toHaveBeenCalledWith(ALICE, "!a:example.org", null);
+        expect(store.getRule("!a:example.org")).toBeUndefined();
     });
 
-    it("undoes a mark the platform can't save", async () => {
+    it("restores the previous rule when the platform can't save the new one", async () => {
         await store.start(agent, ALICE);
-        agent.setRoom.mockResolvedValue({ ok: false, error: "unavailable" });
+        agent.setRoomRule.mockResolvedValue({ ok: false, error: "unavailable" });
 
-        await store.setAgentRoom("!b:example.org", true);
+        await store.setRule("!a:example.org", "ignore");
 
-        expect(store.isAgentRoom("!b:example.org")).toBe(false);
+        expect(store.getRule("!a:example.org")).toBe("auto_reply");
     });
 
-    it("doesn't save a mark that doesn't change anything", async () => {
+    it("doesn't save a rule that doesn't change anything", async () => {
         await store.start(agent, ALICE);
 
-        await store.setAgentRoom("!a:example.org", true);
+        await store.setRule("!a:example.org", "auto_reply");
+        await store.setRule("!b:example.org", undefined);
 
-        expect(agent.setRoom).not.toHaveBeenCalled();
+        expect(agent.setRoomRule).not.toHaveBeenCalled();
     });
 
-    it("forgets the marks when stopped", async () => {
+    it("forgets the rules when stopped", async () => {
         await store.start(agent, ALICE);
 
         store.stop();
 
         expect(store.isAvailable).toBe(false);
-        expect(store.isAgentRoom("!a:example.org")).toBe(false);
+        expect(store.getRule("!a:example.org")).toBeUndefined();
     });
 
-    it("ignores marks read for a user that logged out meanwhile", async () => {
-        let finish: (result: { ok: true; data: string[] }) => void = () => {};
-        agent.getRooms.mockReturnValue(new Promise((resolve) => (finish = resolve)));
+    it("ignores rules read for a user that logged out meanwhile", async () => {
+        let finish: (result: { ok: true; data: Record<string, "auto_reply"> }) => void = () => {};
+        agent.getRoomRules.mockReturnValue(new Promise((resolve) => (finish = resolve)));
         const starting = store.start(agent, ALICE);
 
         store.stop();
-        finish({ ok: true, data: ["!a:example.org"] });
+        finish({ ok: true, data: { "!a:example.org": "auto_reply" } });
         await starting;
 
-        expect(store.isAgentRoom("!a:example.org")).toBe(false);
+        expect(store.getRule("!a:example.org")).toBeUndefined();
     });
 });

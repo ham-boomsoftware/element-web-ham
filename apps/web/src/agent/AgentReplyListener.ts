@@ -39,9 +39,9 @@ export const AGENT_MESSAGE_KEY = "io.element.pilot.agent";
 const ANSWERED_MSGTYPES: ReadonlySet<string | undefined> = new Set<string | undefined>([MsgType.Text, MsgType.Emote]);
 
 /**
- * Replies to the direct messages the user marked for the agent, through the agent of the platform.
+ * Replies to the direct messages the user set to `auto_reply`, through the agent of the platform.
  *
- * The marks are kept on this computer (see {@link AgentRoomStore}). When the partner writes in a marked room,
+ * The rules are kept on this computer (see {@link AgentRoomStore}). When the partner writes in such a room,
  * the conversation goes to the agent and its reply is sent as ordinary text with {@link AGENT_MESSAGE_KEY}, which
  * marks it as automated and keeps other agents from answering it.
  *
@@ -115,7 +115,7 @@ export class AgentReplyListener {
         );
     }
 
-    /** Whether the room is a direct message marked for the agent */
+    /** Whether the room is a direct message the agent replies in by itself */
     private isAgentRoom(room: Room): boolean {
         if (!DMRoomMap.shared()?.getUserIdForRoomId(room.roomId)) return false;
         return AgentRoomStore.instance.isAgentRoom(room.roomId);

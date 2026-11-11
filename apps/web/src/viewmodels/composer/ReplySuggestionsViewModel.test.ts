@@ -21,7 +21,7 @@ import type { AgentResult } from "shared-types";
 
 import { ReplySuggestionsViewModel, SUGGESTION_DELAY_MS } from "./ReplySuggestionsViewModel";
 import type { AgentApi } from "../../agent/AgentApi";
-import { AgentRoomStore } from "../../agent/AgentRoomStore";
+import { AgentRoomStore, AgentRoomStoreEvent } from "../../agent/AgentRoomStore";
 import DMRoomMap from "../../utils/DMRoomMap";
 import defaultDispatcher from "../../dispatcher/dispatcher";
 import { Action } from "../../dispatcher/actions";
@@ -75,7 +75,7 @@ describe("ReplySuggestionsViewModel", () => {
             getMember: (userId: string) => ({ name: userId === me ? "Alice" : "Bob" }),
         }) as unknown as Room;
         DMRoomMap.setShared({ getUserIdForRoomId: () => undefined } as unknown as DMRoomMap);
-        vi.spyOn(AgentRoomStore.instance, "isAgentRoom").mockReturnValue(false);
+        vi.spyOn(AgentRoomStore.instance, "getRule").mockReturnValue(undefined);
         agent = {
             getStatus: vi.fn().mockResolvedValue({
                 provider: "claude",
@@ -87,8 +87,8 @@ describe("ReplySuggestionsViewModel", () => {
             connect: vi.fn(),
             disconnect: vi.fn(),
             listModels: vi.fn(),
-            getRooms: vi.fn(),
-            setRoom: vi.fn(),
+            getRoomRules: vi.fn(),
+            setRoomRule: vi.fn(),
             generateReply: vi.fn(),
             generateSuggestions: vi.fn().mockResolvedValue({ ok: true, data: SUGGESTIONS }),
             pickWorkspace: vi.fn(),
@@ -191,13 +191,26 @@ describe("ReplySuggestionsViewModel", () => {
         expect(vm!.getSnapshot()).toEqual({ suggestions: [], loading: false });
     });
 
-    it("leaves rooms where the agent replies by itself alone", async () => {
-        vi.mocked(AgentRoomStore.instance.isAgentRoom).mockReturnValue(true);
+    it.each(["auto_reply", "tasks_only", "ignore"] as const)("leaves rooms set to %s alone", async (rule) => {
+        vi.mocked(AgentRoomStore.instance.getRule).mockReturnValue(rule);
         events.push(message(PARTNER, "Hi"));
 
         await createViewModel();
 
         expect(agent.generateSuggestions).not.toHaveBeenCalled();
+    });
+
+    it("suggests replies once the rule of the room is removed", async () => {
+        vi.mocked(AgentRoomStore.instance.getRule).mockReturnValue("ignore");
+        events.push(message(PARTNER, "Hi"));
+        await createViewModel();
+
+        vi.mocked(AgentRoomStore.instance.getRule).mockReturnValue(undefined);
+        AgentRoomStore.instance.emit(AgentRoomStoreEvent.Update);
+        await vi.advanceTimersByTimeAsync(0);
+
+        expect(agent.generateSuggestions).toHaveBeenCalledTimes(1);
+        expect(vm!.getSnapshot()).toEqual({ suggestions: SUGGESTIONS, loading: false });
     });
 
     it("writes new suggestions once several new messages have arrived, and clears them when the user replies", async () => {

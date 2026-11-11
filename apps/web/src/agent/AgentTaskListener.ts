@@ -20,6 +20,7 @@ import type { AgentSuggestionMessage } from "shared-types";
 
 import type { AgentApi } from "./AgentApi";
 import { AgentTaskStore } from "./AgentTaskStore";
+import { AgentRoomStore } from "./AgentRoomStore";
 import { AGENT_MESSAGE_KEY } from "./AgentReplyListener";
 import DMRoomMap from "../utils/DMRoomMap";
 
@@ -36,8 +37,10 @@ const READ_MSGTYPES: ReadonlySet<string | undefined> = new Set<string | undefine
  * Adds the requests to the user that the agent finds in new messages to the to-do list ({@link AgentTaskStore}).
  *
  * The agent reads every new message of someone else in a direct chat, and the messages of group chats that
- * mention the user. When the user turned it on in the settings, the agent also looks into each new task in the
- * workspace by itself, without changing anything.
+ * mention the user. The rules of the rooms ({@link AgentRoomStore}) change that: a room set to `tasks_only` is
+ * read in full, also when task detection is turned off, and a room set to `ignore` is not read at all. When the
+ * user turned it on in the settings, the agent also looks into each new task in the workspace by itself, without
+ * changing anything.
  *
  * Only new messages are read: those sent before the client started are left alone.
  */
@@ -110,7 +113,8 @@ export class AgentTaskListener {
 
     /**
      * Whether the event is a message that can hold a request to the user: a message of someone else in a direct
-     * chat, or one that mentions the user in a group chat. Messages written by an agent are left out.
+     * chat, in a room set to `tasks_only`, or one that mentions the user in a group chat. Messages written by an
+     * agent, and rooms set to `ignore`, are left out.
      */
     private isRequestCandidate(client: MatrixClient, event: MatrixEvent, room: Room): boolean {
         if (event.getType() !== EventType.RoomMessage || event.isRedacted() || event.isRelation(RelationType.Replace)) {
@@ -119,7 +123,9 @@ export class AgentTaskListener {
         const content = event.getContent();
         if (event.getSender() === client.getSafeUserId() || !READ_MSGTYPES.has(content.msgtype)) return false;
         if (content[AGENT_MESSAGE_KEY]) return false;
-        if (DMRoomMap.shared()?.getUserIdForRoomId(room.roomId)) return true;
+        const rule = AgentRoomStore.instance.getRule(room.roomId);
+        if (rule === "ignore") return false;
+        if (rule === "tasks_only" || DMRoomMap.shared()?.getUserIdForRoomId(room.roomId)) return true;
         return Boolean(client.getPushActionsForEvent(event)?.tweaks?.highlight);
     }
 
@@ -131,7 +137,10 @@ export class AgentTaskListener {
         if (!client || !agent) return;
         try {
             const status = await agent.getStatus();
-            if (!status.taskDetection || !status.connected[status.provider]) return;
+            // A room set to tasks_only is read even when task detection is turned off for all other rooms
+            const rule = AgentRoomStore.instance.getRule(room.roomId);
+            const enabled = rule === "tasks_only" || (status.taskDetection && rule !== "ignore");
+            if (!enabled || !status.connected[status.provider]) return;
 
             const { messages, newCount } = this.getMessages(client, room, firstEvent);
             if (newCount === 0) return;

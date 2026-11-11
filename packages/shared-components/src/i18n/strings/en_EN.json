@@ -243,6 +243,11 @@
             "video_call": "Open room %(roomName)s, video call in progress.",
             "voice_call": "Open room %(roomName)s, voice call in progress."
         },
+        "agent_rule": "Agent",
+        "agent_rule_auto_reply": "Reply automatically",
+        "agent_rule_default": "Standard",
+        "agent_rule_ignore": "Ignore",
+        "agent_rule_tasks_only": "Tasks only",
         "appearance": "Appearance",
         "chat_moved": "Chat moved",
         "collapse_all_sections": "Collapse all sections",
@@ -284,7 +289,6 @@
             "remove_from_section": "Remove from section"
         },
         "notification_options": "Notification options",
-        "notification_options_agent": "Agent",
         "notification_options_normal": "Normal",
         "notification_options_silent": "Silent",
         "open_space_menu": "Open space menu",

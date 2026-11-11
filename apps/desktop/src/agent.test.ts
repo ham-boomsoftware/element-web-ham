@@ -18,11 +18,11 @@ import {
     generateAgentReply,
     generateAgentSuggestions,
     getAgentDataPath,
-    getAgentRooms,
+    getAgentRoomRules,
     getAgentStatus,
     listAgentModels,
     parseSuggestions,
-    setAgentRoom,
+    setAgentRoomRule,
     setAgentSettings,
     stopCopilot,
     toClaudeMessages,
@@ -427,28 +427,50 @@ describe("agent", () => {
         });
     });
 
-    describe("rooms", () => {
-        it("marks and unmarks rooms for each Matrix user", () => {
-            setAgentRoom("@alice:example.org", "!a:example.org", true);
-            setAgentRoom("@alice:example.org", "!b:example.org", true);
-            setAgentRoom("@bob:example.org", "!c:example.org", true);
+    describe("room rules", () => {
+        it("sets and removes the rules of rooms for each Matrix user", () => {
+            setAgentRoomRule("@alice:example.org", "!a:example.org", "auto_reply");
+            setAgentRoomRule("@alice:example.org", "!b:example.org", "ignore");
+            setAgentRoomRule("@bob:example.org", "!c:example.org", "tasks_only");
 
-            expect(setAgentRoom("@alice:example.org", "!a:example.org", false)).toEqual({
+            expect(setAgentRoomRule("@alice:example.org", "!a:example.org", null)).toEqual({
                 ok: true,
-                data: ["!b:example.org"],
+                data: { "!b:example.org": "ignore" },
             });
-            expect(getAgentRooms("@alice:example.org")).toEqual({ ok: true, data: ["!b:example.org"] });
-            expect(getAgentRooms("@bob:example.org")).toEqual({ ok: true, data: ["!c:example.org"] });
-            expect(getAgentRooms("@carol:example.org")).toEqual({ ok: true, data: [] });
+            expect(getAgentRoomRules("@alice:example.org")).toEqual({ ok: true, data: { "!b:example.org": "ignore" } });
+            expect(getAgentRoomRules("@bob:example.org")).toEqual({
+                ok: true,
+                data: { "!c:example.org": "tasks_only" },
+            });
+            expect(getAgentRoomRules("@carol:example.org")).toEqual({ ok: true, data: {} });
+        });
+
+        it("keeps the rooms marked for replies before there were rules as auto_reply", () => {
+            storeData.rooms = { "@alice:example.org": ["!a:example.org"], "@bob:example.org": ["!b:example.org"] };
+
+            expect(getAgentRoomRules("@alice:example.org")).toEqual({
+                ok: true,
+                data: { "!a:example.org": "auto_reply" },
+            });
+            expect(setAgentRoomRule("@alice:example.org", "!c:example.org", "ignore")).toEqual({
+                ok: true,
+                data: { "!a:example.org": "auto_reply", "!c:example.org": "ignore" },
+            });
+            expect(storeData.rooms).toEqual({ "@bob:example.org": ["!b:example.org"] });
+            expect(getAgentRoomRules("@bob:example.org")).toEqual({
+                ok: true,
+                data: { "!b:example.org": "auto_reply" },
+            });
         });
 
         it.each([
-            [undefined, "!a:example.org", true],
-            ["@alice:example.org", "", true],
-            ["@alice:example.org", "!a:example.org", "yes"],
-        ])("refuses invalid arguments %s %s %s", (userId, roomId, enabled) => {
-            expect(setAgentRoom(userId, roomId, enabled)).toMatchObject({ ok: false, error: "invalid_request" });
-            expect(storeData.rooms).toBeUndefined();
+            [undefined, "!a:example.org", "ignore"],
+            ["@alice:example.org", "", "ignore"],
+            ["@alice:example.org", "!a:example.org", "always"],
+            ["@alice:example.org", "!a:example.org", undefined],
+        ])("refuses invalid arguments %s %s %s", (userId, roomId, rule) => {
+            expect(setAgentRoomRule(userId, roomId, rule)).toMatchObject({ ok: false, error: "invalid_request" });
+            expect(storeData.roomRules).toBeUndefined();
         });
     });
 

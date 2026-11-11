@@ -42,7 +42,6 @@ describe("<RoomListItemNotificationMenu />", () => {
 
     beforeEach(() => {
         vi.mocked(mockCallbacks.onSetRoomNotifState).mockClear();
-        vi.mocked(mockCallbacks.onToggleAgent).mockClear();
     });
 
     it("should render the notification options entry", () => {
@@ -58,7 +57,7 @@ describe("<RoomListItemNotificationMenu />", () => {
     });
 
     it("should only offer Normal and Silent", () => {
-        renderMenu(RoomNotifState.AllMessages, { canUseAgent: true });
+        renderMenu();
         expect(getOptionLabels()).toEqual(["Normal", "Silent"]);
     });
 
@@ -93,29 +92,4 @@ describe("<RoomListItemNotificationMenu />", () => {
             expect(screen.getByRole("menuitem", { name: "Silent" })).toHaveAttribute("aria-selected", "false");
         },
     );
-
-    describe("agent", () => {
-        it("should not offer the agent where it can't be used", () => {
-            renderMenu(RoomNotifState.AllMessages, { canUseAgent: false });
-            expect(screen.queryByRole("menuitemcheckbox", { name: "Agent" })).not.toBeInTheDocument();
-        });
-
-        it.each([false, true])("should show whether the agent replies: %s", (isAgent) => {
-            renderMenu(RoomNotifState.AllMessages, { canUseAgent: true, isAgent });
-            expect(screen.getByRole("menuitemcheckbox", { name: "Agent" })).toHaveAttribute(
-                "aria-checked",
-                String(isAgent),
-            );
-        });
-
-        it("should toggle the agent, independently of the notification options", async () => {
-            const user = userEvent.setup();
-            renderMenu(RoomNotifState.Mute, { canUseAgent: true });
-
-            await user.click(screen.getByRole("menuitemcheckbox", { name: "Agent" }));
-
-            expect(mockCallbacks.onToggleAgent).toHaveBeenCalled();
-            expect(mockCallbacks.onSetRoomNotifState).not.toHaveBeenCalled();
-        });
-    });
 });

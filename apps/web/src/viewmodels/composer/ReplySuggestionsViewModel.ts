@@ -23,7 +23,7 @@ import {
 import type { AgentSuggestionMessage } from "shared-types";
 
 import type { AgentApi } from "../../agent/AgentApi";
-import { AgentRoomStore } from "../../agent/AgentRoomStore";
+import { AgentRoomStore, AgentRoomStoreEvent } from "../../agent/AgentRoomStore";
 import DMRoomMap from "../../utils/DMRoomMap";
 import defaultDispatcher from "../../dispatcher/dispatcher";
 import { Action } from "../../dispatcher/actions";
@@ -50,9 +50,9 @@ const suggestionsCache = new Map<string, { eventId: string; suggestions: string[
  * Suggests replies to the latest message of a room, written by the agent of the platform.
  *
  * Suggestions are only written when a provider is connected, they are turned on in the agent settings, the latest
- * message is from someone else, and the agent
- * doesn't already reply in the room by itself. Picking one puts it into the composer, so it can be edited before
- * sending.
+ * message is from someone else, and the user set no rule for the room (see {@link AgentRoomStore}): a room the
+ * agent replies in by itself, reads only for tasks or ignores gets no suggestions. Picking one puts it into the
+ * composer, so it can be edited before sending.
  */
 export class ReplySuggestionsViewModel
     extends BaseViewModel<ReplySuggestionsViewSnapshot, ReplySuggestionsViewModelProps>
@@ -74,6 +74,7 @@ export class ReplySuggestionsViewModel
         // Registered by hand: trackListener only takes listeners without typed arguments
         props.room.on(RoomEvent.Timeline, this.onTimeline);
         this.disposables.track(() => props.room.off(RoomEvent.Timeline, this.onTimeline));
+        this.disposables.trackListener(AgentRoomStore.instance, AgentRoomStoreEvent.Update, this.onRulesChanged);
         this.disposables.track(() => clearTimeout(this.timer));
         void this.checkEnabled(props.agent);
     }
@@ -99,6 +100,10 @@ export class ReplySuggestionsViewModel
         }
         if (!this.disposables.isDisposed) this.update();
     }
+
+    private readonly onRulesChanged = (): void => {
+        this.update();
+    };
 
     private readonly onTimeline = (
         event: MatrixEvent,
@@ -130,14 +135,14 @@ export class ReplySuggestionsViewModel
         const eventId = lastMessage?.getId();
         const myUserId = this.props.client.getSafeUserId();
 
-        // Nothing to answer: the user wrote last, or the agent answers by itself
+        // Nothing to answer: the user wrote last, or a rule of the room keeps the agent from suggesting replies
         if (
             !agent ||
             !this.enabled ||
             !lastMessage ||
             !eventId ||
             lastMessage.getSender() === myUserId ||
-            AgentRoomStore.instance.isAgentRoom(room.roomId)
+            AgentRoomStore.instance.getRule(room.roomId) !== undefined
         ) {
             this.pendingEventId = undefined;
             this.snapshot.merge({ suggestions: [], loading: false });

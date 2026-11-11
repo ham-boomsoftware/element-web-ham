@@ -18,6 +18,8 @@ export { RoomListItemContent } from "./RoomListItemContent";
 export type { RoomListItemContentProps } from "./RoomListItemContent";
 export { RoomListItemNotificationMenu } from "./RoomListItemNotificationMenu";
 export type { RoomListItemNotificationMenuProps } from "./RoomListItemNotificationMenu";
+export { RoomListItemAgentMenu } from "./RoomListItemAgentMenu";
+export type { RoomListItemAgentMenuProps } from "./RoomListItemAgentMenu";
 export { RoomListItemMoreOptionsMenu, MoreOptionContent } from "./RoomListItemMoreOptionsMenu";
 export type { RoomListItemMoreOptionsMenuProps } from "./RoomListItemMoreOptionsMenu";
 export { RoomListItemHoverMenu } from "./RoomListItemHoverMenu";

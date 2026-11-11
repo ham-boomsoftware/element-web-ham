@@ -17,10 +17,10 @@ import {
     disconnectAgent,
     generateAgentReply,
     generateAgentSuggestions,
-    getAgentRooms,
+    getAgentRoomRules,
     getAgentStatus,
     listAgentModels,
-    setAgentRoom,
+    setAgentRoomRule,
     setAgentSettings,
 } from "./agent.js";
 import {
@@ -208,11 +208,11 @@ ipcMain.on("ipcCall", async function (_ev: IpcMainEvent, payload) {
         case "agentListModels":
             ret = await listAgentModels(args[0]);
             break;
-        case "agentGetRooms":
-            ret = getAgentRooms(args[0]);
+        case "agentGetRoomRules":
+            ret = getAgentRoomRules(args[0]);
             break;
-        case "agentSetRoom":
-            ret = setAgentRoom(args[0], args[1], args[2]);
+        case "agentSetRoomRule":
+            ret = setAgentRoomRule(args[0], args[1], args[2]);
             break;
         case "agentGenerateReply":
             ret = await generateAgentReply(args[0]);

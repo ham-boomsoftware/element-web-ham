@@ -247,6 +247,11 @@
             "video_call": "Öffne den Chat %(roomName)s, Videoanruf läuft.",
             "voice_call": "Öffne den Chat %(roomName)s, Sprachanruf läuft."
         },
+        "agent_rule": "Agent",
+        "agent_rule_auto_reply": "Automatisch antworten",
+        "agent_rule_default": "Standard",
+        "agent_rule_ignore": "Ignorieren",
+        "agent_rule_tasks_only": "Nur Aufgaben",
         "appearance": "Darstellung",
         "chat_moved": "Chat verschoben",
         "collapse_all_sections": "Alle Abschnitte reduzieren",
@@ -288,7 +293,6 @@
             "remove_from_section": "Aus Abschnitt entfernen"
         },
         "notification_options": "Benachrichtigungsoptionen",
-        "notification_options_agent": "Agent",
         "notification_options_normal": "Normal",
         "notification_options_silent": "Silent",
         "open_space_menu": "Menü für Spaces öffnen",

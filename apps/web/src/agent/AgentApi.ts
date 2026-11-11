@@ -12,6 +12,8 @@ import type {
     AgentProvider,
     AgentReplyRequest,
     AgentResult,
+    AgentRoomRule,
+    AgentRoomRules,
     AgentSettings,
     AgentStatus,
     AgentSuggestionsRequest,
@@ -22,9 +24,9 @@ import type {
 } from "shared-types";
 
 /**
- * Access to the agent that replies to the direct messages the user marked for it, suggests replies in any chat, and
- * keeps the user's to-do list. The platform holds the credentials, the marks and the list and talks to the AI
- * providers; see {@link BasePlatform.agent}.
+ * Access to the agent that follows the rules the user set for rooms, replies in the direct messages set to reply
+ * automatically, suggests replies in any chat, and keeps the user's to-do list. The platform holds the credentials,
+ * the room rules and the list and talks to the AI providers; see {@link BasePlatform.agent}.
  */
 export interface AgentApi {
     /** Get the settings of the agent and which providers are connected */
@@ -37,13 +39,14 @@ export interface AgentApi {
     disconnect(provider: AgentProvider): Promise<AgentResult<void>>;
     /** List the models a connected provider offers */
     listModels(provider: AgentProvider): Promise<AgentResult<AgentModel[]>>;
-    /** Get the rooms the agent replies in, for a Matrix user */
-    getRooms(userId: string): Promise<AgentResult<string[]>>;
+    /** Get the rules of a Matrix user's rooms */
+    getRoomRules(userId: string): Promise<AgentResult<AgentRoomRules>>;
     /**
-     * Mark a room for the agent to reply in, or unmark it. The marks are kept by the platform, on this computer only.
-     * @returns the rooms the agent replies in afterwards
+     * Set what the agent does in a room, or remove the rule with null so that the room follows the settings. The
+     * rules are kept by the platform, on this computer only.
+     * @returns the rules of the user's rooms afterwards
      */
-    setRoom(userId: string, roomId: string, enabled: boolean): Promise<AgentResult<string[]>>;
+    setRoomRule(userId: string, roomId: string, rule: AgentRoomRule | null): Promise<AgentResult<AgentRoomRules>>;
     /** Write the next message of the user in a direct message */
     generateReply(request: AgentReplyRequest): Promise<AgentResult<string>>;
     /** Suggest replies the user could send next in a chat */

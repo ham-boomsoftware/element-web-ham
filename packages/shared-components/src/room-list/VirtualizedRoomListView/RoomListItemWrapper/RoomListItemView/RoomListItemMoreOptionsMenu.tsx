@@ -26,6 +26,7 @@ import { useViewModel, type ViewModel } from "../../../../core/viewmodel";
 import type { RoomListItemViewSnapshot, RoomListItemViewActions } from "./RoomListItemView";
 import styles from "./RoomListItemMoreOptionsMenu.module.css";
 import { RoomListItemNotificationMenu } from "./RoomListItemNotificationMenu";
+import { RoomListItemAgentMenu } from "./RoomListItemAgentMenu";
 
 /**
  * View model type for room list item
@@ -119,6 +120,7 @@ export function MoreOptionContent({ vm }: MoreOptionContentProps): JSX.Element {
                 </>
             )}
             {snapshot.showNotificationMenu && <RoomListItemNotificationMenu vm={vm} />}
+            {snapshot.canUseAgent && <RoomListItemAgentMenu vm={vm} />}
             <Separator />
             {snapshot.canInvite && (
                 <MenuItem

@@ -17,11 +17,12 @@ import {
     type Room,
 } from "matrix-js-sdk/src/matrix";
 import { mkMessage, stubClient } from "test-utils";
-import type { AgentStatus } from "shared-types";
+import type { AgentRoomRule, AgentStatus } from "shared-types";
 
 import { AgentTaskListener, DETECTION_DELAY_MS } from "./AgentTaskListener";
 import type { AgentApi } from "./AgentApi";
 import { AgentTaskStore } from "./AgentTaskStore";
+import { AgentRoomStore } from "./AgentRoomStore";
 import { AGENT_MESSAGE_KEY } from "./AgentReplyListener";
 import DMRoomMap from "../utils/DMRoomMap";
 
@@ -84,8 +85,8 @@ describe("AgentTaskListener", () => {
             connect: vi.fn(),
             disconnect: vi.fn(),
             listModels: vi.fn(),
-            getRooms: vi.fn(),
-            setRoom: vi.fn(),
+            getRoomRules: vi.fn(),
+            setRoomRule: vi.fn(),
             generateReply: vi.fn(),
             generateSuggestions: vi.fn(),
             pickWorkspace: vi.fn(),
@@ -180,6 +181,48 @@ describe("AgentTaskListener", () => {
         await vi.advanceTimersByTimeAsync(DETECTION_DELAY_MS);
 
         expect(agent.detectTasks).not.toHaveBeenCalled();
+    });
+
+    describe("room rules", () => {
+        let rules: Record<string, AgentRoomRule>;
+
+        beforeEach(() => {
+            rules = {};
+            vi.spyOn(AgentRoomStore.instance, "getRule").mockImplementation((roomId) => rules[roomId]);
+        });
+
+        it("does not read a room set to ignore", async () => {
+            rules[DM_ID] = "ignore";
+            rules[GROUP_ID] = "ignore";
+            vi.mocked(client.getPushActionsForEvent).mockReturnValue({ notify: true, tweaks: { highlight: true } });
+            receive(DM_ID, BOB, "Can you create a ticket?");
+            receive(GROUP_ID, BOB, "Alice, can you look at the build?");
+
+            await vi.advanceTimersByTimeAsync(DETECTION_DELAY_MS);
+
+            expect(agent.detectTasks).not.toHaveBeenCalled();
+        });
+
+        it("reads every message of a group chat set to tasks_only, without a mention", async () => {
+            rules[GROUP_ID] = "tasks_only";
+            receive(GROUP_ID, BOB, "Someone should look at the build");
+
+            await vi.advanceTimersByTimeAsync(DETECTION_DELAY_MS);
+
+            expect(agent.detectTasks).toHaveBeenCalledWith(expect.objectContaining({ chatName: "Team", newCount: 1 }));
+        });
+
+        it("reads a room set to tasks_only even when collecting requests is turned off", async () => {
+            agent.getStatus.mockResolvedValue({ ...STATUS, taskDetection: false });
+            rules[GROUP_ID] = "tasks_only";
+            receive(GROUP_ID, BOB, "Someone should look at the build");
+            receive(DM_ID, BOB, "Can you create a ticket?");
+
+            await vi.advanceTimersByTimeAsync(DETECTION_DELAY_MS);
+
+            expect(agent.detectTasks).toHaveBeenCalledTimes(1);
+            expect(agent.detectTasks).toHaveBeenCalledWith(expect.objectContaining({ chatName: "Team" }));
+        });
     });
 
     it("tells the agent which tasks are already open", async () => {

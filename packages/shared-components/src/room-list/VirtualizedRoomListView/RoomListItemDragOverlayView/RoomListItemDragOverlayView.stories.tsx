@@ -38,7 +38,7 @@ const RoomListItemDragOverlayWrapperImpl = ({
     onCreateSection,
     onToggleSection,
     onRemoveFromSection,
-    onToggleAgent,
+    onSetAgentRule,
     renderAvatar: renderAvatarProp,
     ...rest
 }: RoomListItemDragOverlayProps): JSX.Element => {
@@ -55,7 +55,7 @@ const RoomListItemDragOverlayWrapperImpl = ({
         onCreateSection,
         onToggleSection,
         onRemoveFromSection,
-        onToggleAgent,
+        onSetAgentRule,
     });
     return <RoomListItemDragOverlayView vm={vm} renderAvatar={renderAvatarProp} />;
 };

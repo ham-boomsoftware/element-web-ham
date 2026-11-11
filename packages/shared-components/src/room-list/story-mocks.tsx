@@ -115,7 +115,7 @@ export const createMockRoomSnapshot = (
     canChangeSection: true,
     canReorder: false,
     canUseAgent: false,
-    isAgent: false,
+    canAgentReply: false,
 });
 
 export function createMockRoomItemViewModel(
@@ -140,7 +140,7 @@ export function createMockRoomItemViewModel(
         onCreateSection: fn(),
         onToggleSection: fn(),
         onRemoveFromSection: fn(),
-        onToggleAgent: fn(),
+        onSetAgentRule: fn(),
     };
 }
 
