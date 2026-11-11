@@ -5,6 +5,7 @@ SPDX-License-Identifier: AGPL-3.0-only OR GPL-3.0-only OR LicenseRef-Element-Com
 Please see LICENSE files in the repository root for full details.
 */
 
+import fs from "node:fs";
 import path from "node:path";
 import { expect, describe, it, beforeEach, afterEach, vi } from "vitest";
 import { AuthenticationError, RateLimitError } from "@anthropic-ai/sdk";
@@ -62,7 +63,14 @@ const { storeData, storeOptions, safeStorage, anthropic, copilot } = vi.hoisted(
     };
 });
 
-vi.mock("electron", () => ({ app: { getPath: vi.fn(() => "/roaming/Element") }, safeStorage }));
+vi.mock("electron", () => ({
+    app: {
+        getPath: vi.fn(() => "/roaming/Element"),
+        getAppPath: vi.fn(() => "/app/resources/app.asar"),
+        isPackaged: false,
+    },
+    safeStorage,
+}));
 vi.mock("electron-store", () => ({
     default: vi.fn(function (this: Record<string, unknown>, options: unknown) {
         storeOptions.push(options);
@@ -110,6 +118,7 @@ vi.mock("@github/copilot-sdk", () => ({
             deleteSession: copilot.deleteSession,
         });
     }),
+    RuntimeConnection: { forStdio: (options: unknown) => ({ kind: "stdio", options }) },
 }));
 
 const request: AgentReplyRequest = {
@@ -293,6 +302,34 @@ describe("agent", () => {
             copilot.sendAndWait.mockResolvedValue({ data: { content: "Hi" } });
             expect(await generateAgentReply(request)).toEqual({ ok: true, data: "Hi" });
             expect(copilot.options).toHaveLength(1);
+        });
+
+        it("starts the Copilot runtime unpacked from the archive of the packaged app", async () => {
+            const electron = await import("electron");
+            const existsSync = vi.spyOn(fs, "existsSync").mockReturnValue(true);
+            Object.assign(electron.app, { isPackaged: true });
+            try {
+                copilot.getAuthStatus.mockResolvedValue({ isAuthenticated: true, login: "alice" });
+                copilot.listModels.mockResolvedValue([]);
+
+                await connectCopilotLoggedInUser();
+
+                const runtime = path.join(
+                    "/app/resources/app.asar.unpacked",
+                    "node_modules",
+                    "@github",
+                    `copilot-sdk-${process.platform}-${process.arch}`,
+                    "prebuilds",
+                    `${process.platform}-${process.arch}`,
+                    process.platform === "win32" ? "copilot-runtime.exe" : "copilot-runtime",
+                );
+                expect(copilot.options).toEqual([
+                    expect.objectContaining({ connection: { kind: "stdio", options: { path: runtime } } }),
+                ]);
+            } finally {
+                Object.assign(electron.app, { isPackaged: false });
+                existsSync.mockRestore();
+            }
         });
 
         it("does not connect Copilot if the computer has no GitHub login", async () => {

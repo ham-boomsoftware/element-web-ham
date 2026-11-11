@@ -18,7 +18,7 @@ import path from "node:path";
 import { app, safeStorage } from "electron";
 import ElectronStore from "electron-store";
 import Anthropic from "@anthropic-ai/sdk";
-import { CopilotClient } from "@github/copilot-sdk";
+import { CopilotClient, RuntimeConnection } from "@github/copilot-sdk";
 import type {
     AgentErrorCode,
     AgentModel,
@@ -645,8 +645,9 @@ let copilot: { token: string; client: CopilotClient } | undefined;
 export async function getCopilotClient(token: string): Promise<CopilotClient> {
     if (copilot?.token === token) return copilot.client;
     await stopCopilot();
-    const client = new CopilotClient(
-        token === COPILOT_LOGGED_IN_USER
+    const runtimePath = getCopilotRuntimePath();
+    const client = new CopilotClient({
+        ...(token === COPILOT_LOGGED_IN_USER
             ? {
                   // The login of Copilot CLI, kept in its own home folder, or else of GitHub CLI. The runtime keeps
                   // its sessions there too, but every session of the agent is deleted after use.
@@ -659,11 +660,31 @@ export async function getCopilotClient(token: string): Promise<CopilotClient> {
                   useLoggedInUser: false,
                   logLevel: "error",
                   baseDirectory: path.join(getAgentDataPath(), "copilot"),
-              },
-    );
+              }),
+        ...(runtimePath && { connection: RuntimeConnection.forStdio({ path: runtimePath }) }),
+    });
     await client.start();
     copilot = { token, client };
     return client;
+}
+
+/**
+ * The Copilot runtime of the packaged app. The SDK finds it inside app.asar, where it can't be started; it is
+ * unpacked next to the archive instead. Undefined when not packaged, so the SDK finds the runtime itself.
+ */
+export function getCopilotRuntimePath(): string | undefined {
+    if (!app.isPackaged) return undefined;
+    const platform = `${process.platform}-${process.arch}`;
+    const runtimePath = path.join(
+        `${app.getAppPath()}.unpacked`,
+        "node_modules",
+        "@github",
+        `copilot-sdk-${platform}`,
+        "prebuilds",
+        platform,
+        process.platform === "win32" ? "copilot-runtime.exe" : "copilot-runtime",
+    );
+    return fs.existsSync(runtimePath) ? runtimePath : undefined;
 }
 
 /**
