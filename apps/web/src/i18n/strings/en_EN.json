@@ -136,6 +136,9 @@
         "zoom_in": "Zoom in",
         "zoom_out": "Zoom out"
     },
+    "agent_room_instructions_dialog": {
+        "title": "Agent instructions for %(roomName)s"
+    },
     "agent_todo_list": {
         "button": "To-dos (%(number)s)",
         "title": "To-do list"

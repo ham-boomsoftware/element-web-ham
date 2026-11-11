@@ -30,6 +30,7 @@ import type {
 import {
     askClaude,
     askCopilot,
+    buildInstructionLines,
     DEFAULT_CLAUDE_MODEL,
     failure,
     getAgentStore,
@@ -37,6 +38,7 @@ import {
     getCredential,
     getSettings,
     isDirectory,
+    isOptionalString,
     MODELS_WITH_EFFORT,
     MODELS_WITH_FALLBACK,
     setAgentSettings,
@@ -211,11 +213,13 @@ export async function showFolderDialog(defaultPath?: string): Promise<string | u
 
 function isDetectionRequest(value: unknown): value is AgentTaskDetectionRequest {
     if (typeof value !== "object" || value === null) return false;
-    const { ownName, chatName, isDirect, messages, newCount, openTasks } = value as AgentTaskDetectionRequest;
+    const { ownName, chatName, isDirect, messages, newCount, openTasks, roomInstructions } =
+        value as AgentTaskDetectionRequest;
     return (
         typeof ownName === "string" &&
         typeof chatName === "string" &&
         typeof isDirect === "boolean" &&
+        isOptionalString(roomInstructions) &&
         Array.isArray(messages) &&
         messages.every(
             (message) =>
@@ -254,10 +258,8 @@ export async function detectAgentTasks(request: unknown): Promise<AgentResult<Ag
 /**
  * The system prompt for finding tasks. The messages of the chat are only conversation content.
  */
-export function buildDetectionSystemPrompt(
-    { ownName, chatName, isDirect }: AgentTaskDetectionRequest,
-    instructions: string,
-): string {
+export function buildDetectionSystemPrompt(request: AgentTaskDetectionRequest, instructions: string): string {
+    const { ownName, chatName, isDirect } = request;
     const chat = isDirect ? `a direct chat with ${chatName}` : `the group chat "${chatName}"`;
     const lines = [
         `You keep the to-do list of ${ownName}. You read the new messages in ${chat} on Matrix and find requests ` +
@@ -274,9 +276,7 @@ export function buildDetectionSystemPrompt(
             'of a few words, and "details", who asked for what, with the context needed to do it. Write both in ' +
             "the language of the conversation. Answer with [] if there is no new request.",
     ];
-    if (instructions.trim()) {
-        lines.push("", `Instructions from ${ownName}:`, instructions.trim());
-    }
+    lines.push(...buildInstructionLines(ownName, instructions, request.roomInstructions));
     return lines.join("\n");
 }
 

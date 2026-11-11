@@ -46,6 +46,8 @@ import { getCustomSectionData, isDefaultSectionTag } from "../../stores/room-lis
 import { _t } from "../../languageHandler";
 import { fetchUserStatus } from "../../utils/userStatus";
 import { AgentRoomStore, AgentRoomStoreEvent } from "../../agent/AgentRoomStore";
+import Modal from "../../Modal";
+import { AgentRoomInstructionsDialog } from "../../components/views/dialogs/AgentRoomInstructionsDialog";
 
 /**
  * View section type without `isSelected` field
@@ -532,6 +534,11 @@ export class RoomListItemViewModel
 
     public onSetAgentRule = (rule: AgentRoomRule | undefined): void => {
         void AgentRoomStore.instance.setRule(this.props.room.roomId, rule);
+    };
+
+    public onEditAgentInstructions = (): void => {
+        const { roomId, name } = this.props.room;
+        Modal.createDialog(AgentRoomInstructionsDialog, { roomId, roomName: name });
     };
 
     private onCustomSectionsChange = (): void => {

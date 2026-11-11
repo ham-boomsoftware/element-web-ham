@@ -72,6 +72,9 @@ describe("AgentReplyListener", () => {
             listModels: vi.fn(),
             getRoomRules: vi.fn(),
             setRoomRule: vi.fn(),
+            connectLoggedInUser: vi.fn(),
+            getRoomInstructions: vi.fn(),
+            setRoomInstructions: vi.fn(),
             generateReply: vi.fn().mockResolvedValue({ ok: true, data: "Sure, see you tomorrow!" }),
             generateSuggestions: vi.fn(),
             pickWorkspace: vi.fn(),
@@ -115,6 +118,15 @@ describe("AgentReplyListener", () => {
         });
         expect(client.sendTyping).toHaveBeenCalledWith(ROOM_ID, true, 30000);
         expect(client.sendTyping).toHaveBeenLastCalledWith(ROOM_ID, false, 0);
+    });
+
+    it("passes the user's instructions for the room to the agent", async () => {
+        vi.spyOn(AgentRoomStore.instance, "getInstructions").mockReturnValue("Answer in German");
+        receive(PARTNER, "Are you free tomorrow?");
+
+        await waitForReply();
+
+        expect(agent.generateReply.mock.calls[0][0].roomInstructions).toBe("Answer in German");
     });
 
     it("waits for the partner to finish writing and replies once", async () => {

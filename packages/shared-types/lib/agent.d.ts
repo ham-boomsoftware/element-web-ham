@@ -11,7 +11,8 @@ Please see LICENSE files in the repository root for full details.
 /**
  * The AI providers an agent can use.
  * - `claude`: the Claude API, with an Anthropic API key.
- * - `copilot`: GitHub Copilot through the Copilot SDK, with a GitHub token of a Copilot subscriber.
+ * - `copilot`: GitHub Copilot through the Copilot SDK, with a GitHub token of a Copilot subscriber or the GitHub
+ *   login of the computer (of Copilot CLI or GitHub CLI).
  */
 export type AgentProvider = "claude" | "copilot";
 
@@ -53,6 +54,11 @@ export type AgentCodingCli = "claude" | "copilot";
 export interface AgentStatus extends AgentSettings {
     /** Whether a credential is stored for each provider */
     connected: Record<AgentProvider, boolean>;
+    /**
+     * Set if Copilot uses the GitHub login of the computer instead of a token, with the name of the GitHub account
+     * if known.
+     */
+    copilotLoggedInUser?: { login?: string };
     /** The project folders tasks were last opened in with the coding CLI, most recent first */
     recentProjects: string[];
 }
@@ -70,6 +76,11 @@ export type AgentRoomRule = "auto_reply" | "tasks_only" | "ignore";
  * The rules of a user's rooms, by room ID. Rooms without a rule are left out.
  */
 export type AgentRoomRules = Record<string, AgentRoomRule>;
+
+/**
+ * The instructions the user gave the agent for single rooms, by room ID. Rooms without instructions are left out.
+ */
+export type AgentRoomInstructions = Record<string, string>;
 
 /**
  * One message of the conversation the agent replies to.
@@ -90,6 +101,8 @@ export interface AgentReplyRequest {
     partnerName: string;
     /** The latest messages of the conversation, oldest first, ending with a message of the partner */
     turns: AgentTurn[];
+    /** The user's instructions for this chat, if any; they come after the general instructions */
+    roomInstructions?: string;
 }
 
 /**
@@ -115,6 +128,8 @@ export interface AgentSuggestionsRequest {
     isDirect: boolean;
     /** The latest messages of the chat, oldest first, ending with a message of someone else */
     messages: AgentSuggestionMessage[];
+    /** The user's instructions for this chat, if any; they come after the general instructions */
+    roomInstructions?: string;
 }
 
 /**
@@ -133,6 +148,8 @@ export interface AgentTaskDetectionRequest {
     newCount: number;
     /** The titles of the open tasks, so that a task already on the list is not added again */
     openTasks: string[];
+    /** The user's instructions for this chat, if any; they come after the general instructions */
+    roomInstructions?: string;
 }
 
 /**

@@ -141,6 +141,7 @@ export function createMockRoomItemViewModel(
         onToggleSection: fn(),
         onRemoveFromSection: fn(),
         onSetAgentRule: fn(),
+        onEditAgentInstructions: fn(),
     };
 }
 

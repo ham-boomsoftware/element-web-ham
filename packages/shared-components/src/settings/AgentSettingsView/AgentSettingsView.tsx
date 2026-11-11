@@ -27,7 +27,8 @@ import { Flex } from "../../core/utils/Flex";
 import styles from "./AgentSettingsView.module.css";
 
 /**
- * The AI providers the agent can use: Claude with an Anthropic API key, or GitHub Copilot with a GitHub token.
+ * The AI providers the agent can use: Claude with an Anthropic API key, or GitHub Copilot with a GitHub token or the
+ * GitHub login of this computer.
  */
 export type AgentSettingsProvider = "claude" | "copilot";
 
@@ -39,12 +40,19 @@ export type AgentSettingsCli = "claude" | "copilot";
 /**
  * Why the last action failed.
  * - `invalid_credential`: the provider rejected the key or token.
+ * - `not_logged_in`: Copilot found no GitHub login on this computer, or the account has no Copilot plan.
  * - `rate_limited`: the provider asks to slow down, or the plan's allowance is used up.
  * - `unavailable`: the provider could not be reached.
  * - `no_workspace`: the chosen project folder doesn't exist.
  * - `unknown`: anything else.
  */
-export type AgentSettingsError = "invalid_credential" | "rate_limited" | "unavailable" | "no_workspace" | "unknown";
+export type AgentSettingsError =
+    | "invalid_credential"
+    | "not_logged_in"
+    | "rate_limited"
+    | "unavailable"
+    | "no_workspace"
+    | "unknown";
 
 /**
  * A model the selected provider offers.
@@ -64,6 +72,10 @@ export interface AgentSettingsViewSnapshot {
     provider: AgentSettingsProvider;
     /** Whether a credential is stored for each provider */
     connected: Record<AgentSettingsProvider, boolean>;
+    /** Whether Copilot uses the GitHub login of this computer instead of a token */
+    copilotUsesLoggedInUser: boolean;
+    /** The GitHub account of that login, if known */
+    copilotLogin?: string;
     /** The models of the selected provider; empty while it is not connected */
     models: AgentSettingsModel[];
     /** The selected model, or undefined for the provider's default */
@@ -89,6 +101,8 @@ export interface AgentSettingsViewActions {
     setProvider: (provider: AgentSettingsProvider) => void;
     /** Connect the selected provider with an API key or token */
     connect: (credential: string) => void;
+    /** Connect Copilot with the GitHub login of this computer, of Copilot CLI or GitHub CLI */
+    connectLoggedInUser: () => void;
     /** Forget the credential of the selected provider */
     disconnect: () => void;
     /** Choose a model of the selected provider, or "" for its default */
@@ -131,6 +145,8 @@ export function AgentSettingsView({ vm }: Readonly<AgentSettingsViewProps>): JSX
         isBusy,
         provider,
         connected,
+        copilotUsesLoggedInUser,
+        copilotLogin,
         models,
         model,
         instructions,
@@ -161,6 +177,11 @@ export function AgentSettingsView({ vm }: Readonly<AgentSettingsViewProps>): JSX
         claude: _t("settings|agent|connected_claude"),
         copilot: _t("settings|agent|connected_copilot"),
     };
+    if (copilotUsesLoggedInUser) {
+        connectedLabels.copilot = copilotLogin
+            ? _t("settings|agent|connected_copilot_login", { login: copilotLogin })
+            : _t("settings|agent|connected_copilot_logged_in");
+    }
     const credentialLabels: Record<AgentSettingsProvider, string> = {
         claude: _t("settings|agent|credential_claude"),
         copilot: _t("settings|agent|credential_copilot"),
@@ -171,6 +192,7 @@ export function AgentSettingsView({ vm }: Readonly<AgentSettingsViewProps>): JSX
     };
     const errorMessages: Record<AgentSettingsError, string> = {
         invalid_credential: _t("settings|agent|error_invalid_credential"),
+        not_logged_in: _t("settings|agent|error_not_logged_in"),
         rate_limited: _t("settings|agent|error_rate_limited"),
         unavailable: _t("settings|agent|error_unavailable"),
         no_workspace: _t("settings|agent|error_no_workspace"),
@@ -235,6 +257,22 @@ export function AgentSettingsView({ vm }: Readonly<AgentSettingsViewProps>): JSX
                     <Submit size="md" disabled={isBusy || !credential.trim()}>
                         {_t("settings|agent|connect")}
                     </Submit>
+                    {provider === "copilot" && (
+                        <Flex direction="column" gap="var(--cpd-space-2x)">
+                            <Button
+                                type="button"
+                                kind="secondary"
+                                size="md"
+                                disabled={isBusy}
+                                onClick={vm.connectLoggedInUser}
+                            >
+                                {_t("settings|agent|use_logged_in_user")}
+                            </Button>
+                            <Text size="sm" className={styles.description}>
+                                {_t("settings|agent|use_logged_in_user_description")}
+                            </Text>
+                        </Flex>
+                    )}
                 </Root>
             )}
 

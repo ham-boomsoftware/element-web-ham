@@ -151,6 +151,8 @@ export interface RoomListItemViewActions {
     onRemoveFromSection: () => void;
     /** Called to set what the agent does in the room, or with undefined to let the room follow the agent settings */
     onSetAgentRule: (rule: AgentRoomRule | undefined) => void;
+    /** Called to edit the user's instructions for the agent in the room */
+    onEditAgentInstructions: () => void;
 }
 
 /**

@@ -18,6 +18,7 @@ type AgentSettingsProps = AgentSettingsViewSnapshot & AgentSettingsViewActions;
 const AgentSettingsViewWrapperImpl = ({
     setProvider,
     connect,
+    connectLoggedInUser,
     disconnect,
     setModel,
     saveInstructions,
@@ -32,6 +33,7 @@ const AgentSettingsViewWrapperImpl = ({
     const vm = useMockedViewModel(rest, {
         setProvider,
         connect,
+        connectLoggedInUser,
         disconnect,
         setModel,
         saveInstructions,
@@ -55,6 +57,8 @@ const meta = {
         isBusy: false,
         provider: "claude",
         connected: { claude: false, copilot: false },
+        copilotUsesLoggedInUser: false,
+        copilotLogin: undefined,
         models: [],
         model: undefined,
         instructions: "",
@@ -66,6 +70,7 @@ const meta = {
         error: undefined,
         setProvider: fn(),
         connect: fn(),
+        connectLoggedInUser: fn(),
         disconnect: fn(),
         setModel: fn(),
         saveInstructions: fn(),
@@ -112,6 +117,29 @@ export const MissingWorkspace: Story = {
 export const Copilot: Story = {
     args: {
         provider: "copilot",
+    },
+};
+
+/**
+ * Copilot uses the GitHub login of this computer instead of a token.
+ */
+export const CopilotLoggedInUser: Story = {
+    args: {
+        provider: "copilot",
+        connected: { claude: false, copilot: true },
+        copilotUsesLoggedInUser: true,
+        copilotLogin: "alice",
+        models: [{ id: "gpt-5", name: "GPT-5" }],
+    },
+};
+
+/**
+ * This computer has no GitHub login Copilot could use.
+ */
+export const CopilotNotLoggedIn: Story = {
+    args: {
+        provider: "copilot",
+        error: "not_logged_in",
     },
 };
 

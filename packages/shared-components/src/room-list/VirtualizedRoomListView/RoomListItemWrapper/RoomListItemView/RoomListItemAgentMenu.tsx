@@ -6,7 +6,7 @@
  */
 
 import React, { type JSX } from "react";
-import { MenuItem, SubMenu } from "@vector-im/compound-web";
+import { MenuItem, Separator, SubMenu } from "@vector-im/compound-web";
 import { CheckIcon } from "@vector-im/compound-design-tokens/assets/web/icons";
 import AiIcon from "@vector-im/compound-design-tokens/assets/web/icons/ai";
 import type { AgentRoomRule } from "shared-types";
@@ -25,7 +25,8 @@ export interface RoomListItemAgentMenuProps {
 
 /**
  * The rule for what the agent does in a room, as a submenu of the more options menu: follow the agent settings,
- * reply by itself (direct messages only), only look for tasks, or ignore the room.
+ * reply by itself (direct messages only), only look for tasks, or ignore the room. It also opens the user's
+ * instructions for the agent in the room.
  * It is independent of the notification options, so that the agent can also answer a silent room.
  */
 export function RoomListItemAgentMenu({ vm }: RoomListItemAgentMenuProps): JSX.Element {
@@ -55,6 +56,13 @@ export function RoomListItemAgentMenu({ vm }: RoomListItemAgentMenuProps): JSX.E
                     )}
                 </MenuItem>
             ))}
+            <Separator />
+            <MenuItem
+                hideChevron={true}
+                label={_t("room_list|agent_instructions")}
+                onSelect={vm.onEditAgentInstructions}
+                onClick={(evt) => evt.stopPropagation()}
+            />
         </SubMenu>
     );
 }

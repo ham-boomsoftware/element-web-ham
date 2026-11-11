@@ -36,6 +36,7 @@ describe("<RoomListItemAgentMenu />", () => {
 
     beforeEach(() => {
         vi.mocked(mockCallbacks.onSetAgentRule).mockClear();
+        vi.mocked(mockCallbacks.onEditAgentInstructions).mockClear();
     });
 
     it("should offer replying automatically in a direct message only", () => {
@@ -73,6 +74,16 @@ describe("<RoomListItemAgentMenu />", () => {
         await user.click(screen.getByRole("menuitem", { name: label }));
 
         expect(mockCallbacks.onSetAgentRule).toHaveBeenCalledWith(rule);
+    });
+
+    it("should open the instructions for the room", async () => {
+        const user = userEvent.setup();
+        renderMenu();
+
+        await user.click(screen.getByRole("menuitem", { name: "Instructions…" }));
+
+        expect(mockCallbacks.onEditAgentInstructions).toHaveBeenCalled();
+        expect(mockCallbacks.onSetAgentRule).not.toHaveBeenCalled();
     });
 
     it("should only be in the more options menu where the agent can be used", () => {

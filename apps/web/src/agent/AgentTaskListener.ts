@@ -153,6 +153,7 @@ export class AgentTaskListener {
                 messages,
                 newCount,
                 openTasks: store.tasks.filter((task) => !task.done).map((task) => task.title),
+                roomInstructions: AgentRoomStore.instance.getInstructions(room.roomId),
             });
             if (this.client !== client) return;
             if (!result.ok) {

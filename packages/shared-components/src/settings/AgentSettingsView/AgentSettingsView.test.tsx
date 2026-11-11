@@ -13,14 +13,24 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 
 import * as stories from "./AgentSettingsView.stories";
 
-const { NotConnected, Connected, Copilot, InvalidCredential, Loading, WithWorkspace, MissingWorkspace } =
-    composeStories(stories);
+const {
+    NotConnected,
+    Connected,
+    Copilot,
+    CopilotLoggedInUser,
+    CopilotNotLoggedIn,
+    InvalidCredential,
+    Loading,
+    WithWorkspace,
+    MissingWorkspace,
+} = composeStories(stories);
 
 describe("<AgentSettingsView />", () => {
     beforeEach(() => {
         for (const action of [
             "setProvider",
             "connect",
+            "connectLoggedInUser",
             "disconnect",
             "setModel",
             "saveInstructions",
@@ -34,6 +44,7 @@ describe("<AgentSettingsView />", () => {
             vi.mocked(NotConnected.args[action]!).mockClear();
             vi.mocked(Connected.args[action]!).mockClear();
             vi.mocked(WithWorkspace.args[action]!).mockClear();
+            vi.mocked(Copilot.args[action]!).mockClear();
         }
     });
 
@@ -53,6 +64,32 @@ describe("<AgentSettingsView />", () => {
         render(<Copilot />);
         expect(screen.getByRole("radio", { name: "GitHub Copilot" })).toBeChecked();
         expect(screen.getByLabelText("GitHub token")).toBeInTheDocument();
+    });
+
+    it("connects Copilot with the GitHub login of this computer", async () => {
+        const user = userEvent.setup();
+        render(<Copilot />);
+
+        await user.click(screen.getByRole("button", { name: "Use the GitHub login of this computer" }));
+
+        expect(Copilot.args.connectLoggedInUser).toHaveBeenCalled();
+        expect(Copilot.args.connect).not.toHaveBeenCalled();
+    });
+
+    it("only offers the GitHub login of this computer for Copilot", () => {
+        render(<NotConnected />);
+        expect(screen.queryByRole("button", { name: "Use the GitHub login of this computer" })).not.toBeInTheDocument();
+    });
+
+    it("shows the GitHub account Copilot uses", () => {
+        render(<CopilotLoggedInUser />);
+        expect(screen.getByText("Connected to GitHub Copilot as alice")).toBeInTheDocument();
+        expect(screen.queryByLabelText("GitHub token")).not.toBeInTheDocument();
+    });
+
+    it("says how to sign in when this computer has no GitHub login", () => {
+        render(<CopilotNotLoggedIn />);
+        expect(screen.getByText(/Sign in with "copilot login" or "gh auth login" first/)).toBeInTheDocument();
     });
 
     it("connects with the typed credential", async () => {

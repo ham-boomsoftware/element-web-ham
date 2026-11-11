@@ -49,6 +49,9 @@ describe("AgentSettingsViewModel", () => {
             listModels: vi.fn().mockResolvedValue({ ok: true, data: MODELS }),
             getRoomRules: vi.fn(),
             setRoomRule: vi.fn(),
+            connectLoggedInUser: vi.fn(),
+            getRoomInstructions: vi.fn(),
+            setRoomInstructions: vi.fn(),
             generateReply: vi.fn(),
             generateSuggestions: vi.fn(),
             pickWorkspace: vi.fn().mockResolvedValue({ ok: true, data: "/home/alice/project" }),
@@ -140,6 +143,36 @@ describe("AgentSettingsViewModel", () => {
 
             await vi.waitFor(() => expect(vm.getSnapshot().provider).toBe("copilot"));
             expect(agent.setSettings).toHaveBeenCalledWith({ provider: "copilot" });
+        });
+
+        it("connects with the GitHub login of this computer", async () => {
+            vm.setProvider("copilot");
+            await vi.waitFor(() => expect(vm.getSnapshot().provider).toBe("copilot"));
+            agent.connectLoggedInUser.mockResolvedValue({ ok: true, data: undefined });
+            agent.getStatus.mockResolvedValue({
+                ...(await agent.getStatus()),
+                provider: "copilot",
+                connected: { claude: false, copilot: true },
+                copilotLoggedInUser: { login: "alice" },
+            });
+
+            vm.connectLoggedInUser();
+
+            await vi.waitFor(() => expect(vm.getSnapshot().copilotLogin).toBe("alice"));
+            expect(vm.getSnapshot()).toMatchObject({
+                copilotUsesLoggedInUser: true,
+                connected: { claude: false, copilot: true },
+            });
+            expect(agent.listModels).toHaveBeenCalledWith("copilot");
+        });
+
+        it("shows that there is no GitHub login on this computer", async () => {
+            agent.connectLoggedInUser.mockResolvedValue({ ok: false, error: "not_connected" });
+
+            vm.connectLoggedInUser();
+
+            await vi.waitFor(() => expect(vm.getSnapshot().error).toBe("not_logged_in"));
+            expect(vm.getSnapshot()).toMatchObject({ isBusy: false, copilotUsesLoggedInUser: false });
         });
 
         it("disconnects the selected provider", async () => {

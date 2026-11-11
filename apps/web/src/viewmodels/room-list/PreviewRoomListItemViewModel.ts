@@ -106,6 +106,8 @@ export class PreviewRoomListItemViewModel
     public onToggleFavorite = (): void => {};
     public onToggleLowPriority = (): void => {};
     public onSetAgentRule = (): void => {};
+
+    public onEditAgentInstructions = (): void => {};
     public onInvite = (): void => {};
     public onCopyRoomLink = (): void => {};
     public onLeaveRoom = (): void => {};

@@ -151,6 +151,7 @@ export class AgentReplyListener {
                 ownName: room.getMember(myUserId)?.name ?? myUserId,
                 partnerName: room.getMember(partnerId)?.name ?? partnerId,
                 turns,
+                roomInstructions: AgentRoomStore.instance.getInstructions(room.roomId),
             });
             if (!result.ok) {
                 logger.warn(`Agent could not reply in ${room.roomId}: ${result.error}`, result.message);

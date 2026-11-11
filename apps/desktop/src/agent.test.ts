@@ -14,14 +14,18 @@ import {
     buildSuggestionsSystemPrompt,
     buildSystemPrompt,
     connectAgent,
+    connectCopilotLoggedInUser,
     disconnectAgent,
     generateAgentReply,
     generateAgentSuggestions,
     getAgentDataPath,
+    getAgentRoomInstructions,
     getAgentRoomRules,
     getAgentStatus,
     listAgentModels,
+    MAX_ROOM_INSTRUCTIONS_LENGTH,
     parseSuggestions,
+    setAgentRoomInstructions,
     setAgentRoomRule,
     setAgentSettings,
     stopCopilot,
@@ -65,6 +69,9 @@ vi.mock("electron-store", () => ({
         this.get = (key: string) => storeData[key];
         this.set = (key: string, value: unknown) => {
             storeData[key] = structuredClone(value);
+        };
+        this.delete = (key: string) => {
+            delete storeData[key];
         };
     }),
 }));
@@ -264,6 +271,59 @@ describe("agent", () => {
 
             expect(storeData.secrets).toEqual({});
             expect(copilot.stop).toHaveBeenCalled();
+        });
+
+        it("connects Copilot with the GitHub login of the computer instead of a token", async () => {
+            storeCredential("copilot", "github_pat_old");
+            copilot.getAuthStatus.mockResolvedValue({ isAuthenticated: true, login: "alice" });
+            copilot.listModels.mockResolvedValue([{ id: "gpt-5", name: "GPT-5" }]);
+
+            expect(await connectCopilotLoggedInUser()).toEqual({ ok: true, data: undefined });
+
+            // The runtime uses its own login: no token and not the agent's own home folder
+            expect(copilot.options).toEqual([{ useLoggedInUser: true, logLevel: "error" }]);
+            expect(storeData.secrets).toEqual({});
+            expect(storeData.copilotLoggedInUser).toEqual({ login: "alice" });
+            const status = await getAgentStatus();
+            expect(status.connected).toEqual({ claude: false, copilot: true });
+            expect(status.copilotLoggedInUser).toEqual({ login: "alice" });
+
+            // Replies use the same runtime
+            setAgentSettings({ provider: "copilot", model: "gpt-5" });
+            copilot.sendAndWait.mockResolvedValue({ data: { content: "Hi" } });
+            expect(await generateAgentReply(request)).toEqual({ ok: true, data: "Hi" });
+            expect(copilot.options).toHaveLength(1);
+        });
+
+        it("does not connect Copilot if the computer has no GitHub login", async () => {
+            copilot.getAuthStatus.mockResolvedValue({ isAuthenticated: false, statusMessage: "Not logged in" });
+
+            expect(await connectCopilotLoggedInUser()).toEqual({
+                ok: false,
+                error: "not_connected",
+                message: "Not logged in",
+            });
+            expect(storeData.copilotLoggedInUser).toBeUndefined();
+        });
+
+        it("forgets the GitHub login of the computer on disconnect and when a token is set", async () => {
+            copilot.listModels.mockResolvedValue([]);
+            await connectCopilotLoggedInUser();
+            await disconnectAgent("copilot");
+            expect(storeData.copilotLoggedInUser).toBeUndefined();
+            expect((await getAgentStatus()).connected.copilot).toBe(false);
+
+            await connectCopilotLoggedInUser();
+            await connectAgent("copilot", "github_pat_test");
+            expect(storeData.copilotLoggedInUser).toBeUndefined();
+            expect(Object.keys(storeData.secrets as object)).toEqual(["copilot"]);
+        });
+
+        it("does not take the marker of the computer's login as a token", async () => {
+            expect(await connectAgent("copilot", "logged-in-user")).toMatchObject({
+                ok: false,
+                error: "invalid_request",
+            });
         });
 
         it("lists the models of a connected provider", async () => {
@@ -474,6 +534,49 @@ describe("agent", () => {
         });
     });
 
+    describe("room instructions", () => {
+        it("stores trimmed instructions per user and room, and removes blank ones", () => {
+            setAgentRoomInstructions("@alice:example.org", "!a:example.org", " Answer in English. ");
+            setAgentRoomInstructions("@alice:example.org", "!b:example.org", "Be brief.");
+            setAgentRoomInstructions("@bob:example.org", "!a:example.org", "Be formal.");
+
+            expect(setAgentRoomInstructions("@alice:example.org", "!b:example.org", "  ")).toEqual({
+                ok: true,
+                data: { "!a:example.org": "Answer in English." },
+            });
+            expect(getAgentRoomInstructions("@alice:example.org")).toEqual({
+                ok: true,
+                data: { "!a:example.org": "Answer in English." },
+            });
+            expect(getAgentRoomInstructions("@bob:example.org")).toEqual({
+                ok: true,
+                data: { "!a:example.org": "Be formal." },
+            });
+            expect(getAgentRoomInstructions("@carol:example.org")).toEqual({ ok: true, data: {} });
+        });
+
+        it.each([
+            [undefined, "!a:example.org", "Be brief."],
+            ["@alice:example.org", "", "Be brief."],
+            ["@alice:example.org", "!a:example.org", 42],
+            ["@alice:example.org", "!a:example.org", "x".repeat(MAX_ROOM_INSTRUCTIONS_LENGTH + 1)],
+        ])("refuses invalid arguments %s %s", (userId, roomId, instructions) => {
+            expect(setAgentRoomInstructions(userId, roomId, instructions)).toMatchObject({
+                ok: false,
+                error: "invalid_request",
+            });
+            expect(storeData.roomInstructions).toBeUndefined();
+        });
+
+        it("refuses a reply request with invalid instructions for the room", async () => {
+            storeCredential("claude", "sk-ant-test");
+            expect(await generateAgentReply({ ...request, roomInstructions: 42 })).toMatchObject({
+                ok: false,
+                error: "invalid_request",
+            });
+        });
+    });
+
     describe("suggesting replies", () => {
         it("asks Claude with the chat as a transcript and returns three suggestions", async () => {
             storeCredential("claude", "sk-ant-test");
@@ -592,6 +695,17 @@ describe("agent", () => {
 
         it("has no instructions section without instructions", () => {
             expect(buildSystemPrompt(request, "  ")).not.toContain("Instructions from");
+        });
+
+        it("adds the instructions for the chat after the general ones", () => {
+            const prompt = buildSystemPrompt({ ...request, roomInstructions: " Answer in English. " }, "Be brief.");
+
+            expect(prompt).toMatch(
+                /Instructions from Alice:\nBe brief\.\n\nInstructions from Alice for this chat, which take precedence over the general ones:\nAnswer in English\.$/,
+            );
+            expect(buildSuggestionsSystemPrompt({ ...suggestionsRequest, roomInstructions: "Be formal." }, "")).toMatch(
+                /for this chat, which take precedence over the general ones:\nBe formal\.$/,
+            );
         });
     });
 });

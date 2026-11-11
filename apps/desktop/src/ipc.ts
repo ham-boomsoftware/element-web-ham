@@ -14,12 +14,15 @@ import Store, { clearData } from "./store.js";
 import { getConfig } from "./config.js";
 import {
     connectAgent,
+    connectCopilotLoggedInUser,
     disconnectAgent,
     generateAgentReply,
     generateAgentSuggestions,
+    getAgentRoomInstructions,
     getAgentRoomRules,
     getAgentStatus,
     listAgentModels,
+    setAgentRoomInstructions,
     setAgentRoomRule,
     setAgentSettings,
 } from "./agent.js";
@@ -213,6 +216,15 @@ ipcMain.on("ipcCall", async function (_ev: IpcMainEvent, payload) {
             break;
         case "agentSetRoomRule":
             ret = setAgentRoomRule(args[0], args[1], args[2]);
+            break;
+        case "agentGetRoomInstructions":
+            ret = getAgentRoomInstructions(args[0]);
+            break;
+        case "agentSetRoomInstructions":
+            ret = setAgentRoomInstructions(args[0], args[1], args[2]);
+            break;
+        case "agentConnectLoggedInUser":
+            ret = await connectCopilotLoggedInUser();
             break;
         case "agentGenerateReply":
             ret = await generateAgentReply(args[0]);

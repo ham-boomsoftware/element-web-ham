@@ -28,6 +28,14 @@ describe("AgentRoomStore", () => {
                 ok: true as const,
                 data: rule ? { [roomId]: rule } : {},
             })),
+            connectLoggedInUser: vi.fn(),
+            getRoomInstructions: vi
+                .fn()
+                .mockResolvedValue({ ok: true, data: { "!a:example.org": "Answer in German" } }),
+            setRoomInstructions: vi.fn(async (_userId, roomId, instructions) => ({
+                ok: true as const,
+                data: instructions ? { [roomId]: instructions } : {},
+            })),
             generateReply: vi.fn(),
             generateSuggestions: vi.fn(),
             pickWorkspace: vi.fn(),
@@ -103,6 +111,35 @@ describe("AgentRoomStore", () => {
         await store.setRule("!b:example.org", undefined);
 
         expect(agent.setRoomRule).not.toHaveBeenCalled();
+    });
+
+    it("reads the room instructions of the user from the platform", async () => {
+        await store.start(agent, ALICE);
+
+        expect(agent.getRoomInstructions).toHaveBeenCalledWith(ALICE);
+        expect(store.getInstructions("!a:example.org")).toBe("Answer in German");
+        expect(store.getInstructions("!b:example.org")).toBeUndefined();
+    });
+
+    it("sets the instructions of a room once the platform saved them", async () => {
+        await store.start(agent, ALICE);
+        const onUpdate = vi.fn();
+        store.on(AgentRoomStoreEvent.Update, onUpdate);
+
+        await expect(store.setInstructions("!b:example.org", "  Be brief  ")).resolves.toBe(true);
+
+        expect(agent.setRoomInstructions).toHaveBeenCalledWith(ALICE, "!b:example.org", "Be brief");
+        expect(store.getInstructions("!b:example.org")).toBe("Be brief");
+        expect(onUpdate).toHaveBeenCalled();
+    });
+
+    it("keeps the instructions when the platform can't save new ones", async () => {
+        await store.start(agent, ALICE);
+        agent.setRoomInstructions.mockResolvedValue({ ok: false, error: "unavailable" });
+
+        await expect(store.setInstructions("!a:example.org", "Be brief")).resolves.toBe(false);
+
+        expect(store.getInstructions("!a:example.org")).toBe("Answer in German");
     });
 
     it("forgets the rules when stopped", async () => {

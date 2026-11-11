@@ -12,6 +12,7 @@ import type {
     AgentProvider,
     AgentReplyRequest,
     AgentResult,
+    AgentRoomInstructions,
     AgentRoomRule,
     AgentRoomRules,
     AgentSettings,
@@ -35,6 +36,11 @@ export interface AgentApi {
     setSettings(changes: Partial<AgentSettings>): Promise<AgentResult<AgentSettings>>;
     /** Check a credential with its provider and store it */
     connect(provider: AgentProvider, credential: string): Promise<AgentResult<void>>;
+    /**
+     * Connect Copilot with the GitHub login of this computer, of Copilot CLI or GitHub CLI, instead of a token.
+     * Fails with `not_connected` if the computer has no login.
+     */
+    connectLoggedInUser(): Promise<AgentResult<void>>;
     /** Forget the credential of a provider */
     disconnect(provider: AgentProvider): Promise<AgentResult<void>>;
     /** List the models a connected provider offers */
@@ -47,6 +53,18 @@ export interface AgentApi {
      * @returns the rules of the user's rooms afterwards
      */
     setRoomRule(userId: string, roomId: string, rule: AgentRoomRule | null): Promise<AgentResult<AgentRoomRules>>;
+    /** Get the instructions for a Matrix user's rooms */
+    getRoomInstructions(userId: string): Promise<AgentResult<AgentRoomInstructions>>;
+    /**
+     * Set the instructions for a room, which the agent follows there on top of the general instructions, or remove
+     * them with "". They are kept by the platform, on this computer only.
+     * @returns the instructions for the user's rooms afterwards
+     */
+    setRoomInstructions(
+        userId: string,
+        roomId: string,
+        instructions: string,
+    ): Promise<AgentResult<AgentRoomInstructions>>;
     /** Write the next message of the user in a direct message */
     generateReply(request: AgentReplyRequest): Promise<AgentResult<string>>;
     /** Suggest replies the user could send next in a chat */

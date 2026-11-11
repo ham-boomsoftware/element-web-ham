@@ -170,6 +170,7 @@ export class ReplySuggestionsViewModel
                 chatName: room.name,
                 isDirect: Boolean(DMRoomMap.shared()?.getUserIdForRoomId(room.roomId)),
                 messages: this.getMessages(),
+                roomInstructions: AgentRoomStore.instance.getInstructions(room.roomId),
             })
             .catch((e) => {
                 logger.warn(`Could not get reply suggestions in ${room.roomId}`, e);
