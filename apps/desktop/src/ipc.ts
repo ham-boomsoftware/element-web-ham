@@ -28,6 +28,7 @@ import {
 } from "./agent.js";
 import {
     addAgentTasks,
+    answerAgentTaskQuestion,
     deleteAgentTask,
     detectAgentTasks,
     getAgentTaskDiff,
@@ -268,6 +269,9 @@ ipcMain.on("ipcCall", async function (_ev: IpcMainEvent, payload) {
             break;
         case "agentOpenTaskFolder":
             ret = await openAgentTaskFolder(args[0], args[1]);
+            break;
+        case "agentAnswerTaskQuestion":
+            ret = answerAgentTaskQuestion(args[0], args[1], args[2], args[3]);
             break;
         case "agentPickFolder":
             ret = await pickAgentFolder();

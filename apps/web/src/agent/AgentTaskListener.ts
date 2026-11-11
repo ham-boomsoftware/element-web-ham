@@ -22,6 +22,7 @@ import type { AgentApi } from "./AgentApi";
 import { AgentTaskStore } from "./AgentTaskStore";
 import { AgentRoomStore } from "./AgentRoomStore";
 import { AGENT_MESSAGE_KEY } from "./AgentReplyListener";
+import { AgentQuestionRelay } from "./AgentQuestionRelay";
 import DMRoomMap from "../utils/DMRoomMap";
 
 /** How long to wait after a new message, so that several messages in a row are read together */
@@ -123,6 +124,10 @@ export class AgentTaskListener {
         const content = event.getContent();
         if (event.getSender() === client.getSafeUserId() || !READ_MSGTYPES.has(content.msgtype)) return false;
         if (content[AGENT_MESSAGE_KEY]) return false;
+        // Answers to the agent's questions, and replies to its messages, are not new requests
+        if (AgentQuestionRelay.sharedInstance().isAnswer(event)) return false;
+        const replyTo = event.replyEventId ? room.findEventById(event.replyEventId) : undefined;
+        if (replyTo?.getContent()[AGENT_MESSAGE_KEY]) return false;
         const rule = AgentRoomStore.instance.getRule(room.roomId);
         if (rule === "ignore") return false;
         if (rule === "tasks_only" || DMRoomMap.shared()?.getUserIdForRoomId(room.roomId)) return true;

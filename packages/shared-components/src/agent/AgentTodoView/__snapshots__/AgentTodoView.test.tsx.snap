@@ -161,6 +161,7 @@ exports[`AgentTodoView > Storybook snapshots > renders a branch that couldn't be
               class="AgentTodoView-module_report"
               data-mode="autopilot"
               data-state="finished"
+              data-waiting="false"
             >
               <div
                 class="Flex-module_flex"
@@ -620,6 +621,7 @@ exports[`AgentTodoView > Storybook snapshots > renders the autopilot at work 1`]
               class="AgentTodoView-module_report"
               data-mode="autopilot"
               data-state="running"
+              data-waiting="false"
             >
               <div
                 class="Flex-module_flex"
@@ -1323,6 +1325,7 @@ exports[`AgentTodoView > Storybook snapshots > renders the list without a worksp
               class="AgentTodoView-module_report"
               data-mode="investigate"
               data-state="finished"
+              data-waiting="false"
             >
               <div
                 class="Flex-module_flex"
@@ -1554,6 +1557,7 @@ The default changed in ThemeWatcher.ts; the snapshots still have the old one.
               class="AgentTodoView-module_report"
               data-mode="implement"
               data-state="running"
+              data-waiting="false"
             >
               <div
                 class="Flex-module_flex"
@@ -1905,6 +1909,7 @@ exports[`AgentTodoView > Storybook snapshots > renders the open tasks 1`] = `
               class="AgentTodoView-module_report"
               data-mode="investigate"
               data-state="finished"
+              data-waiting="false"
             >
               <div
                 class="Flex-module_flex"
@@ -2136,6 +2141,7 @@ The default changed in ThemeWatcher.ts; the snapshots still have the old one.
               class="AgentTodoView-module_report"
               data-mode="implement"
               data-state="running"
+              data-waiting="false"
             >
               <div
                 class="Flex-module_flex"
@@ -2367,6 +2373,7 @@ exports[`AgentTodoView > Storybook snapshots > renders the reports of the agent 
               class="AgentTodoView-module_report"
               data-mode="implement"
               data-state="finished"
+              data-waiting="false"
             >
               <div
                 class="Flex-module_flex"
@@ -2537,6 +2544,7 @@ exports[`AgentTodoView > Storybook snapshots > renders the reports of the agent 
               class="AgentTodoView-module_report"
               data-mode="investigate"
               data-state="failed"
+              data-waiting="false"
             >
               <div
                 class="Flex-module_flex"
@@ -2745,6 +2753,7 @@ exports[`AgentTodoView > Storybook snapshots > renders what the autopilot did 1`
               class="AgentTodoView-module_report"
               data-mode="autopilot"
               data-state="finished"
+              data-waiting="false"
             >
               <div
                 class="Flex-module_flex"

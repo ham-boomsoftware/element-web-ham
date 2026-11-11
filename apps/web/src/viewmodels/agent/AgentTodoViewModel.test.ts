@@ -368,4 +368,53 @@ describe("AgentTodoViewModel", () => {
             expect(vm.getSnapshot().chatReport).toBeUndefined();
         });
     });
+
+    describe("questions of the agent", () => {
+        const asking = (question: NonNullable<AgentTask["run"]>["question"]): AgentTask => ({
+            ...TASKS[2],
+            run: { ...TASKS[2].run!, state: "running", guides: ["AGENTS.md"], question },
+        });
+
+        it.each([
+            ["waits for an answer", { text: "Which logo?", askedAt: 1 }, { state: "waiting" }],
+            [
+                "shows who answered",
+                { text: "Which logo?", askedAt: 1, answer: "The white one", answeredBy: "Dave", answeredAt: 2 },
+                { state: "answered", answer: "The white one", answeredBy: "Dave" },
+            ],
+            [
+                "knows it went on without one",
+                { text: "Which logo?", askedAt: 1, answer: "" },
+                { state: "answered", answer: "" },
+            ],
+        ])("%s, and shows the guides of the project", (_, question, expected) => {
+            expect(toTodoItem(asking(question)).run).toMatchObject({
+                guides: ["AGENTS.md"],
+                question: { text: "Which logo?", ...expected },
+            });
+        });
+
+        it("answers the question, and lets the agent go on without an answer", async () => {
+            const answerQuestion = vi.spyOn(store, "answerQuestion").mockResolvedValue(undefined);
+
+            vm.answerQuestion("3", "The white one");
+            expect(vm.getSnapshot().answer).toEqual({ id: "3", state: "sending" });
+            await vi.waitFor(() => expect(vm.getSnapshot().answer).toBeUndefined());
+            vm.skipQuestion("3");
+
+            expect(answerQuestion).toHaveBeenCalledWith("3", "The white one");
+            expect(answerQuestion).toHaveBeenCalledWith("3", "");
+        });
+
+        it.each([
+            ["says when the answer couldn't be sent", "unavailable" as const, { id: "3", state: "failed" }],
+            ["doesn't mind a question that was answered meanwhile", "not_found" as const, undefined],
+        ])("%s", async (_, error, expected) => {
+            vi.spyOn(store, "answerQuestion").mockResolvedValue(error);
+
+            vm.answerQuestion("3", "Yes");
+
+            await vi.waitFor(() => expect(vm.getSnapshot().answer).toEqual(expected));
+        });
+    });
 });

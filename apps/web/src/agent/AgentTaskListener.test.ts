@@ -111,6 +111,7 @@ describe("AgentTaskListener", () => {
             openTaskInCli: vi.fn(),
             onTaskProgress: vi.fn(() => () => {}),
             getTaskDiff: vi.fn(),
+            answerTaskQuestion: vi.fn(),
             removeTaskWorktree: vi.fn(),
             openTaskFolder: vi.fn(),
         };
@@ -281,6 +282,18 @@ describe("AgentTaskListener", () => {
         await vi.advanceTimersByTimeAsync(DETECTION_DELAY_MS);
 
         expect(agent.addTasks).not.toHaveBeenCalled();
+    });
+
+    it("doesn't read replies to messages of the agent as requests", async () => {
+        const question = receive(DM_ID, me, "Which logo?", { [AGENT_MESSAGE_KEY]: true });
+        rooms[DM_ID].findEventById = (eventId: string) => (eventId === question.getId() ? question : undefined);
+        receive(DM_ID, BOB, "The white one", {
+            "m.relates_to": { "m.in_reply_to": { event_id: question.getId() } },
+        });
+
+        await vi.advanceTimersByTimeAsync(DETECTION_DELAY_MS);
+
+        expect(agent.detectTasks).not.toHaveBeenCalled();
     });
 
     it("stops reading when stopped", async () => {

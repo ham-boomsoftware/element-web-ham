@@ -202,8 +202,34 @@ export type AgentTaskRunMode = "investigate" | "implement" | "autopilot";
  * - `write`, `edit`: it changed a file.
  * - `command`: it ran one of the allowed commands.
  * - `git`: the autopilot prepared, committed or pushed its branch.
+ * - `guide`: it read a guide of the project for contributors or coding agents, such as `AGENTS.md`.
+ * - `ask`, `answer`: it asked who asked for the task a question, and got an answer.
  */
-export type AgentRunStepKind = "list" | "read" | "search" | "write" | "edit" | "command" | "git";
+export type AgentRunStepKind =
+    | "list"
+    | "read"
+    | "search"
+    | "write"
+    | "edit"
+    | "command"
+    | "git"
+    | "guide"
+    | "ask"
+    | "answer";
+
+/**
+ * A question the agent asked about a task while working on it. It waits for the answer, which comes from the chat
+ * the task was asked in, or from the user.
+ */
+export interface AgentRunQuestion {
+    text: string;
+    askedAt: number;
+    /** The answer; an empty answer means the agent should decide by itself */
+    answer?: string;
+    /** Who answered, if it came from the chat */
+    answeredBy?: string;
+    answeredAt?: number;
+}
 
 /**
  * One step of the agent's work on a task, shown while it works.
@@ -261,6 +287,10 @@ export interface AgentTaskRun {
     steps?: AgentRunStep[];
     /** The branch of the autopilot */
     branch?: AgentRunBranch;
+    /** The guides of the project the agent read and keeps to, relative to the project, such as `AGENTS.md` */
+    guides?: string[];
+    /** The latest question of the agent; it waits while the question has no answer */
+    question?: AgentRunQuestion;
 }
 
 /**

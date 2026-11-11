@@ -91,6 +91,17 @@
     color: var(--cpd-color-icon-accent-primary);
 }
 
+.step[data-kind="guide"] .stepDot {
+    background: var(--cpd-color-bg-subtle-secondary);
+    color: var(--cpd-color-icon-primary);
+}
+
+.step[data-kind="ask"] .stepDot,
+.step[data-kind="answer"] .stepDot {
+    background: var(--cpd-color-bg-decorative-4);
+    color: var(--cpd-color-text-decorative-4);
+}
+
 .step[data-failed="true"] .stepDot {
     background: var(--cpd-color-bg-critical-subtle);
     color: var(--cpd-color-icon-critical-primary);
@@ -384,9 +395,201 @@
     color: var(--cpd-color-text-success-primary);
 }
 
+/* The guides of the project */
+.guides {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--cpd-space-1x) var(--cpd-space-2x);
+    align-items: center;
+}
+
+.guidesIcon {
+    color: var(--cpd-color-icon-secondary);
+}
+
+.guidesLabel {
+    color: var(--cpd-color-text-secondary);
+}
+
+.guide {
+    padding: 0 var(--cpd-space-2x);
+    border: 1px solid var(--cpd-color-border-interactive-secondary);
+    border-radius: 999px;
+    background: var(--cpd-color-bg-canvas-default);
+    font: var(--cpd-font-body-xs-medium);
+    font-family: var(--cpd-font-family-mono);
+}
+
+/* A question of the agent */
+.question {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: var(--cpd-space-2x);
+    padding: var(--cpd-space-3x) var(--cpd-space-4x);
+    border: 1px solid var(--cpd-color-border-interactive-secondary);
+    border-inline-start: 4px solid var(--cpd-color-text-decorative-4);
+    border-radius: 12px;
+    background: var(--cpd-color-bg-canvas-default);
+    animation: questionIn 320ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.question[data-state="waiting"] {
+    border-color: var(--cpd-color-text-decorative-4);
+    box-shadow: 0 0 0 0 var(--cpd-color-bg-decorative-4);
+    animation:
+        questionIn 320ms cubic-bezier(0.2, 0.8, 0.2, 1) both,
+        questionGlow 2.4s ease-in-out 320ms infinite;
+}
+
+.questionHeader {
+    display: flex;
+    gap: var(--cpd-space-2x);
+    align-items: center;
+}
+
+.questionBadge {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    inline-size: 24px;
+    block-size: 24px;
+    border-radius: 50%;
+    background: var(--cpd-color-bg-decorative-4);
+    color: var(--cpd-color-text-decorative-4);
+}
+
+.question[data-state="waiting"] .questionBadge {
+    animation: badgeBounce 1.6s ease-in-out infinite;
+}
+
+.questionText {
+    margin: 0;
+    padding: var(--cpd-space-2x) var(--cpd-space-3x);
+    border-radius: 4px 12px 12px;
+    background: var(--cpd-color-bg-subtle-secondary);
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+.questionHint {
+    display: flex;
+    gap: var(--cpd-space-1x);
+    align-items: center;
+    color: var(--cpd-color-text-secondary);
+}
+
+.questionHourglass {
+    flex-shrink: 0;
+    animation: hourglassTurn 2s ease-in-out infinite;
+}
+
+.questionDots {
+    display: inline-flex;
+    gap: 3px;
+    margin-inline-start: var(--cpd-space-1x);
+}
+
+.questionDots span {
+    inline-size: 4px;
+    block-size: 4px;
+    border-radius: 50%;
+    background: currentcolor;
+    animation: dot 1.2s ease-in-out infinite;
+}
+
+.questionDots span:nth-child(2) {
+    animation-delay: 150ms;
+}
+
+.questionDots span:nth-child(3) {
+    animation-delay: 300ms;
+}
+
+.questionForm {
+    display: flex;
+    flex-direction: column;
+    gap: var(--cpd-space-2x);
+}
+
+.questionAnswer {
+    display: flex;
+    gap: var(--cpd-space-2x);
+    align-items: flex-start;
+    padding: var(--cpd-space-2x) var(--cpd-space-3x);
+    border-radius: 12px 4px 12px 12px;
+    background: var(--cpd-color-bg-success-subtle);
+    animation: questionIn 320ms ease-out both;
+}
+
+.questionAnswerIcon {
+    flex-shrink: 0;
+    margin-block-start: 2px;
+    color: var(--cpd-color-icon-success-primary);
+}
+
+.questionAnswerText {
+    margin: 0;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+@keyframes questionIn {
+    from {
+        opacity: 0;
+        transform: translateY(6px) scale(0.98);
+    }
+}
+
+@keyframes questionGlow {
+    50% {
+        box-shadow: 0 0 0 6px var(--cpd-color-bg-decorative-4);
+    }
+}
+
+@keyframes badgeBounce {
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(-2px);
+    }
+}
+
+@keyframes hourglassTurn {
+    0%,
+    40% {
+        transform: rotate(0);
+    }
+    60%,
+    100% {
+        transform: rotate(180deg);
+    }
+}
+
+@keyframes dot {
+    0%,
+    80%,
+    100% {
+        opacity: 0.25;
+        transform: scale(0.8);
+    }
+    40% {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
 @media (prefers-reduced-motion: reduce) {
     .step,
-    .step[aria-current="step"] .stepDot {
+    .step[aria-current="step"] .stepDot,
+    .question,
+    .question[data-state="waiting"],
+    .question[data-state="waiting"] .questionBadge,
+    .questionHourglass,
+    .questionDots span,
+    .questionAnswer {
         animation: none;
     }
 }

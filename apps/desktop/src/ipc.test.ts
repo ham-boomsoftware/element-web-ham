@@ -94,6 +94,7 @@ const agentTasks = vi.hoisted(() => ({
     getAgentTaskDiff: vi.fn(),
     removeAgentTaskWorktree: vi.fn(),
     openAgentTaskFolder: vi.fn(),
+    answerAgentTaskQuestion: vi.fn(),
     setTaskProgressListener: vi.fn(),
 }));
 vi.mock("./agent-tasks.js", () => agentTasks);
@@ -423,6 +424,11 @@ describe("ipc agent commands", () => {
         ["agentGetTaskDiff", agentTasks.getAgentTaskDiff, ["@alice:example.org", "task-1"]],
         ["agentRemoveTaskWorktree", agentTasks.removeAgentTaskWorktree, ["@alice:example.org", "task-1"]],
         ["agentOpenTaskFolder", agentTasks.openAgentTaskFolder, ["@alice:example.org", "task-1"]],
+        [
+            "agentAnswerTaskQuestion",
+            agentTasks.answerAgentTaskQuestion,
+            ["@alice:example.org", "task-1", "The blue one", "Bob"],
+        ],
         ["agentPickFolder", agentCli.pickAgentFolder, []],
         [
             "agentOpenTaskInCli",

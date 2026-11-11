@@ -105,6 +105,7 @@ describe("ReplySuggestionsViewModel", () => {
             openTaskInCli: vi.fn(),
             onTaskProgress: vi.fn(() => () => {}),
             getTaskDiff: vi.fn(),
+            answerTaskQuestion: vi.fn(),
             removeTaskWorktree: vi.fn(),
             openTaskFolder: vi.fn(),
         };

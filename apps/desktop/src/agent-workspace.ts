@@ -144,7 +144,33 @@ export interface WorkspaceToolsOptions {
     commands?: readonly string[];
     /** Called for each tool the agent uses, when it starts and once it is done */
     onStep?: (step: AgentRunStep) => void;
+    /**
+     * Ask who asked for the task a question, and wait for the answer. Without it, the agent can't ask.
+     * @returns the answer, or "" if there was none and the agent should decide by itself
+     */
+    ask?: (question: string) => Promise<string>;
 }
+
+/** How many questions the agent may ask about one task */
+export const MAX_QUESTIONS = 2;
+
+/** The longest question the agent may ask */
+const MAX_QUESTION_LENGTH = 1000;
+
+const ASK_TOOL: WorkspaceToolDefinition = {
+    name: "ask_requester",
+    description:
+        "Ask the person who asked for the task a question in their chat, and wait for the answer. Only ask when " +
+        "the task is unclear in a way that matters for the result and the project can't tell you: first look " +
+        "for the answer yourself. Ask one short, concrete question, in the language of the task, that is easy to " +
+        `answer; offer options when you can. You can ask ${MAX_QUESTIONS} questions at most. If no answer comes, ` +
+        "decide by yourself and mention the open question in your report.",
+    inputSchema: {
+        type: "object",
+        properties: { question: { type: "string", description: "The question, as it is shown in the chat" } },
+        required: ["question"],
+    },
+};
 
 const STEP_KINDS: Record<string, AgentRunStepKind> = {
     workspace_list: "list",
@@ -163,6 +189,8 @@ export class WorkspaceTools {
     public readonly changedFiles = new Set<string>();
 
     private readonly commands: readonly string[];
+    private questions = 0;
+    private waited = 0;
 
     /**
      * @param root - The absolute path of the workspace
@@ -179,10 +207,15 @@ export class WorkspaceTools {
 
     /** The tools the agent may use */
     public get definitions(): WorkspaceToolDefinition[] {
-        if (!this.allowWrite) return READ_TOOLS;
-        const tools = [...READ_TOOLS, ...WRITE_TOOLS];
+        const tools = this.allowWrite ? [...READ_TOOLS, ...WRITE_TOOLS] : [...READ_TOOLS];
         if (this.commands.length > 0) tools.push(buildRunTool(this.commands));
+        if (this.options.ask) tools.push(ASK_TOOL);
         return tools;
+    }
+
+    /** How long the agent waited for answers to its questions, in milliseconds; this is not working time */
+    public get waitedMs(): number {
+        return this.waited;
     }
 
     /**
@@ -222,10 +255,35 @@ export class WorkspaceTools {
                 case "workspace_run":
                     if (this.commands.length === 0) break;
                     return await this.runCommand(stringArg(args, "command"));
+                case "ask_requester":
+                    if (!this.options.ask) break;
+                    return await this.ask(stringArg(args, "question"));
             }
             return `Error: there is no tool ${name}`;
         } catch (e) {
             return `Error: ${e instanceof Error ? e.message : String(e)}`;
+        }
+    }
+
+    /**
+     * Ask who asked for the task, and wait for the answer.
+     * @returns the answer for the agent, or what to do without one
+     */
+    private async ask(question: string): Promise<string> {
+        const text = question.trim().slice(0, MAX_QUESTION_LENGTH);
+        if (!text) throw new Error("the question is empty");
+        if (this.questions >= MAX_QUESTIONS) {
+            throw new Error(`you already asked ${MAX_QUESTIONS} questions: decide by yourself now`);
+        }
+        this.questions++;
+        const start = Date.now();
+        try {
+            const answer = (await this.options.ask!(text)).trim();
+            return answer
+                ? `The answer: ${answer}`
+                : "No answer came. Decide by yourself, and mention the open question in your report.";
+        } finally {
+            this.waited += Date.now() - start;
         }
     }
 
@@ -374,6 +432,65 @@ export class WorkspaceTools {
 function describeStep(args: Record<string, unknown>): string {
     const value = [args.command, args.pattern, args.path].find((arg) => typeof arg === "string");
     return (typeof value === "string" ? value : "").trim().slice(0, MAX_STEP_TEXT);
+}
+
+/**
+ * The files where projects keep their rules for contributors and coding agents, the most specific first.
+ * Paths are relative to the project root.
+ */
+export const GUIDE_FILES = [
+    "AGENTS.md",
+    "CLAUDE.md",
+    ".github/copilot-instructions.md",
+    "CONTRIBUTING.md",
+    ".github/CONTRIBUTING.md",
+    "docs/CONTRIBUTING.md",
+] as const;
+
+/** How much of one guide the agent reads */
+const MAX_GUIDE_LENGTH = 12000;
+
+/** How much of all guides together the agent reads */
+const MAX_GUIDES_LENGTH = 30000;
+
+/** A guide of the project, as the agent reads it */
+export interface ProjectGuide {
+    /** The path relative to the project root, with forward slashes */
+    path: string;
+    text: string;
+    /** Whether the end was left out because it is too long */
+    truncated: boolean;
+}
+
+/**
+ * Read the guides of a project for contributors and coding agents, such as `AGENTS.md` and `CONTRIBUTING.md`,
+ * for the agent to keep to the conventions of the project. Missing, empty and unreadable files are skipped, and
+ * files that lead outside the project through a link are never read.
+ * @param root - The absolute path of the project
+ */
+export async function readProjectGuides(root: string): Promise<ProjectGuide[]> {
+    const tools = new WorkspaceTools(root, false);
+    const guides: ProjectGuide[] = [];
+    const seen = new Set<string>();
+    let left = MAX_GUIDES_LENGTH;
+    for (const file of GUIDE_FILES) {
+        if (left <= 0) break;
+        try {
+            const absolute = await tools.resolve(file);
+            const stat = await fs.stat(absolute);
+            // CLAUDE.md is often a link to AGENTS.md: read each file once
+            if (!stat.isFile() || stat.size > MAX_FILE_SIZE || seen.has(absolute)) continue;
+            seen.add(absolute);
+            const text = (await fs.readFile(absolute, "utf8")).trim();
+            if (!text) continue;
+            const limit = Math.min(MAX_GUIDE_LENGTH, left);
+            guides.push({ path: file, text: text.slice(0, limit), truncated: text.length > limit });
+            left -= Math.min(text.length, limit);
+        } catch {
+            // Most projects don't have most of these files
+        }
+    }
+    return guides;
 }
 
 function stringArg(args: Record<string, unknown>, name: string): string {

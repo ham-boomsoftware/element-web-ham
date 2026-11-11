@@ -110,6 +110,12 @@ export interface AgentApi {
     /** Open the worktree the autopilot did a task in with the file manager */
     openTaskFolder(userId: string, taskId: string): Promise<AgentResult<void>>;
     /**
+     * Answer the question the agent asked while working on a task, so that it goes on.
+     * @param answer - The answer; "" lets the agent decide by itself
+     * @param answeredBy - Who answered in the chat, or undefined if it was the user in the app
+     */
+    answerTaskQuestion(userId: string, taskId: string, answer: string, answeredBy?: string): Promise<AgentResult<void>>;
+    /**
      * Let the user choose a project folder, without changing the settings.
      * @returns the chosen folder, or undefined if the user cancelled
      */

@@ -29,6 +29,8 @@ const {
     AutopilotRunning,
     AutopilotFinished,
     AutopilotPushFailed,
+    AutopilotAsking,
+    AutopilotAnswered,
 } = composeStories(stories);
 
 class TestViewModel extends MockViewModel<AgentTodoViewSnapshot> implements AgentTodoViewActions {
@@ -46,6 +48,8 @@ class TestViewModel extends MockViewModel<AgentTodoViewSnapshot> implements Agen
     public continueInCli = vi.fn();
     public removeWorktree = vi.fn();
     public reportToChat = vi.fn();
+    public answerQuestion = vi.fn();
+    public skipQuestion = vi.fn();
 }
 
 const SNAPSHOT: AgentTodoViewSnapshot = {
@@ -382,6 +386,91 @@ describe("AgentTodoView", () => {
             if (state === "failed") await user.click(screen.getByRole("button", { name: "Tell the chat" }));
 
             expect(screen.getByRole(role)).toHaveTextContent(text);
+        });
+    });
+
+    describe("questions of the agent", () => {
+        const askingRun = (overrides: Partial<AgentTodoRun> = {}): AgentTodoRun => ({
+            mode: "autopilot",
+            state: "running",
+            changedFiles: [],
+            steps: [],
+            question: { text: "Which logo?", state: "waiting" },
+            ...overrides,
+        });
+        const withRun = (run: AgentTodoRun, extra: Partial<AgentTodoViewSnapshot> = {}): AgentTodoViewSnapshot => ({
+            ...SNAPSHOT,
+            ...extra,
+            items: [{ ...SNAPSHOT.items[0], run }],
+        });
+
+        it("shows the question, where it was asked, and the guides of the project", () => {
+            render(<AutopilotAsking />);
+
+            expect(screen.getByText("Waiting for an answer…")).toBeInTheDocument();
+            expect(screen.getByText("The agent has a question")).toBeInTheDocument();
+            expect(screen.getByRole("status").textContent).toContain("Asked in Design");
+            const guides = screen.getByRole("group", { name: "Keeps to the project's guides:" });
+            expect(within(guides).getByText("AGENTS.md")).toBeInTheDocument();
+            expect(within(guides).getByText(".github/copilot-instructions.md")).toBeInTheDocument();
+        });
+
+        it("answers the question", async () => {
+            const user = userEvent.setup();
+            const vm = new TestViewModel(withRun(askingRun()));
+            render(<AgentTodoView vm={vm} />);
+
+            const send = screen.getByRole("button", { name: "Send answer" });
+            expect(send).toBeDisabled();
+            await user.type(screen.getByRole("textbox", { name: "Your answer" }), " The white one ");
+            await user.click(send);
+
+            expect(vm.answerQuestion).toHaveBeenCalledWith("task-1", "The white one");
+        });
+
+        it("lets the agent go on without an answer", async () => {
+            const user = userEvent.setup();
+            const vm = new TestViewModel(withRun(askingRun()));
+            render(<AgentTodoView vm={vm} />);
+
+            await user.click(screen.getByRole("button", { name: "Go on without an answer" }));
+
+            expect(vm.skipQuestion).toHaveBeenCalledWith("task-1");
+        });
+
+        it("says when the answer couldn't be sent", () => {
+            const vm = new TestViewModel(withRun(askingRun(), { answer: { id: "task-1", state: "failed" } }));
+            render(<AgentTodoView vm={vm} />);
+
+            expect(screen.getByRole("alert")).toHaveTextContent("The answer couldn't be sent. Try again.");
+        });
+
+        it("shows who answered and what", () => {
+            render(<AutopilotAnswered />);
+
+            expect(screen.getByText("Frank answered")).toBeInTheDocument();
+            expect(screen.getByText("Use logo-white.svg, it's already in the theme folder.")).toBeInTheDocument();
+            expect(screen.queryByRole("textbox", { name: "Your answer" })).not.toBeInTheDocument();
+        });
+
+        it.each([
+            ["the user answered", { answer: "Yes" }, "You answered"],
+            ["it decided by itself", { answer: "" }, "No answer – the agent decided by itself"],
+        ])("says when %s", (_, answer, text) => {
+            const vm = new TestViewModel(
+                withRun(askingRun({ question: { text: "Which logo?", state: "answered", ...answer } })),
+            );
+            render(<AgentTodoView vm={vm} />);
+
+            expect(screen.getByText(text)).toBeInTheDocument();
+        });
+
+        it("says when the run ended without an answer", () => {
+            const vm = new TestViewModel(withRun(askingRun({ state: "failed", error: "unknown" })));
+            render(<AgentTodoView vm={vm} />);
+
+            expect(screen.getByText("The question wasn't answered.")).toBeInTheDocument();
+            expect(screen.queryByRole("button", { name: "Send answer" })).not.toBeInTheDocument();
         });
     });
 });

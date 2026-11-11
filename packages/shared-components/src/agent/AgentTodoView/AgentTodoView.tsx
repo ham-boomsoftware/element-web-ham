@@ -13,7 +13,13 @@ import { type ViewModel, useViewModel } from "../../core/viewmodel";
 import { useI18n } from "../../core/i18n/i18nContext";
 import { Flex } from "../../core/utils/Flex";
 import styles from "./AgentTodoView.module.css";
-import { AgentTodoBranchCard, AgentTodoChatReportForm, AgentTodoTimeline } from "./AgentTodoAutopilot";
+import {
+    AgentTodoBranchCard,
+    AgentTodoChatReportForm,
+    AgentTodoGuides,
+    AgentTodoQuestionCard,
+    AgentTodoTimeline,
+} from "./AgentTodoAutopilot";
 
 /**
  * Which tasks are shown: those still to do, or those done.
@@ -45,9 +51,10 @@ export type AgentTodoRunError = "no_workspace" | "no_repository" | "not_connecte
 export interface AgentTodoStep {
     /**
      * What it did: looked at the project (`list`, `read`, `search`), changed a file (`write`, `edit`), ran a
-     * command (`command`), or worked on its branch (`git`).
+     * command (`command`), worked on its branch (`git`), read a guide of the project (`guide`), or asked who
+     * asked for the task a question (`ask`) and got the answer (`answer`).
      */
-    kind: "list" | "read" | "search" | "write" | "edit" | "command" | "git";
+    kind: "list" | "read" | "search" | "write" | "edit" | "command" | "git" | "guide" | "ask" | "answer";
     /** The file, search, command or git action */
     text: string;
     /** When, ready for display */
@@ -107,6 +114,29 @@ export interface AgentTodoChatReport {
 }
 
 /**
+ * A question the agent asked about a task while working on it.
+ * - `waiting`: the agent waits for the answer, from the chat or from the user.
+ * - `answered`: it got an answer, or went on without one when `answer` is "".
+ */
+export interface AgentTodoQuestion {
+    text: string;
+    state: "waiting" | "answered";
+    /** The answer; "" if the agent decided by itself */
+    answer?: string;
+    /** Who answered in the chat; undefined if it was the user */
+    answeredBy?: string;
+}
+
+/**
+ * Answering a question of the agent in the to-do list.
+ */
+export interface AgentTodoAnswer {
+    /** The task */
+    id: string;
+    state: "sending" | "failed";
+}
+
+/**
  * The coding CLI that "Do it" opens in a terminal: Claude Code or GitHub Copilot CLI.
  */
 export type AgentTodoCli = "claude" | "copilot";
@@ -145,6 +175,10 @@ export interface AgentTodoRun {
     steps: AgentTodoStep[];
     /** The branch of the autopilot */
     branch?: AgentTodoBranch;
+    /** The guides of the project the agent keeps to, such as `AGENTS.md` */
+    guides?: string[];
+    /** The latest question of the agent */
+    question?: AgentTodoQuestion;
 }
 
 /**
@@ -193,6 +227,8 @@ export interface AgentTodoViewSnapshot {
     diff?: AgentTodoDiff;
     /** The latest report to a chat */
     chatReport?: AgentTodoChatReport;
+    /** The latest answer of the user to a question of the agent, while it is sent or if it failed */
+    answer?: AgentTodoAnswer;
 }
 
 export interface AgentTodoViewActions {
@@ -224,6 +260,10 @@ export interface AgentTodoViewActions {
     removeWorktree: (id: string) => void;
     /** Tell the chat a task came from what the agent did */
     reportToChat: (id: string, text: string) => void;
+    /** Answer the question the agent waits on */
+    answerQuestion: (id: string, answer: string) => void;
+    /** Let the agent go on without an answer, deciding by itself */
+    skipQuestion: (id: string) => void;
 }
 
 /**
@@ -541,8 +581,10 @@ function AgentTodoRunReport({ id, item, run, snapshot, vm }: Readonly<AgentTodoR
         autopilot: _t("agent_todo|report_autopilot"),
     };
     const isRunning = run.state === "running";
+    const isWaiting = isRunning && run.question?.state === "waiting";
     let heading: string;
-    if (isRunning) heading = runningHeadings[run.mode];
+    if (isWaiting) heading = _t("agent_todo|question_waiting");
+    else if (isRunning) heading = runningHeadings[run.mode];
     else if (run.state === "failed") heading = errorMessages[run.error ?? "unknown"];
     else heading = reportHeadings[run.mode];
     // The branch card shows the autopilot's changes, so the plain list is only for "implement"
@@ -553,6 +595,7 @@ function AgentTodoRunReport({ id, item, run, snapshot, vm }: Readonly<AgentTodoR
             className={styles.report}
             data-state={run.state}
             data-mode={run.mode}
+            data-waiting={isWaiting}
             aria-busy={isRunning}
             aria-label={_t("agent_todo|report_label")}
         >
@@ -563,6 +606,18 @@ function AgentTodoRunReport({ id, item, run, snapshot, vm }: Readonly<AgentTodoR
                 </Text>
             </Flex>
             <AgentTodoTimeline steps={run.steps} isRunning={isRunning} />
+            {run.guides && run.guides.length > 0 && <AgentTodoGuides guides={run.guides} />}
+            {run.question && (
+                <AgentTodoQuestionCard
+                    key={run.question.text}
+                    id={id}
+                    question={run.question}
+                    chatName={item.chatName}
+                    isRunning={isRunning}
+                    answer={snapshot.answer}
+                    vm={vm}
+                />
+            )}
             {!isRunning && run.summary && (
                 <Text size="sm" className={styles.summary}>
                     {run.summary}

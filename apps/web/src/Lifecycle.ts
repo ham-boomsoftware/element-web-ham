@@ -72,6 +72,7 @@ import { AgentReplyListener } from "./agent/AgentReplyListener.ts";
 import { AgentRoomStore } from "./agent/AgentRoomStore.ts";
 import { AgentTaskStore } from "./agent/AgentTaskStore.ts";
 import { AgentTaskListener } from "./agent/AgentTaskListener.ts";
+import { AgentQuestionRelay } from "./agent/AgentQuestionRelay.ts";
 import { CallStore } from "./stores/CallStore.ts";
 import { ModuleApi } from "./modules/Api.ts";
 
@@ -1144,6 +1145,7 @@ async function startMatrixClient(
     AgentReplyListener.sharedInstance().start(client, agent);
     void AgentTaskStore.instance.start(agent, client.getSafeUserId());
     AgentTaskListener.sharedInstance().start(client, agent);
+    if (agent) AgentQuestionRelay.sharedInstance().start(client);
 
     // Similarly, don't start sending presence updates until we've started the client
     if (!SettingsStore.getValue("lowBandwidth")) {
@@ -1283,6 +1285,7 @@ export function stopMatrixClient(unsetClient = true): void {
     AgentReplyListener.sharedInstance().stop();
     AgentRoomStore.instance.stop();
     AgentTaskListener.sharedInstance().stop();
+    AgentQuestionRelay.sharedInstance().stop();
     AgentTaskStore.instance.stop();
     DMRoomMap.shared()?.stop();
     EventIndexPeg.stop();

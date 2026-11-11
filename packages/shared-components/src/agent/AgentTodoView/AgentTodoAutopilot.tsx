@@ -20,14 +20,22 @@ import WarningIcon from "@vector-im/compound-design-tokens/assets/web/icons/warn
 import ArrowUpRightIcon from "@vector-im/compound-design-tokens/assets/web/icons/arrow-up-right";
 import FolderIcon from "@vector-im/compound-design-tokens/assets/web/icons/folder";
 import ChatIcon from "@vector-im/compound-design-tokens/assets/web/icons/chat";
+import InfoIcon from "@vector-im/compound-design-tokens/assets/web/icons/info";
+import HelpIcon from "@vector-im/compound-design-tokens/assets/web/icons/help";
+import ReplyIcon from "@vector-im/compound-design-tokens/assets/web/icons/reply";
+import HourglassIcon from "@vector-im/compound-design-tokens/assets/web/icons/hourglass";
+import SendIcon from "@vector-im/compound-design-tokens/assets/web/icons/send-solid";
+import ForwardIcon from "@vector-im/compound-design-tokens/assets/web/icons/forward";
 
 import { useI18n } from "../../core/i18n/i18nContext";
 import { Flex } from "../../core/utils/Flex";
 import type {
+    AgentTodoAnswer,
     AgentTodoBranch,
     AgentTodoChatReport,
     AgentTodoDiff,
     AgentTodoDiffFile,
+    AgentTodoQuestion,
     AgentTodoStep,
     AgentTodoViewModel,
 } from "./AgentTodoView";
@@ -41,6 +49,9 @@ const STEP_ICONS: Record<AgentTodoStep["kind"], ComponentType<SVGAttributes<SVGE
     edit: EditIcon,
     command: CodeIcon,
     git: TreeIcon,
+    guide: InfoIcon,
+    ask: HelpIcon,
+    answer: ReplyIcon,
 };
 
 /** How many of the latest steps are shown until the user asks for all of them */
@@ -68,6 +79,9 @@ export function AgentTodoTimeline({ steps, isRunning }: Readonly<AgentTodoTimeli
         edit: _t("agent_todo|step_edit"),
         command: _t("agent_todo|step_command"),
         git: _t("agent_todo|step_git"),
+        guide: _t("agent_todo|step_guide"),
+        ask: _t("agent_todo|step_ask"),
+        answer: _t("agent_todo|step_answer"),
     };
 
     return (
@@ -379,5 +393,171 @@ export function AgentTodoChatReportForm({ id, text, report, vm }: Readonly<Agent
                 </Text>
             )}
         </form>
+    );
+}
+
+interface AgentTodoGuidesProps {
+    /** The guide files, relative to the project folder */
+    guides: string[];
+}
+
+/** The guides of the project the agent keeps to, such as `AGENTS.md` */
+export function AgentTodoGuides({ guides }: Readonly<AgentTodoGuidesProps>): JSX.Element {
+    const { translate: _t } = useI18n();
+    return (
+        <div className={styles.guides} role="group" aria-label={_t("agent_todo|guides_label")}>
+            <InfoIcon className={styles.guidesIcon} width="16px" height="16px" aria-hidden />
+            <Text size="sm" className={styles.guidesLabel}>
+                {_t("agent_todo|guides_label")}
+            </Text>
+            {guides.map((guide) => (
+                <code key={guide} className={styles.guide}>
+                    {guide}
+                </code>
+            ))}
+        </div>
+    );
+}
+
+interface AgentTodoQuestionCardProps {
+    /** The task */
+    id: string;
+    question: AgentTodoQuestion;
+    /** The chat the task came from, where the question was sent */
+    chatName?: string;
+    /** Whether the agent still works on the task */
+    isRunning: boolean;
+    /** The latest answer of the user */
+    answer?: AgentTodoAnswer;
+    vm: AgentTodoViewModel;
+}
+
+/**
+ * A question of the agent: while it waits, the user can answer it here or let it go on without an answer;
+ * afterwards it shows the answer.
+ */
+export function AgentTodoQuestionCard({
+    id,
+    question,
+    chatName,
+    isRunning,
+    answer,
+    vm,
+}: Readonly<AgentTodoQuestionCardProps>): JSX.Element {
+    const { translate: _t } = useI18n();
+    const [draft, setDraft] = useState("");
+    const ownAnswer = answer?.id === id ? answer : undefined;
+    const isWaiting = isRunning && question.state === "waiting";
+    const isSending = ownAnswer?.state === "sending";
+    const textId = `mx_AgentTodo_answer_${id}`;
+
+    let answerText: string | undefined;
+    if (question.state === "answered") {
+        if (!question.answer) answerText = _t("agent_todo|question_skipped");
+        else if (question.answeredBy) answerText = _t("agent_todo|question_answered_by", { name: question.answeredBy });
+        else answerText = _t("agent_todo|question_answered_by_you");
+    }
+
+    return (
+        <div className={styles.question} data-state={isWaiting ? "waiting" : question.state}>
+            <div className={styles.questionHeader}>
+                <span className={styles.questionBadge} aria-hidden>
+                    <HelpIcon width="16px" height="16px" />
+                </span>
+                <Text size="sm" weight="semibold">
+                    {_t("agent_todo|question_heading")}
+                </Text>
+            </div>
+            <Text size="md" className={styles.questionText}>
+                {question.text}
+            </Text>
+            {isWaiting && (
+                <Text size="sm" role="status" className={styles.questionHint}>
+                    <HourglassIcon className={styles.questionHourglass} width="16px" height="16px" aria-hidden />
+                    {chatName
+                        ? _t("agent_todo|question_hint_chat", { chat: chatName })
+                        : _t("agent_todo|question_hint")}
+                    <span className={styles.questionDots} aria-hidden>
+                        <span />
+                        <span />
+                        <span />
+                    </span>
+                </Text>
+            )}
+            {isWaiting && (
+                <form
+                    className={styles.questionForm}
+                    aria-label={_t("agent_todo|question_answer")}
+                    onSubmit={(ev) => {
+                        ev.preventDefault();
+                        if (draft.trim()) vm.answerQuestion(id, draft.trim());
+                    }}
+                >
+                    <label className={styles.chatReportLabel} htmlFor={textId}>
+                        {_t("agent_todo|question_answer_label")}
+                    </label>
+                    <textarea
+                        id={textId}
+                        className={styles.chatReportText}
+                        rows={Math.min(6, Math.max(2, draft.split("\n").length))}
+                        value={draft}
+                        disabled={isSending}
+                        onChange={(ev) => setDraft(ev.currentTarget.value)}
+                        onKeyDown={(ev) => {
+                            if (ev.key === "Enter" && (ev.ctrlKey || ev.metaKey)) {
+                                ev.preventDefault();
+                                ev.currentTarget.form?.requestSubmit();
+                            }
+                        }}
+                    />
+                    <Flex gap="var(--cpd-space-2x)" justify="end" wrap="wrap">
+                        <Button
+                            type="button"
+                            kind="tertiary"
+                            size="sm"
+                            Icon={ForwardIcon}
+                            disabled={isSending}
+                            onClick={() => vm.skipQuestion(id)}
+                        >
+                            {_t("agent_todo|question_skip")}
+                        </Button>
+                        <Button
+                            type="submit"
+                            kind="primary"
+                            size="sm"
+                            Icon={SendIcon}
+                            disabled={!draft.trim() || isSending}
+                        >
+                            {_t("agent_todo|question_send")}
+                        </Button>
+                    </Flex>
+                    {ownAnswer?.state === "failed" && (
+                        <Text size="sm" role="alert" className={styles.diffError}>
+                            {_t("agent_todo|question_failed")}
+                        </Text>
+                    )}
+                </form>
+            )}
+            {answerText && (
+                <div className={styles.questionAnswer}>
+                    <ReplyIcon className={styles.questionAnswerIcon} width="16px" height="16px" aria-hidden />
+                    <div>
+                        <Text size="sm" weight="semibold">
+                            {answerText}
+                        </Text>
+                        {question.answer && (
+                            <Text size="sm" className={styles.questionAnswerText}>
+                                {question.answer}
+                            </Text>
+                        )}
+                    </div>
+                </div>
+            )}
+            {!isRunning && question.state === "waiting" && (
+                <Text size="sm" className={styles.diffStatus}>
+                    {_t("agent_todo|question_unanswered")}
+                </Text>
+            )}
+        </div>
     );
 }

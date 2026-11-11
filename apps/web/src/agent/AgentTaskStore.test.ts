@@ -55,6 +55,7 @@ describe("AgentTaskStore", () => {
             openTaskInCli: vi.fn(),
             onTaskProgress: vi.fn(() => () => {}),
             getTaskDiff: vi.fn(),
+            answerTaskQuestion: vi.fn(),
             removeTaskWorktree: vi.fn(),
             openTaskFolder: vi.fn(),
         };
@@ -267,6 +268,19 @@ describe("AgentTaskStore", () => {
             expect(await store.openFolder("1")).toBeUndefined();
             agent.openTaskFolder.mockResolvedValueOnce({ ok: false, error: "not_found" });
             expect(await store.openFolder("1")).toBe("not_found");
+        });
+
+        it("answers the question of the agent, or says why it couldn't", async () => {
+            expect(await store.answerQuestion("1", "Yes")).toBe("unavailable");
+
+            await store.start(agent, ALICE);
+            agent.answerTaskQuestion.mockResolvedValueOnce({ ok: true, data: undefined });
+            expect(await store.answerQuestion("1", "Yes", "Bob")).toBeUndefined();
+            expect(agent.answerTaskQuestion).toHaveBeenCalledWith(ALICE, "1", "Yes", "Bob");
+            agent.answerTaskQuestion.mockResolvedValueOnce({ ok: false, error: "not_found" });
+            expect(await store.answerQuestion("1", "")).toBe("not_found");
+            agent.answerTaskQuestion.mockRejectedValueOnce(new Error("IPC failed"));
+            expect(await store.answerQuestion("1", "")).toBe("unavailable");
         });
     });
 });

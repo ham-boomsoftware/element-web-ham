@@ -7,6 +7,7 @@
 
 export { AgentTodoView } from "./AgentTodoView";
 export type {
+    AgentTodoAnswer,
     AgentTodoBranch,
     AgentTodoChatReport,
     AgentTodoCli,
@@ -15,6 +16,7 @@ export type {
     AgentTodoFilter,
     AgentTodoItem,
     AgentTodoLaunch,
+    AgentTodoQuestion,
     AgentTodoRun,
     AgentTodoRunError,
     AgentTodoRunMode,

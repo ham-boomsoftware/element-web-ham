@@ -245,6 +245,28 @@ export class AgentTaskStore extends TypedEventEmitter<AgentTaskStoreEvent, Event
         return result.error;
     }
 
+    /**
+     * Answer the question the agent asked while working on a task, so that it goes on.
+     * @param answer - The answer; "" lets the agent decide by itself
+     * @param answeredBy - Who answered in the chat, or undefined if it was the user
+     * @returns why it couldn't be answered, or undefined if it was
+     */
+    public async answerQuestion(
+        taskId: string,
+        answer: string,
+        answeredBy?: string,
+    ): Promise<AgentErrorCode | undefined> {
+        const { agent, userId } = this;
+        if (!agent || !userId) return "unavailable";
+        const result = await agent.answerTaskQuestion(userId, taskId, answer, answeredBy).catch((e) => {
+            logger.warn(`Could not answer the question of the task ${taskId}`, e);
+            return { ok: false as const, error: "unavailable" as const, message: undefined };
+        });
+        if (result.ok) return undefined;
+        logger.warn(`Could not answer the question of the task ${taskId}: ${result.error}`, result.message);
+        return result.error;
+    }
+
     /** Show each step of the agent's work as it happens */
     private readonly onProgress = ({ userId, taskId, run }: AgentTaskProgress): void => {
         if (userId !== this.userId) return;

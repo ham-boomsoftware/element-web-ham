@@ -540,6 +540,8 @@ export default class ElectronPlatform extends BasePlatform {
         getTaskDiff: (userId, taskId) => this.ipc.call("agentGetTaskDiff", userId, taskId),
         removeTaskWorktree: (userId, taskId) => this.ipc.call("agentRemoveTaskWorktree", userId, taskId),
         openTaskFolder: (userId, taskId) => this.ipc.call("agentOpenTaskFolder", userId, taskId),
+        answerTaskQuestion: (userId, taskId, answer, answeredBy) =>
+            this.ipc.call("agentAnswerTaskQuestion", userId, taskId, answer, answeredBy),
         pickFolder: () => this.ipc.call("agentPickFolder"),
         openTaskInCli: (userId, taskId, folder, instructions) =>
             this.ipc.call("agentOpenTaskInCli", userId, taskId, folder, instructions),

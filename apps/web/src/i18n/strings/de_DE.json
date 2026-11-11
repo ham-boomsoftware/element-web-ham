@@ -144,6 +144,7 @@
         "chat_report_branch": "Branch: %(branch)s",
         "chat_report_done": "Erledigt: %(title)s",
         "chat_report_pull_request": "Pull Request: %(url)s",
+        "question_message": "🤖 Rückfrage zu „%(title)s“:\n%(question)s\n\n(Antworte direkt auf diese Nachricht.)",
         "title": "To-do-Liste"
     },
     "analytics": {

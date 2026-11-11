@@ -10,7 +10,7 @@ import os from "node:os";
 import path from "node:path";
 import { expect, describe, it, beforeEach, afterEach, vi } from "vitest";
 
-import { WorkspaceTools } from "./agent-workspace.js";
+import { MAX_QUESTIONS, readProjectGuides, WorkspaceTools } from "./agent-workspace.js";
 
 describe("WorkspaceTools", () => {
     let parent: string;
@@ -197,5 +197,105 @@ describe("WorkspaceTools", () => {
             ["search", "Hello", undefined],
             ["edit", "src/app.ts", true],
         ]);
+    });
+
+    describe("asking who asked for the task", () => {
+        it("offers the tool only when it can ask, also when it only reads", () => {
+            const ask = vi.fn();
+
+            expect(new WorkspaceTools(root, false, { ask }).definitions.map((tool) => tool.name)).toContain(
+                "ask_requester",
+            );
+            expect(new WorkspaceTools(root, true).definitions.map((tool) => tool.name)).not.toContain("ask_requester");
+        });
+
+        it("gives the agent the answer, or tells it to decide by itself, and counts the wait", async () => {
+            vi.useFakeTimers({ toFake: ["Date"] });
+            const ask = vi.fn(async () => {
+                vi.setSystemTime(Date.now() + 60_000);
+                return "";
+            });
+            ask.mockResolvedValueOnce("  The blue one ");
+            const tools = new WorkspaceTools(root, false, { ask });
+
+            expect(await tools.run("ask_requester", { question: " Which colour? " })).toBe("The answer: The blue one");
+            expect(await tools.run("ask_requester", { question: "And the size?" })).toMatch(/^No answer came/);
+
+            expect(ask).toHaveBeenCalledWith("Which colour?");
+            expect(tools.waitedMs).toBe(60_000);
+            vi.useRealTimers();
+        });
+
+        it(`asks at most ${MAX_QUESTIONS} questions, and no empty ones`, async () => {
+            const ask = vi.fn().mockResolvedValue("Yes");
+            const tools = new WorkspaceTools(root, false, { ask });
+
+            expect(await tools.run("ask_requester", { question: "  " })).toBe("Error: the question is empty");
+            for (let i = 0; i < MAX_QUESTIONS; i++) await tools.run("ask_requester", { question: `Question ${i}` });
+            expect(await tools.run("ask_requester", { question: "One more?" })).toMatch(/^Error: you already asked/);
+
+            expect(ask).toHaveBeenCalledTimes(MAX_QUESTIONS);
+            expect(await new WorkspaceTools(root, false).run("ask_requester", { question: "Hi?" })).toBe(
+                "Error: there is no tool ask_requester",
+            );
+        });
+    });
+});
+
+describe("readProjectGuides", () => {
+    let parent: string;
+    let root: string;
+
+    beforeEach(async () => {
+        parent = await fs.mkdtemp(path.join(os.tmpdir(), "agent-guides-"));
+        root = path.join(parent, "project");
+        await fs.mkdir(path.join(root, ".github"), { recursive: true });
+    });
+
+    afterEach(async () => {
+        await fs.rm(parent, { recursive: true, force: true });
+    });
+
+    it("reads the guides the project has, the most specific first, and skips empty ones", async () => {
+        await fs.writeFile(path.join(root, "CONTRIBUTING.md"), "Write tests.\n");
+        await fs.writeFile(path.join(root, "AGENTS.md"), "  Use 4 spaces.  \n");
+        await fs.writeFile(path.join(root, ".github", "copilot-instructions.md"), "\n\n");
+
+        expect(await readProjectGuides(root)).toEqual([
+            { path: "AGENTS.md", text: "Use 4 spaces.", truncated: false },
+            { path: "CONTRIBUTING.md", text: "Write tests.", truncated: false },
+        ]);
+    });
+
+    it("has no guides for a project without them, or a folder that doesn't exist", async () => {
+        expect(await readProjectGuides(root)).toEqual([]);
+        expect(await readProjectGuides(path.join(parent, "missing"))).toEqual([]);
+    });
+
+    it("cuts long guides, and reads a guide linked from another name once", async () => {
+        await fs.writeFile(path.join(root, "AGENTS.md"), "x".repeat(20_000));
+        await fs.copyFile(path.join(root, "AGENTS.md"), path.join(root, "CONTRIBUTING.md"));
+        // Links need extra rights on Windows; the copy is read as its own guide
+        const linked = await fs
+            .symlink(path.join(root, "AGENTS.md"), path.join(root, "CLAUDE.md"))
+            .then(() => true)
+            .catch(() => false);
+
+        const guides = await readProjectGuides(root);
+
+        expect(guides.map((guide) => guide.path)).toEqual(["AGENTS.md", "CONTRIBUTING.md"]);
+        expect(guides[0]).toMatchObject({ truncated: true });
+        expect(guides[0].text).toHaveLength(12_000);
+        // All guides together are cut too
+        expect(guides[1].text.length).toBeLessThan(20_000);
+        if (linked) expect(guides.map((guide) => guide.path)).not.toContain("CLAUDE.md");
+    });
+
+    it("doesn't read a guide that leads outside the project", async () => {
+        await fs.writeFile(path.join(parent, "secret.md"), "secret");
+        // Windows may not allow symlinks without admin rights; then there is no guide either
+        await fs.symlink(path.join(parent, "secret.md"), path.join(root, "AGENTS.md")).catch(() => {});
+
+        expect(await readProjectGuides(root)).toEqual([]);
     });
 });

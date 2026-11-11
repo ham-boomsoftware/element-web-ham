@@ -35,6 +35,8 @@ const AgentTodoViewWrapperImpl = ({
     continueInCli,
     removeWorktree,
     reportToChat,
+    answerQuestion,
+    skipQuestion,
     ...rest
 }: AgentTodoProps): JSX.Element => {
     const vm = useMockedViewModel(rest, {
@@ -52,6 +54,8 @@ const AgentTodoViewWrapperImpl = ({
         continueInCli,
         removeWorktree,
         reportToChat,
+        answerQuestion,
+        skipQuestion,
     });
     return <AgentTodoView vm={vm} />;
 };
@@ -127,6 +131,8 @@ const meta = {
         continueInCli: fn(),
         removeWorktree: fn(),
         reportToChat: fn(),
+        answerQuestion: fn(),
+        skipQuestion: fn(),
     },
 } satisfies Meta<typeof AgentTodoViewWrapper>;
 
@@ -304,6 +310,87 @@ export const AutopilotPushFailed: Story = {
                         pushed: false,
                         pushError: "remote: Permission to example/app.git denied.",
                         hasWorktree: true,
+                    },
+                },
+            },
+        ],
+    },
+};
+
+export const AutopilotAsking: Story = {
+    args: {
+        items: [
+            {
+                id: "9",
+                title: "Add a dark logo to the login page",
+                details: "Frank: the logo is hard to see in the dark theme.",
+                done: false,
+                sender: "Frank",
+                chatName: "Design",
+                date: "Mon, 9 Nov, 14:20",
+                canOpenChat: true,
+                run: {
+                    mode: "autopilot",
+                    state: "running",
+                    changedFiles: [],
+                    guides: ["AGENTS.md", ".github/copilot-instructions.md"],
+                    steps: [
+                        { kind: "guide", text: "AGENTS.md", time: "14:21:02", failed: false },
+                        { kind: "guide", text: ".github/copilot-instructions.md", time: "14:21:02", failed: false },
+                        { kind: "search", text: "logo", time: "14:21:05", failed: false },
+                        { kind: "read", text: "src/components/AuthHeaderLogo.tsx", time: "14:21:07", failed: false },
+                        {
+                            kind: "ask",
+                            text: "Should I use the existing logo-white.svg, or do you have a new file?",
+                            time: "14:21:15",
+                            failed: false,
+                        },
+                    ],
+                    branch: { name: "pilot/add-a-dark-logo-9f8e7d", base: "main", pushed: false, hasWorktree: true },
+                    question: {
+                        text: "Should I use the existing logo-white.svg, or do you have a new file?",
+                        state: "waiting",
+                    },
+                },
+            },
+        ],
+    },
+};
+
+export const AutopilotAnswered: Story = {
+    args: {
+        items: [
+            {
+                id: "9",
+                title: "Add a dark logo to the login page",
+                details: "Frank: the logo is hard to see in the dark theme.",
+                done: false,
+                sender: "Frank",
+                chatName: "Design",
+                date: "Mon, 9 Nov, 14:20",
+                canOpenChat: true,
+                run: {
+                    mode: "autopilot",
+                    state: "running",
+                    changedFiles: [],
+                    guides: ["AGENTS.md"],
+                    steps: [
+                        { kind: "guide", text: "AGENTS.md", time: "14:21:02", failed: false },
+                        {
+                            kind: "ask",
+                            text: "Should I use the existing logo-white.svg, or do you have a new file?",
+                            time: "14:21:15",
+                            failed: false,
+                        },
+                        { kind: "answer", text: "Frank: Use logo-white.svg", time: "14:24:40", failed: false },
+                        { kind: "edit", text: "src/components/AuthHeaderLogo.tsx", time: "14:24:52", failed: false },
+                    ],
+                    branch: { name: "pilot/add-a-dark-logo-9f8e7d", base: "main", pushed: false, hasWorktree: true },
+                    question: {
+                        text: "Should I use the existing logo-white.svg, or do you have a new file?",
+                        state: "answered",
+                        answer: "Use logo-white.svg, it's already in the theme folder.",
+                        answeredBy: "Frank",
                     },
                 },
             },

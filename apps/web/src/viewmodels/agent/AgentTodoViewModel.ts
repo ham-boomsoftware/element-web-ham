@@ -112,6 +112,13 @@ export function toTodoItem(task: AgentTask): AgentTodoItem {
                 failed: Boolean(step.failed),
             })),
             branch: task.run.branch && toTodoBranch(task.run.branch),
+            guides: task.run.guides,
+            question: task.run.question && {
+                text: task.run.question.text,
+                state: task.run.question.answer === undefined ? "waiting" : "answered",
+                answer: task.run.question.answer,
+                answeredBy: task.run.question.answeredBy,
+            },
         },
         chatReport: buildChatReport(task),
     };
@@ -291,6 +298,26 @@ export class AgentTodoViewModel
             this.snapshot.merge({ chatReport: { id, state: sent ? "sent" : "failed" } });
         })();
     };
+
+    public answerQuestion = (id: string, answer: string): void => {
+        this.sendAnswer(id, answer);
+    };
+
+    public skipQuestion = (id: string): void => {
+        // An empty answer lets the agent decide by itself
+        this.sendAnswer(id, "");
+    };
+
+    private sendAnswer(id: string, answer: string): void {
+        this.snapshot.merge({ answer: { id, state: "sending" } });
+        void (async () => {
+            const error = await this.props.store.answerQuestion(id, answer);
+            if (this.isDisposed || this.snapshot.current.answer?.id !== id) return;
+            // `not_found`: the question was answered in the chat meanwhile, or the run ended
+            const failed = error !== undefined && error !== "not_found";
+            this.snapshot.merge({ answer: failed ? { id, state: "failed" } : undefined });
+        })();
+    }
 }
 
 /** The folders without repeats, keeping the first of each; Windows paths differ only in case */

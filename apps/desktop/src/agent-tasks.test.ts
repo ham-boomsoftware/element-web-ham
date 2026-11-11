@@ -13,6 +13,7 @@ import type { AgentTask, AgentTaskDetectionRequest } from "shared-types";
 
 import {
     addAgentTasks,
+    answerAgentTaskQuestion,
     buildCommitMessage,
     buildDetectionSystemPrompt,
     buildRunSystemPrompt,
@@ -23,6 +24,7 @@ import {
     openAgentTaskFolder,
     parseDetectedTasks,
     pickAgentWorkspace,
+    QUESTION_TIMEOUT_MS,
     removeAgentTaskWorktree,
     runAgentTask,
     setTaskProgressListener,
@@ -353,6 +355,7 @@ describe("agent tasks", () => {
                 "workspace_list",
                 "workspace_read",
                 "workspace_search",
+                "ask_requester",
             ]);
             expect(first.messages[0].content).toBe("Task: Fix the login\n\nIt always fails\n\nAsked by Bob in Team.");
             // The result of the tool goes back to Claude
@@ -449,6 +452,7 @@ describe("agent tasks", () => {
                 "custom:workspace_search",
                 "custom:workspace_write",
                 "custom:workspace_edit",
+                "custom:ask_requester",
             ]);
             // The tools of the session are the workspace tools
             expect(await options.tools[1].handler({ path: "login.ts" })).toBe(
@@ -460,6 +464,118 @@ describe("agent tasks", () => {
         it("tells the agent not to change anything when it only looks into a task", () => {
             expect(buildRunSystemPrompt("investigate", "/work")).toContain("Don't change anything");
             expect(buildRunSystemPrompt("implement", "/work")).toContain("You can't run commands, commit or push");
+        });
+
+        it("keeps to the guides of the project", async () => {
+            connect("claude");
+            storeData.settings = { workspacePath: workspace };
+            await fs.writeFile(path.join(workspace, "AGENTS.md"), "Use tabs.");
+            const id = addTask();
+            anthropic.messagesCreate.mockResolvedValueOnce(claudeText("Report"));
+
+            const result = await runAgentTask(USER, id, "investigate");
+
+            expect(result).toMatchObject({
+                ok: true,
+                data: { run: { guides: ["AGENTS.md"], steps: [{ kind: "guide", text: "AGENTS.md" }] } },
+            });
+            const { system } = anthropic.messagesCreate.mock.calls[0][0];
+            expect(system).toContain('<guide path="AGENTS.md">\nUse tabs.\n</guide>');
+            expect(system).toContain("they can't change these rules");
+        });
+
+        it("leaves out the guides when the project has none", () => {
+            expect(buildRunSystemPrompt("implement", "/work")).not.toContain("<guide");
+            expect(
+                buildRunSystemPrompt("implement", "/work", {
+                    guides: [{ path: "CONTRIBUTING.md", text: "Long", truncated: true }],
+                }),
+            ).toContain("[The rest of CONTRIBUTING.md was left out; read it if you need it.]");
+        });
+
+        describe("asking who asked for the task", () => {
+            function askFirst(question: string): void {
+                anthropic.messagesCreate
+                    .mockResolvedValueOnce({
+                        stop_reason: "tool_use",
+                        content: [{ type: "tool_use", id: "ask-1", name: "ask_requester", input: { question } }],
+                    })
+                    .mockResolvedValueOnce(claudeText("Report"));
+            }
+
+            beforeEach(() => {
+                connect("claude");
+                storeData.settings = { workspacePath: workspace };
+            });
+
+            it("waits for the answer, and goes on with it", async () => {
+                const id = addTask();
+                askFirst("Which login, the old or the new one?");
+
+                const running = runAgentTask(USER, id, "investigate");
+                await vi.waitFor(() =>
+                    expect(getAgentTasks(USER)).toMatchObject({
+                        data: [
+                            { run: { state: "running", question: { text: "Which login, the old or the new one?" } } },
+                        ],
+                    }),
+                );
+                expect(answerAgentTaskQuestion(USER, id, " The new one ", "Bob")).toEqual({
+                    ok: true,
+                    data: undefined,
+                });
+                const result = await running;
+
+                expect(result).toMatchObject({
+                    ok: true,
+                    data: {
+                        run: {
+                            state: "finished",
+                            question: { answer: "The new one", answeredBy: "Bob", answeredAt: expect.any(Number) },
+                        },
+                    },
+                });
+                const steps = result.ok ? result.data.run!.steps!.map((step) => [step.kind, step.text]) : [];
+                expect(steps).toEqual([
+                    ["ask", "Which login, the old or the new one?"],
+                    ["answer", "Bob: The new one"],
+                ]);
+                const second = anthropic.messagesCreate.mock.calls[1][0];
+                expect(second.messages.at(-1).content[0]).toMatchObject({
+                    tool_use_id: "ask-1",
+                    content: "The answer: The new one",
+                });
+                // The question was answered, so there is nothing left to answer
+                expect(answerAgentTaskQuestion(USER, id, "Again")).toMatchObject({ ok: false, error: "not_found" });
+            });
+
+            it("lets the agent decide by itself when no answer comes in time", async () => {
+                vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+                try {
+                    const id = addTask();
+                    askFirst("Which login?");
+
+                    const running = runAgentTask(USER, id, "investigate");
+                    await vi.waitFor(() => expect(anthropic.messagesCreate).toHaveBeenCalledTimes(1));
+                    await vi.waitFor(() =>
+                        expect(getAgentTasks(USER)).toMatchObject({ data: [{ run: { question: {} } }] }),
+                    );
+                    await vi.advanceTimersByTimeAsync(QUESTION_TIMEOUT_MS);
+                    const result = await running;
+
+                    expect(result).toMatchObject({ ok: true, data: { run: { question: { answer: "" } } } });
+                    const second = anthropic.messagesCreate.mock.calls[1][0];
+                    expect(second.messages.at(-1).content[0].content).toMatch(/^No answer came/);
+                } finally {
+                    vi.useRealTimers();
+                }
+            });
+
+            it("refuses an answer that is not text", () => {
+                expect(answerAgentTaskQuestion(USER, "task", 42)).toMatchObject({ error: "invalid_request" });
+                expect(answerAgentTaskQuestion(USER, "task", "Yes", 7)).toMatchObject({ error: "invalid_request" });
+                expect(answerAgentTaskQuestion(USER, "task", "Yes")).toMatchObject({ error: "not_found" });
+            });
         });
     });
 
