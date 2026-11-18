@@ -24,6 +24,7 @@ const STATUS: AgentStatus = {
     autopilotCommands: [],
     workspacePath: "/work",
     codingCli: "claude",
+    pipelineWatch: false,
     connected: { claude: true, copilot: false },
     recentProjects: ["/projects/app", "/Work"],
 };

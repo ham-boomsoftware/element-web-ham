@@ -46,7 +46,13 @@ const task: AgentTask = {
         mode: "autopilot",
         state: "finished",
         startedAt: 1,
-        branch: { name: "pilot/fix-login-1a2b3c", base: "main", pushed: true },
+        branch: {
+            name: "pilot/fix-login-1a2b3c",
+            base: "main",
+            baseCommit: "abc123",
+            repositoryPath: "/work",
+            pushed: true,
+        },
     },
 };
 

@@ -173,6 +173,7 @@ describe("ReplySuggestionsViewModel", () => {
             autopilot: false,
             autopilotCommands: [],
             codingCli: "claude",
+            pipelineWatch: false,
             connected: { claude: true, copilot: false },
             recentProjects: [],
         });
@@ -196,6 +197,7 @@ describe("ReplySuggestionsViewModel", () => {
             autopilot: false,
             autopilotCommands: [],
             codingCli: "claude",
+            pipelineWatch: false,
             connected: { claude: true, copilot: false },
             recentProjects: [],
         });

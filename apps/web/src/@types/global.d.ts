@@ -47,6 +47,7 @@ type ElectronChannel =
     | "ipcCall"
     | "ipcReply"
     | "agentTaskProgress"
+    | "agentPipelineFailure"
     | "loudNotification"
     | "preferences"
     | "seshat"

@@ -43,6 +43,7 @@ describe("AgentSettingsViewModel", () => {
                     autopilot: false,
                     autopilotCommands: [],
                     codingCli: "claude" as const,
+                    pipelineWatch: false,
                     ...changes,
                     // An empty folder forgets it, as the platform does
                     workspacePath: changes.workspacePath || undefined,
