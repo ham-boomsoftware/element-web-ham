@@ -13,7 +13,13 @@ import path from "node:path";
 import { expect, describe, it, beforeEach, afterEach, vi } from "vitest";
 import type { AgentTask } from "shared-types";
 
-import { buildLaunchScript, buildTaskFile, openAgentTaskInCli, pickAgentFolder } from "./agent-cli.js";
+import {
+    buildClaudeLoginScript,
+    buildLaunchScript,
+    buildTaskFile,
+    openAgentTaskInCli,
+    pickAgentFolder,
+} from "./agent-cli.js";
 import { addAgentTasks } from "./agent-tasks.js";
 import { getAgentStatus } from "./agent.js";
 
@@ -268,6 +274,21 @@ describe("agent CLI", () => {
         const script = buildLaunchScript("claude", "C:\\Projects\\O'Brien app", "C:\\data\\cli-tasks\\task-1.md");
 
         expect(script).toContain("Set-Location -LiteralPath 'C:\\Projects\\O''Brien app'");
+    });
+
+    it("runs Claude Code with the account of the agent, if it has one of its own", () => {
+        const script = buildLaunchScript("claude", "C:\\p", "C:\\t\\task.md", "C:\\agent\\claude-account");
+
+        expect(script).toContain("$env:CLAUDE_CONFIG_DIR = 'C:\\agent\\claude-account'");
+        expect(buildLaunchScript("copilot", "C:\\p", "C:\\t\\task.md", "C:\\a")).not.toContain("CLAUDE_CONFIG_DIR");
+        expect(buildLaunchScript("claude", "C:\\p", "C:\\t\\task.md")).not.toContain("CLAUDE_CONFIG_DIR");
+    });
+
+    it("logs in to Claude Code in the configuration folder of the agent", () => {
+        const script = buildClaudeLoginScript("C:\\agent\\claude-account");
+
+        expect(script).toContain("$env:CLAUDE_CONFIG_DIR = 'C:\\agent\\claude-account'");
+        expect(script).toContain("claude /login");
     });
 
     it.runIf(process.platform === "win32")("writes a script PowerShell can parse", () => {

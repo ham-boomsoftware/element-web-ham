@@ -9,6 +9,7 @@ Please see LICENSE files in the repository root for full details.
 // list, the work of the agent on tasks, the pipelines and the calendar with tools. Only the user writes in the
 // chat, so what they write there are instructions.
 
+import path from "node:path";
 import type {
     AgentAssistantReply,
     AgentAssistantRequest,
@@ -20,7 +21,7 @@ import type {
     AgentTurn,
 } from "shared-types";
 
-import { buildInstructionLines, failure, getSettings } from "./agent.js";
+import { buildInstructionLines, failure, getAgentDataPath, getSettings } from "./agent.js";
 import {
     addAgentTasks,
     answerAgentTaskQuestion,
@@ -33,7 +34,8 @@ import type { AgentToolbox, WorkspaceToolDefinition } from "./agent-workspace.js
 import { getAgentPipelineStatus } from "./agent-pipelines.js";
 import { formatLocalTime, parseLocalTime, scheduleAgentTask, suggestAgentTimeSlot } from "./agent-calendar.js";
 import { type BsmImportResult, importBsmTicketsForUser, loginToBsm, setBsmProjectFolder } from "./agent-bsm.js";
-import { pickAgentFolder } from "./agent-cli.js";
+import { openAgentTaskInCli, openClaudeCodeLogin, pickAgentFolder } from "./agent-cli.js";
+import { type ClaudeCodeSettings, getClaudeCodeSettings, setClaudeCodeSettings } from "./agent-claude-code.js";
 
 /** How many messages of the chat the agent reads */
 export const MAX_TURNS = 30;
@@ -64,6 +66,14 @@ export interface AssistantDeps {
     setBsmProjectFolder: (userId: string, application: string, folder: string) => AgentResult<AgentTask[]>;
     /** Let the user choose a folder in a dialog; undefined if they cancelled */
     pickFolder: () => Promise<string | undefined>;
+    openInCli: typeof openAgentTaskInCli;
+    /** The workspace of the settings, for tasks without a project folder of their own */
+    getWorkspace: () => string | undefined;
+    getClaudeCode: () => ClaudeCodeSettings;
+    setClaudeCode: (changes: Partial<ClaudeCodeSettings>) => ClaudeCodeSettings;
+    openClaudeLogin: (configDir: string) => Promise<AgentResult<void>>;
+    /** The configuration folder for a Claude account of the agent's own */
+    agentClaudeConfigDir: () => string;
 }
 
 const DEFAULT_DEPS: AssistantDeps = {
@@ -82,6 +92,12 @@ const DEFAULT_DEPS: AssistantDeps = {
         const picked = await pickAgentFolder();
         return picked.ok ? picked.data : undefined;
     },
+    openInCli: openAgentTaskInCli,
+    getWorkspace: () => getSettings().workspacePath,
+    getClaudeCode: getClaudeCodeSettings,
+    setClaudeCode: setClaudeCodeSettings,
+    openClaudeLogin: openClaudeCodeLogin,
+    agentClaudeConfigDir: () => path.join(getAgentDataPath(), "claude-account"),
 };
 
 const TASK_ID = { type: "string", description: "The ID of the task from list_tasks, or its first 8 characters" };
@@ -217,6 +233,39 @@ const TOOLS: WorkspaceToolDefinition[] = [
                 folder: { type: "string", description: "The local folder of the project, if the user named it" },
             },
             required: ["application"],
+        },
+    },
+    {
+        name: "open_in_terminal",
+        description:
+            "Open a task in Claude Code in a terminal of its own, in the project folder of the task, for the user to " +
+            "do it together with Claude Code. The task, and the report of the agent if it looked into it, go along.",
+        inputSchema: {
+            type: "object",
+            properties: {
+                task_id: TASK_ID,
+                instructions: { type: "string", description: "What the user wants Claude Code to do, if they said" },
+            },
+            required: ["task_id"],
+        },
+    },
+    {
+        name: "claude_code_settings",
+        description:
+            "Change how the agent works on tasks. By default it uses Claude Code with the Claude account it is " +
+            "logged in with, such as the user's subscription, without an API key. `use_claude_code: false` uses the " +
+            "AI provider of the settings instead. `separate_account: true` gives Claude Code a Claude account of its " +
+            "own and opens a terminal for the user to log in with it; `false` goes back to the user's own account.",
+        inputSchema: {
+            type: "object",
+            properties: {
+                use_claude_code: { type: "boolean", description: "Whether to work on tasks with Claude Code" },
+                separate_account: {
+                    type: "boolean",
+                    description: "Whether Claude Code uses a Claude account of its own instead of the user's",
+                },
+            },
+            required: [],
         },
     },
 ];
@@ -410,6 +459,38 @@ export class AssistantTools implements AgentToolbox {
                 if (result.data.length > 0) this.tasksChanged = true;
                 return `The project folder of ${application} is ${folder}; ${result.data.length} open tasks got it.`;
             }
+            case "open_in_terminal": {
+                const task = this.findTask(args.task_id);
+                const folder = task.workspacePath ?? this.deps.getWorkspace();
+                if (!folder) return "Error: the task has no project folder; use set_project_folder";
+                const result = await this.deps.openInCli(userId, task.id, folder, asString(args.instructions));
+                if (!result.ok) return `Error: ${result.error} ${result.message ?? ""}`.trim();
+                return `Claude Code opened in a terminal in ${folder}.`;
+            }
+            case "claude_code_settings": {
+                const changes: Partial<ClaudeCodeSettings> = {};
+                if (typeof args.use_claude_code === "boolean") changes.enabled = args.use_claude_code;
+                if (args.separate_account === true) changes.configDir = this.deps.agentClaudeConfigDir();
+                if (args.separate_account === false) changes.configDir = undefined;
+                const settings = this.deps.setClaudeCode(changes);
+                const lines = [
+                    settings.enabled
+                        ? "The agent works on tasks with Claude Code."
+                        : "The agent works on tasks with the AI provider of the settings.",
+                    settings.configDir
+                        ? `Claude Code uses an account of its own (${settings.configDir}).`
+                        : "Claude Code uses the user's own Claude login.",
+                ];
+                if (args.separate_account === true && settings.configDir) {
+                    const opened = await this.deps.openClaudeLogin(settings.configDir);
+                    lines.push(
+                        opened.ok
+                            ? "A terminal opened for the user to log in with that account."
+                            : `Error: the login couldn't open: ${opened.message ?? opened.error}`,
+                    );
+                }
+                return lines.join(" ");
+            }
             default:
                 return `Error: unknown tool ${name}`;
         }
@@ -465,8 +546,8 @@ export function buildAssistantSystemPrompt(ownName: string, instructions: string
         "You keep their to-do list: requests that you found in their chats, or that they added. With your tools " +
             "you can list, add and complete tasks, let the agent look into a task or do it with the autopilot, " +
             "answer the questions the agent asks while it works, read the state of their CI pipelines, plan " +
-            "tasks in their calendar, and import the tickets of BSM, their ticket system, with the project folder " +
-            "of each application.",
+            "tasks in their calendar, import the bug tickets of BSM, their ticket system, with the project folder " +
+            "of each application, and open a task in Claude Code in a terminal for them to do it.",
         "Use the tools to answer; don't guess the state of tasks or pipelines. Only start the autopilot, and only " +
             "put something in the calendar, when the user asks for it. Before scheduling, suggest a time with " +
             "suggest_time and let the user confirm it, unless they already said when.",

@@ -19,6 +19,7 @@ import type { AgentCodingCli, AgentResult, AgentTask } from "shared-types";
 
 import { failure, getAgentDataPath, getAgentStore, getSettings, isDirectory } from "./agent.js";
 import { findAgentTask, showFolderDialog } from "./agent-tasks.js";
+import { getClaudeCodeSettings } from "./agent-claude-code.js";
 
 /** How many recent project folders are kept */
 const MAX_RECENT_PROJECTS = 8;
@@ -107,21 +108,64 @@ export function buildTaskFile(task: AgentTask, instructions: string): string {
  * The PowerShell script that opens the CLI in the project folder. Only paths go into it, never the text of the
  * task, and each is quoted as a literal.
  */
-export function buildLaunchScript(cli: AgentCodingCli, folder: string, taskFile: string): string {
-    const literal = (text: string): string => `'${text.replace(/'/g, "''")}'`;
+export function buildLaunchScript(
+    cli: AgentCodingCli,
+    folder: string,
+    taskFile: string,
+    claudeConfigDir?: string,
+): string {
     const prompt = literal(`Read the task in ${taskFile} and work on it with me in this project.`);
     const command =
         cli === "claude" ? `claude --add-dir ${literal(path.dirname(taskFile))} ${prompt}` : `copilot -i ${prompt}`;
     return [
         "$Host.UI.RawUI.WindowTitle = 'Element Pilot'",
+        // Claude Code with the account of the agent, if it has one of its own
+        ...(cli === "claude" && claudeConfigDir ? [`$env:CLAUDE_CONFIG_DIR = ${literal(claudeConfigDir)}`] : []),
         `Set-Location -LiteralPath ${literal(folder)}`,
         command,
     ].join("\n");
 }
 
+/** A text as a literal of PowerShell */
+function literal(text: string): string {
+    return `'${text.replace(/'/g, "''")}'`;
+}
+
+/**
+ * The PowerShell script that lets the user log in to Claude Code with the account of the agent, in its own
+ * configuration folder.
+ */
+export function buildClaudeLoginScript(configDir: string): string {
+    return [
+        "$Host.UI.RawUI.WindowTitle = 'Element Pilot – Claude-Konto anmelden'",
+        `$env:CLAUDE_CONFIG_DIR = ${literal(configDir)}`,
+        "Write-Host 'Melde dich mit dem Claude-Konto für Element Pilot an und schließe das Fenster danach.'",
+        "claude /login",
+    ].join("\n");
+}
+
+/**
+ * Open a terminal for the user to log in to Claude Code with the account of the agent.
+ */
+export async function openClaudeCodeLogin(configDir: string): Promise<AgentResult<void>> {
+    if (process.platform !== "win32") return failure("unavailable", "Only Windows can open a terminal yet");
+    try {
+        await fs.mkdir(configDir, { recursive: true });
+        await openTerminal(buildClaudeLoginScript(configDir), configDir);
+        return { ok: true, data: undefined };
+    } catch (e) {
+        console.error("Failed to open the login of Claude Code", e);
+        return failure("unavailable", e instanceof Error ? e.message : String(e));
+    }
+}
+
 /** Open a new PowerShell window that runs the CLI, and stays open when the CLI ends */
 async function launchCli(cli: AgentCodingCli, folder: string, taskFile: string): Promise<void> {
-    const script = buildLaunchScript(cli, folder, taskFile);
+    await openTerminal(buildLaunchScript(cli, folder, taskFile, getClaudeCodeSettings().configDir), folder);
+}
+
+/** Open a new PowerShell window that runs a script, and stays open when it ends */
+async function openTerminal(script: string, folder: string): Promise<void> {
     const encoded = Buffer.from(script, "utf16le").toString("base64");
     await new Promise<void>((resolve, reject) => {
         // A detached child of Element gets no console at all, so the CLI would run hidden. `start` opens PowerShell

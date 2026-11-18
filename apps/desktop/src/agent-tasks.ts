@@ -34,6 +34,8 @@ import type {
     AgentTicketRef,
 } from "shared-types";
 
+import { getClaudeCodeSettings, runWithClaudeCode } from "./agent-claude-code.js";
+
 import {
     askClaude,
     askCopilot,
@@ -456,22 +458,44 @@ export async function runAgentTask(userId: unknown, taskId: unknown, mode: unkno
     // A task can have a project folder of its own, such as an imported ticket of a customer's project
     const workspacePath = task.workspacePath ?? settings.workspacePath;
     if (!workspacePath || !isDirectory(workspacePath)) return failure("no_workspace");
-    const credential = await getCredential(settings.provider);
-    if (!credential) return failure("not_connected");
+    // Claude Code works with the Claude account it is logged in with, such as a subscription, without an API key
+    const useClaudeCode = getClaudeCodeSettings().enabled;
+    const credential = useClaudeCode ? undefined : await getCredential(settings.provider);
+    if (!useClaudeCode && !credential) return failure("not_connected");
 
     runningTasks.add(key);
     try {
-        return await workOnTask(userId, task, mode, workspacePath, async (system, prompt, tools) =>
-            settings.provider === "claude"
-                ? await runWithClaude(credential, settings.model, system, prompt, tools)
-                : await runWithCopilot(credential, settings.model, system, prompt, tools),
+        return await workOnTask(userId, task, mode, workspacePath, async (system, prompt, tools, context) =>
+            useClaudeCode
+                ? await runWithClaudeCode({
+                      root: context.root,
+                      mode,
+                      system,
+                      prompt,
+                      commands: mode === "autopilot" ? settings.autopilotCommands : [],
+                      onStep: (step) => context.addStep(step),
+                  })
+                : settings.provider === "claude"
+                  ? await runWithClaude(credential!, settings.model, system, prompt, tools)
+                  : await runWithCopilot(credential!, settings.model, system, prompt, tools),
         );
     } finally {
         runningTasks.delete(key);
     }
 }
 
-type AgentRunner = (system: string, prompt: string, tools: AgentToolbox) => Promise<AgentResult<string>>;
+/** Where the agent works, and how it shows its steps */
+interface AgentRunContext {
+    root: string;
+    addStep(step: AgentRunStep): void;
+}
+
+type AgentRunner = (
+    system: string,
+    prompt: string,
+    tools: AgentToolbox,
+    context: AgentRunContext,
+) => Promise<AgentResult<string>>;
 
 async function workOnTask(
     userId: string,
@@ -542,6 +566,7 @@ async function workOnTask(
         }),
         buildRunPrompt(task, mode),
         tools,
+        { root, addStep },
     );
     update({
         summary: result.ok ? result.data : result.message,

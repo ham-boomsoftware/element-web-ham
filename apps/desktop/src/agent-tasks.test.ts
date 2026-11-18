@@ -118,6 +118,8 @@ describe("agent tasks", () => {
     beforeEach(async () => {
         await stopCopilot();
         for (const key of Object.keys(storeData)) delete storeData[key];
+        // These tests use the API of the providers; Claude Code has tests of its own
+        storeData.claudeCode = { enabled: false };
         vi.clearAllMocks();
         workspace = await fs.mkdtemp(path.join(os.tmpdir(), "agent-tasks-"));
         await fs.writeFile(path.join(workspace, "login.ts"), "export const login = () => false;\n");

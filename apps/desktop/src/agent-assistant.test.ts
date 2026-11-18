@@ -27,7 +27,9 @@ vi.mock("./agent.js", () => ({
     failure: (error: string) => ({ ok: false, error }),
     getCredential: vi.fn(),
     getSettings: vi.fn(() => ({ instructions: "Be brief." })),
+    getAgentDataPath: vi.fn(() => "/agent"),
 }));
+vi.mock("./agent-claude-code.js", () => ({ getClaudeCodeSettings: vi.fn(), setClaudeCodeSettings: vi.fn() }));
 vi.mock("./agent-tasks.js", () => ({
     addAgentTasks: vi.fn(),
     answerAgentTaskQuestion: vi.fn(),
@@ -44,7 +46,11 @@ vi.mock("./agent-bsm.js", () => ({
     loginToBsm: vi.fn(),
     setBsmProjectFolder: vi.fn(),
 }));
-vi.mock("./agent-cli.js", () => ({ pickAgentFolder: vi.fn() }));
+vi.mock("./agent-cli.js", () => ({
+    openAgentTaskInCli: vi.fn(),
+    openClaudeCodeLogin: vi.fn(),
+    pickAgentFolder: vi.fn(),
+}));
 
 const USER = "@alice:example.org";
 
@@ -105,6 +111,12 @@ function createDeps(): AssistantDeps & { [K in keyof AssistantDeps]: ReturnType<
         })),
         setBsmProjectFolder: vi.fn(() => ({ ok: true, data: [ticketTask] })),
         pickFolder: vi.fn(async () => "C:\\projects\\ell"),
+        openInCli: vi.fn(async () => ({ ok: true, data: undefined })),
+        getWorkspace: vi.fn(() => "C:\\workspace"),
+        getClaudeCode: vi.fn(() => ({ enabled: true })),
+        setClaudeCode: vi.fn((changes) => ({ enabled: true, ...changes })),
+        openClaudeLogin: vi.fn(async () => ({ ok: true, data: undefined })),
+        agentClaudeConfigDir: vi.fn(() => "C:\\agent\\claude-account"),
     } as never;
 }
 
@@ -180,6 +192,38 @@ describe("AssistantTools for BSM", () => {
 
         expect(deps.pickFolder).not.toHaveBeenCalled();
         expect(deps.setBsmProjectFolder).toHaveBeenCalledWith(USER, "ELL BRS", "D:\\ell");
+    });
+
+    it("opens a ticket in Claude Code in its project folder", async () => {
+        deps.getTasks.mockReturnValue({ ok: true, data: [{ ...ticketTask, workspacePath: "C:\\ell" }] });
+
+        const text = await tools.run("open_in_terminal", { task_id: "7c7c7c7c", instructions: "Fix it" });
+
+        expect(deps.openInCli).toHaveBeenCalledWith(USER, ticketTask.id, "C:\\ell", "Fix it");
+        expect(text).toContain("C:\\ell");
+    });
+
+    it("opens a task without a project folder in the workspace of the settings", async () => {
+        deps.getTasks.mockReturnValue({ ok: true, data: [ticketTask] });
+
+        await tools.run("open_in_terminal", { task_id: "7c7c7c7c" });
+
+        expect(deps.openInCli).toHaveBeenCalledWith(USER, ticketTask.id, "C:\\workspace", "");
+    });
+
+    it("gives Claude Code an account of its own and opens its login", async () => {
+        const text = await tools.run("claude_code_settings", { separate_account: true });
+
+        expect(deps.setClaudeCode).toHaveBeenCalledWith({ configDir: "C:\\agent\\claude-account" });
+        expect(deps.openClaudeLogin).toHaveBeenCalledWith("C:\\agent\\claude-account");
+        expect(text).toContain("account of its own");
+    });
+
+    it("goes back to the user's own Claude login, or to the AI provider", async () => {
+        await tools.run("claude_code_settings", { separate_account: false, use_claude_code: false });
+
+        expect(deps.setClaudeCode).toHaveBeenCalledWith({ configDir: undefined, enabled: false });
+        expect(deps.openClaudeLogin).not.toHaveBeenCalled();
     });
 
     it("shows the ticket of a task in the list", () => {
