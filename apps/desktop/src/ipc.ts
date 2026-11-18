@@ -41,9 +41,15 @@ import {
     updateAgentTask,
 } from "./agent-tasks.js";
 import { openAgentTaskInCli, pickAgentFolder } from "./agent-cli.js";
+import { scheduleAgentTask, suggestAgentTimeSlot } from "./agent-calendar.js";
+import { getAgentPipelineStatus, setPipelineFailureListener, syncPipelineWatcher } from "./agent-pipelines.js";
+import { chatWithAgentAssistant } from "./agent-assistant.js";
 
 // The renderer follows the work of the agent on a task step by step
 setTaskProgressListener((progress) => global.mainWindow?.webContents.send("agentTaskProgress", progress));
+// The renderer reports failed pipeline runs in the chats
+setPipelineFailureListener((failure) => global.mainWindow?.webContents.send("agentPipelineFailure", failure));
+void app.whenReady().then(syncPipelineWatcher);
 
 let focusHandlerAttached = false;
 ipcMain.on("loudNotification", function (): void {
@@ -209,6 +215,7 @@ ipcMain.on("ipcCall", async function (_ev: IpcMainEvent, payload) {
             break;
         case "agentSetSettings":
             ret = setAgentSettings(args[0]);
+            syncPipelineWatcher();
             break;
         case "agentConnect":
             ret = await connectAgent(args[0], args[1]);
@@ -278,6 +285,18 @@ ipcMain.on("ipcCall", async function (_ev: IpcMainEvent, payload) {
             break;
         case "agentOpenTaskInCli":
             ret = await openAgentTaskInCli(args[0], args[1], args[2], args[3]);
+            break;
+        case "agentSuggestTimeSlot":
+            ret = await suggestAgentTimeSlot(args[0], args[1]);
+            break;
+        case "agentScheduleTask":
+            ret = await scheduleAgentTask(args[0], args[1], args[2], args[3]);
+            break;
+        case "agentGetPipelineStatus":
+            ret = await getAgentPipelineStatus();
+            break;
+        case "agentAssistantChat":
+            ret = await chatWithAgentAssistant(args[0]);
             break;
 
         case "clearStorage":

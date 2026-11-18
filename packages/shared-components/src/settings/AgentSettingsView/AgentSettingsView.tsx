@@ -20,6 +20,7 @@ import {
     Text,
     ToggleControl,
 } from "@vector-im/compound-web";
+import ChatIcon from "@vector-im/compound-design-tokens/assets/web/icons/chat";
 
 import { useViewModel, type ViewModel } from "../../core/viewmodel";
 import { useI18n } from "../../core/i18n/i18nContext";
@@ -96,6 +97,10 @@ export interface AgentSettingsViewSnapshot {
     workspacePath?: string;
     /** The coding CLI that "Do it" opens in a terminal */
     codingCli: AgentSettingsCli;
+    /** Whether the agent watches the pipelines of the project folders and reports failed runs */
+    pipelineWatch: boolean;
+    /** Whether there is a chat with the agent to open */
+    canOpenAssistant: boolean;
     /** Why the last action failed, if it did */
     error?: AgentSettingsError;
 }
@@ -129,6 +134,10 @@ export interface AgentSettingsViewActions {
     clearWorkspace: () => void;
     /** Choose the coding CLI that "Do it" opens */
     setCodingCli: (cli: AgentSettingsCli) => void;
+    /** Turn watching the pipelines on or off */
+    setPipelineWatch: (enabled: boolean) => void;
+    /** Open the chat with the agent, after creating it if needed */
+    openAssistant: () => void;
 }
 
 /**
@@ -165,6 +174,8 @@ export function AgentSettingsView({ vm }: Readonly<AgentSettingsViewProps>): JSX
         autopilotCommands,
         workspacePath,
         codingCli,
+        pipelineWatch,
+        canOpenAssistant,
         error,
     } = useViewModel(vm);
     const [credential, setCredential] = useState("");
@@ -381,7 +392,36 @@ export function AgentSettingsView({ vm }: Readonly<AgentSettingsViewProps>): JSX
                     <Label>{_t("settings|agent|autopilot")}</Label>
                     <HelpMessage>{_t("settings|agent|autopilot_description")}</HelpMessage>
                 </InlineField>
+                <InlineField
+                    name="pipelineWatch"
+                    control={
+                        <ToggleControl
+                            checked={pipelineWatch}
+                            disabled={isBusy}
+                            onChange={(ev) => vm.setPipelineWatch(ev.currentTarget.checked)}
+                        />
+                    }
+                >
+                    <Label>{_t("settings|agent|pipeline_watch")}</Label>
+                    <HelpMessage>{_t("settings|agent|pipeline_watch_description")}</HelpMessage>
+                </InlineField>
             </Root>
+
+            {canOpenAssistant && (
+                <Flex align="center" justify="space-between" gap="var(--cpd-space-4x)">
+                    <Flex direction="column" gap="var(--cpd-space-1x)">
+                        <Text as="span" size="md" weight="medium">
+                            {_t("settings|agent|assistant")}
+                        </Text>
+                        <Text size="sm" className={styles.description}>
+                            {_t("settings|agent|assistant_description")}
+                        </Text>
+                    </Flex>
+                    <Button kind="secondary" size="md" Icon={ChatIcon} onClick={vm.openAssistant}>
+                        {_t("settings|agent|assistant_open")}
+                    </Button>
+                </Flex>
+            )}
 
             <Flex direction="column" gap="var(--cpd-space-2x)">
                 <Text as="span" size="md" weight="medium">

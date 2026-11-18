@@ -33,7 +33,7 @@ const { ipcHandlers, mockStore, send, randomArray, defaultSession } = vi.hoisted
 }));
 
 vi.mock("electron", () => ({
-    app: { getVersion: vi.fn(() => "1.0.0") },
+    app: { getVersion: vi.fn(() => "1.0.0"), whenReady: vi.fn(() => new Promise(() => {})) },
     autoUpdater: { getFeedURL: vi.fn() },
     desktopCapturer: { getSources: vi.fn() },
     ipcMain: {
@@ -100,8 +100,20 @@ const agentTasks = vi.hoisted(() => ({
 vi.mock("./agent-tasks.js", () => agentTasks);
 const agentCli = vi.hoisted(() => ({ pickAgentFolder: vi.fn(), openAgentTaskInCli: vi.fn() }));
 vi.mock("./agent-cli.js", () => agentCli);
+const agentCalendar = vi.hoisted(() => ({ suggestAgentTimeSlot: vi.fn(), scheduleAgentTask: vi.fn() }));
+vi.mock("./agent-calendar.js", () => agentCalendar);
+const agentPipelines = vi.hoisted(() => ({
+    getAgentPipelineStatus: vi.fn(),
+    setPipelineFailureListener: vi.fn(),
+    syncPipelineWatcher: vi.fn(),
+}));
+vi.mock("./agent-pipelines.js", () => agentPipelines);
+const agentAssistant = vi.hoisted(() => ({ chatWithAgentAssistant: vi.fn() }));
+vi.mock("./agent-assistant.js", () => agentAssistant);
 
 await import("./ipc.js");
+// Set once when ipc.ts loads, before any mock is cleared
+const pipelineFailureListener = agentPipelines.setPipelineFailureListener.mock.calls[0][0];
 
 const ARGS = ["@alice:example.org", "DEVICEID"];
 
@@ -435,6 +447,14 @@ describe("ipc agent commands", () => {
             agentCli.openAgentTaskInCli,
             ["@alice:example.org", "task-1", "/work/app", "Be careful"],
         ],
+        ["agentSuggestTimeSlot", agentCalendar.suggestAgentTimeSlot, ["@alice:example.org", "task-1"]],
+        ["agentScheduleTask", agentCalendar.scheduleAgentTask, ["@alice:example.org", "task-1", 1700000000000, 60]],
+        ["agentGetPipelineStatus", agentPipelines.getAgentPipelineStatus, []],
+        [
+            "agentAssistantChat",
+            agentAssistant.chatWithAgentAssistant,
+            [{ userId: "@alice:example.org", ownName: "Alice", turns: [{ role: "user", text: "What is open?" }] }],
+        ],
     ])("routes %s to the agent and replies with its result", async (name, handler, args) => {
         // A plain value works for the synchronous and the awaited handlers alike
         vi.mocked(handler).mockReturnValue({ ok: true, data: name });
@@ -443,5 +463,21 @@ describe("ipc agent commands", () => {
 
         expect(handler).toHaveBeenCalledWith(...args);
         expect(send).toHaveBeenCalledWith("ipcReply", { id: 30, reply: { ok: true, data: name }, error: undefined });
+    });
+
+    it("starts or stops watching the pipelines when the settings change", async () => {
+        agent.setAgentSettings.mockReturnValue({ ok: true, data: {} });
+
+        await callIpc("agentSetSettings", 31, [{ pipelineWatch: true }]);
+
+        expect(agentPipelines.syncPipelineWatcher).toHaveBeenCalled();
+    });
+
+    it("sends failed pipeline runs to the renderer", () => {
+        const failure = { build: { id: 1 }, failedSteps: ["Test"] };
+
+        pipelineFailureListener(failure);
+
+        expect(send).toHaveBeenCalledWith("agentPipelineFailure", failure);
     });
 });

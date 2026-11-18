@@ -8,6 +8,7 @@
 import React, { type JSX, useState } from "react";
 import { Button, CheckboxInput, Text } from "@vector-im/compound-web";
 import AiIcon from "@vector-im/compound-design-tokens/assets/web/icons/ai";
+import CalendarIcon from "@vector-im/compound-design-tokens/assets/web/icons/calendar";
 
 import { type ViewModel, useViewModel } from "../../core/viewmodel";
 import { useI18n } from "../../core/i18n/i18nContext";
@@ -20,6 +21,7 @@ import {
     AgentTodoQuestionCard,
     AgentTodoTimeline,
 } from "./AgentTodoAutopilot";
+import { AgentTodoPlanForm } from "./AgentTodoPlanForm";
 
 /**
  * Which tasks are shown: those still to do, or those done.
@@ -182,6 +184,34 @@ export interface AgentTodoRun {
 }
 
 /**
+ * A time planned to work on a task.
+ */
+export interface AgentTodoSchedule {
+    /** When, from start to end, ready for display */
+    label: string;
+    /** Whether the time is over */
+    past: boolean;
+}
+
+/**
+ * Planning a time to work on a task, with a calendar entry.
+ * - `suggesting`: the agent looks for a good time.
+ * - `ready`: the form shows the suggested time for the user to change and confirm.
+ * - `saving`: the calendar entry is being made.
+ * - `failed`: it couldn't be made; the form stays to try again.
+ */
+export interface AgentTodoPlanning {
+    /** The task */
+    id: string;
+    state: "suggesting" | "ready" | "saving" | "failed";
+    /** The start, as the value of a local date and time field: `YYYY-MM-DDTHH:MM` */
+    start: string;
+    durationMinutes: number;
+    /** Why the agent suggests this time */
+    reason?: string;
+}
+
+/**
  * A task of the to-do list.
  */
 export interface AgentTodoItem {
@@ -198,6 +228,8 @@ export interface AgentTodoItem {
     date: string;
     /** Whether the chat it came from can be opened */
     canOpenChat: boolean;
+    /** The time planned to work on it */
+    schedule?: AgentTodoSchedule;
     /** The latest work of the agent on it */
     run?: AgentTodoRun;
     /** What to tell the chat it came from about the work of the agent, to change before sending; none to tell */
@@ -229,6 +261,8 @@ export interface AgentTodoViewSnapshot {
     chatReport?: AgentTodoChatReport;
     /** The latest answer of the user to a question of the agent, while it is sent or if it failed */
     answer?: AgentTodoAnswer;
+    /** Planning a time for a task, while the form is open */
+    planning?: AgentTodoPlanning;
 }
 
 export interface AgentTodoViewActions {
@@ -264,6 +298,15 @@ export interface AgentTodoViewActions {
     answerQuestion: (id: string, answer: string) => void;
     /** Let the agent go on without an answer, deciding by itself */
     skipQuestion: (id: string) => void;
+    /** Open the form to plan a time for a task, with a time the agent suggests */
+    planTask: (id: string) => void;
+    /**
+     * Plan the time for a task and open its calendar entry.
+     * @param start - The local start, `YYYY-MM-DDTHH:MM`
+     */
+    scheduleTask: (id: string, start: string, durationMinutes: number) => void;
+    /** Close the form to plan a time */
+    cancelPlanning: () => void;
 }
 
 /**
@@ -365,8 +408,9 @@ interface AgentTodoEntryProps {
 /** One task of the list, with its actions and the latest report of the agent */
 function AgentTodoEntry({ item, snapshot, vm }: Readonly<AgentTodoEntryProps>): JSX.Element {
     const { translate: _t } = useI18n();
-    const { id, title, details, done, sender, chatName, date, canOpenChat, run } = item;
+    const { id, title, details, done, sender, chatName, date, canOpenChat, run, schedule } = item;
     const isRunning = run?.state === "running";
+    const isPlanning = snapshot.planning?.id === id;
     const [isLaunchOpen, setLaunchOpen] = useState(false);
     const origin =
         sender && chatName
@@ -389,6 +433,19 @@ function AgentTodoEntry({ item, snapshot, vm }: Readonly<AgentTodoEntryProps>): 
                     <Text size="sm" className={styles.meta}>
                         {origin}
                     </Text>
+                    {schedule && (
+                        <Flex
+                            align="center"
+                            gap="var(--cpd-space-1x)"
+                            className={styles.schedule}
+                            data-past={schedule.past}
+                        >
+                            <CalendarIcon width="16px" height="16px" aria-hidden />
+                            <Text size="sm" weight="medium">
+                                {_t("agent_todo|planned", { time: schedule.label })}
+                            </Text>
+                        </Flex>
+                    )}
                     {details && (
                         <Text size="sm" className={styles.details}>
                             {details}
@@ -428,6 +485,16 @@ function AgentTodoEntry({ item, snapshot, vm }: Readonly<AgentTodoEntryProps>): 
                                 >
                                     {_t("agent_todo|autopilot")}
                                 </Button>
+                                <Button
+                                    kind="tertiary"
+                                    size="md"
+                                    Icon={CalendarIcon}
+                                    aria-expanded={isPlanning}
+                                    disabled={isPlanning}
+                                    onClick={() => vm.planTask(id)}
+                                >
+                                    {schedule ? _t("agent_todo|plan_again") : _t("agent_todo|plan")}
+                                </Button>
                             </>
                         )}
                         <Button kind="tertiary" size="md" destructive onClick={() => vm.deleteTask(id)}>
@@ -435,6 +502,13 @@ function AgentTodoEntry({ item, snapshot, vm }: Readonly<AgentTodoEntryProps>): 
                         </Button>
                     </Flex>
 
+                    {isPlanning && !done && snapshot.planning && (
+                        <AgentTodoPlanForm
+                            key={`${snapshot.planning.state === "suggesting"}-${snapshot.planning.start}`}
+                            planning={snapshot.planning}
+                            vm={vm}
+                        />
+                    )}
                     {isLaunchOpen && !done && (
                         <AgentTodoLaunchForm
                             id={id}

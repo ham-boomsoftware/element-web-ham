@@ -136,6 +136,19 @@
         "zoom_in": "Vergrößern",
         "zoom_out": "Verkleinern"
     },
+    "agent_assistant": {
+        "error_not_connected": "Ich kann nicht antworten: Es ist kein KI-Anbieter verbunden. Verbinde einen in den Agent-Einstellungen.",
+        "error_rate_limited": "Der KI-Anbieter ist gerade ausgelastet. Bitte versuche es gleich noch einmal.",
+        "error_unknown": "Ich konnte nicht antworten (%(error)s). Bitte versuche es noch einmal.",
+        "pipeline_failed": "**Pipeline fehlgeschlagen:** %(pipeline)s %(buildNumber)s (%(repository)s, Branch `%(branch)s`)",
+        "pipeline_failed_source": "Die Pipeline des Branches `%(branch)s` für „%(title)s“ ist fehlgeschlagen. Ich sehe es mir an.",
+        "pipeline_failed_steps": "Fehlgeschlagene Schritte:",
+        "pipeline_requested_by": "Gestartet von %(name)s",
+        "pipeline_task": "Branch der Aufgabe „%(title)s“",
+        "room_name": "Element Pilot",
+        "room_topic": "Dein Chat mit dem Agent von Element Pilot",
+        "welcome": "Hallo! Ich bin der Agent von Element Pilot. Frag mich nach deinen To-dos, lass mich Aufgaben anlegen oder einplanen, den Autopilot starten oder sag mir, wie es um die Pipelines steht."
+    },
     "agent_room_instructions_dialog": {
         "title": "Agent-Anweisungen für %(roomName)s"
     },

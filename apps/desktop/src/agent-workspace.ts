@@ -21,9 +21,19 @@ export interface WorkspaceToolDefinition {
     description: string;
     inputSchema: {
         type: "object";
-        properties: Record<string, { type: string; description: string }>;
+        properties: Record<string, { type: string; description: string; enum?: string[] }>;
         required: string[];
     };
+}
+
+/** Tools the agent can call while it works, such as {@link WorkspaceTools} */
+export interface AgentToolbox {
+    /** The tools the agent may use */
+    readonly definitions: WorkspaceToolDefinition[];
+    /** How long the agent waited for answers, in milliseconds; this is not working time */
+    readonly waitedMs: number;
+    /** Run a tool. A failure is returned as text starting with "Error:", for the agent to read and react to. */
+    run(name: string, input: unknown): Promise<string>;
 }
 
 /** Folders that are never searched: they are big, generated, or the repository's own data */
@@ -184,7 +194,7 @@ const STEP_KINDS: Record<string, AgentRunStepKind> = {
 /**
  * Files of one workspace, as the agent sees them through its tools.
  */
-export class WorkspaceTools {
+export class WorkspaceTools implements AgentToolbox {
     /** The files the agent changed, relative to the workspace, in the order it first changed them */
     public readonly changedFiles = new Set<string>();
 

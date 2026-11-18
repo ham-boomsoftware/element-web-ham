@@ -42,6 +42,8 @@ describe("<AgentSettingsView />", () => {
             "chooseWorkspace",
             "clearWorkspace",
             "setCodingCli",
+            "setPipelineWatch",
+            "openAssistant",
         ] as const) {
             vi.mocked(NotConnected.args[action]!).mockClear();
             vi.mocked(Connected.args[action]!).mockClear();
@@ -234,6 +236,31 @@ describe("<AgentSettingsView />", () => {
         await user.selectOptions(cli, "GitHub Copilot CLI");
 
         expect(Connected.args.setCodingCli).toHaveBeenCalledWith("copilot");
+    });
+
+    it("turns watching the pipelines on", async () => {
+        const user = userEvent.setup();
+        render(<Connected />);
+
+        const toggle = screen.getByRole("switch", { name: "Watch the pipelines" });
+        expect(toggle).not.toBeChecked();
+        await user.click(toggle);
+
+        expect(Connected.args.setPipelineWatch).toHaveBeenCalledWith(true);
+    });
+
+    it("opens the chat with the agent", async () => {
+        const user = userEvent.setup();
+        render(<Connected />);
+
+        await user.click(screen.getByRole("button", { name: "Open chat" }));
+
+        expect(Connected.args.openAssistant).toHaveBeenCalled();
+    });
+
+    it("only offers the chat with the agent when there is one", () => {
+        render(<Connected canOpenAssistant={false} />);
+        expect(screen.queryByRole("button", { name: "Open chat" })).not.toBeInTheDocument();
     });
 
     it("says when the project folder doesn't exist", () => {

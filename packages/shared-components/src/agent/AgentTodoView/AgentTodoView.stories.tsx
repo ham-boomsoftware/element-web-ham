@@ -37,6 +37,9 @@ const AgentTodoViewWrapperImpl = ({
     reportToChat,
     answerQuestion,
     skipQuestion,
+    planTask,
+    scheduleTask,
+    cancelPlanning,
     ...rest
 }: AgentTodoProps): JSX.Element => {
     const vm = useMockedViewModel(rest, {
@@ -56,6 +59,9 @@ const AgentTodoViewWrapperImpl = ({
         reportToChat,
         answerQuestion,
         skipQuestion,
+        planTask,
+        scheduleTask,
+        cancelPlanning,
     });
     return <AgentTodoView vm={vm} />;
 };
@@ -93,6 +99,7 @@ const meta = {
                 chatName: "Carol",
                 date: "Mon, 9 Nov, 11:02",
                 canOpenChat: true,
+                schedule: { label: "Tue, 10 Nov 2026, 09:00–10:30", past: false },
                 run: {
                     mode: "investigate",
                     state: "finished",
@@ -133,6 +140,9 @@ const meta = {
         reportToChat: fn(),
         answerQuestion: fn(),
         skipQuestion: fn(),
+        planTask: fn(),
+        scheduleTask: fn(),
+        cancelPlanning: fn(),
     },
 } satisfies Meta<typeof AgentTodoViewWrapper>;
 
@@ -140,6 +150,24 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {};
+
+export const Planning: Story = {
+    args: {
+        planning: {
+            id: "1",
+            state: "ready",
+            start: "2026-11-10T14:00",
+            durationMinutes: 90,
+            reason: "Your afternoon is free, and the ticket needs about an hour and a half.",
+        },
+    },
+};
+
+export const SuggestingTime: Story = {
+    args: {
+        planning: { id: "1", state: "suggesting", start: "2026-11-10T13:00", durationMinutes: 60 },
+    },
+};
 
 export const Implemented: Story = {
     args: {

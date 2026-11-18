@@ -95,6 +95,9 @@ declare module "matrix-js-sdk/src/types" {
 
         // Indicate whether recovery is enabled or disabled
         "io.element.recovery": { enabled: boolean };
+
+        // The private chat with the agent of Element Pilot, see AgentAssistantRoom
+        "io.element.pilot.assistant_room": { room_id: string };
     }
 
     export interface AudioContent {

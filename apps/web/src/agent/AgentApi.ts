@@ -6,10 +6,14 @@ Please see LICENSE files in the repository root for full details.
 */
 
 import type {
+    AgentAssistantReply,
+    AgentAssistantRequest,
     AgentDetectedTask,
     AgentFileDiff,
     AgentModel,
     AgentNewTask,
+    AgentPipelineFailure,
+    AgentPipelineStatus,
     AgentProvider,
     AgentReplyRequest,
     AgentResult,
@@ -24,6 +28,7 @@ import type {
     AgentTaskDetectionRequest,
     AgentTaskProgress,
     AgentTaskRunMode,
+    AgentTimeSlot,
 } from "shared-types";
 
 /**
@@ -126,4 +131,22 @@ export interface AgentApi {
      * @param instructions - What the user adds for the CLI, or ""
      */
     openTaskInCli(userId: string, taskId: string, folder: string, instructions: string): Promise<AgentResult<void>>;
+    /** Let the agent suggest when to work on a task and for how long */
+    suggestTimeSlot(userId: string, taskId: string): Promise<AgentResult<AgentTimeSlot>>;
+    /**
+     * Plan a time to work on a task: the platform opens a calendar entry for it and keeps the time with the task.
+     * @param start - The start, in ms since the epoch
+     * @returns the task with the planned time
+     */
+    scheduleTask(userId: string, taskId: string, start: number, durationMinutes: number): Promise<AgentResult<AgentTask>>;
+    /** Get the latest runs of the pipelines of the project folders */
+    getPipelineStatus(): Promise<AgentResult<AgentPipelineStatus>>;
+    /**
+     * Follow the failed pipeline runs the platform finds while it watches the pipelines, see
+     * {@link AgentSettings.pipelineWatch}.
+     * @returns a function to stop following
+     */
+    onPipelineFailure(listener: (failure: AgentPipelineFailure) => void): () => void;
+    /** Let the agent answer the user in the agent's chat, where it can look at and change the to-do list */
+    assistantChat(request: AgentAssistantRequest): Promise<AgentResult<AgentAssistantReply>>;
 }

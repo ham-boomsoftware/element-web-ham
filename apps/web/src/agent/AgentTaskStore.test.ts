@@ -53,6 +53,11 @@ describe("AgentTaskStore", () => {
             })),
             pickFolder: vi.fn(),
             openTaskInCli: vi.fn(),
+            suggestTimeSlot: vi.fn(),
+            scheduleTask: vi.fn(),
+            getPipelineStatus: vi.fn(),
+            onPipelineFailure: vi.fn(),
+            assistantChat: vi.fn(),
             onTaskProgress: vi.fn(() => () => {}),
             getTaskDiff: vi.fn(),
             answerTaskQuestion: vi.fn(),
@@ -85,6 +90,44 @@ describe("AgentTaskStore", () => {
         expect(store.isAvailable).toBe(false);
         expect(store.tasks).toEqual([]);
         expect(await store.addTasks([{ title: "Nothing", details: "" }])).toEqual([]);
+    });
+
+    it("reads the list again, keeping the steps of runs that are still going", async () => {
+        const running: AgentTaskRun = { mode: "investigate", state: "running", startedAt: 5, steps: [] };
+        agent.getTasks.mockResolvedValue({ ok: true, data: [mkTask("1", { run: running })] });
+        await store.start(agent, ALICE);
+        const withStep = { ...running, steps: [{ kind: "read" as const, text: "a.ts", at: 6 }] };
+        agent.onTaskProgress.mock.calls[0][0]({ userId: ALICE, taskId: "1", run: withStep });
+        agent.getTasks.mockResolvedValue({
+            ok: true,
+            data: [mkTask("3", { title: "New" }), mkTask("1", { run: running })],
+        });
+
+        await store.reload();
+
+        expect(store.tasks.map((task) => task.id)).toEqual(["3", "1"]);
+        expect(store.getTask("1")?.run).toEqual(withStep);
+    });
+
+    it("plans a task and shows the planned time", async () => {
+        await store.start(agent, ALICE);
+        const schedule = { start: 1000, durationMinutes: 30 };
+        agent.scheduleTask.mockResolvedValue({ ok: true, data: mkTask("1", { schedule }) });
+
+        expect(await store.schedule("1", 1000, 30)).toBeUndefined();
+
+        expect(agent.scheduleTask).toHaveBeenCalledWith(ALICE, "1", 1000, 30);
+        expect(store.getTask("1")?.schedule).toEqual(schedule);
+    });
+
+    it("tells why a task couldn't be planned or no time suggested", async () => {
+        await store.start(agent, ALICE);
+        agent.scheduleTask.mockRejectedValue(new Error("IPC"));
+        agent.suggestTimeSlot.mockResolvedValue({ ok: false, error: "not_found" });
+
+        expect(await store.schedule("1", 1000, 30)).toBe("unavailable");
+        expect(await store.suggestTimeSlot("1")).toEqual({ ok: false, error: "not_found" });
+        expect(agent.suggestTimeSlot).toHaveBeenCalledWith(ALICE, "1");
     });
 
     it("keeps the list empty when the platform can't read it", async () => {

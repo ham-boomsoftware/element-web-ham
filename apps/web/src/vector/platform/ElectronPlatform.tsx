@@ -19,7 +19,7 @@ import {
 import React from "react";
 import { logger } from "matrix-js-sdk/src/logger";
 import { uniqueId } from "lodash";
-import type { AgentTaskProgress } from "shared-types";
+import type { AgentPipelineFailure, AgentTaskProgress } from "shared-types";
 
 import BasePlatform, { UpdateCheckStatus, type UpdateStatus } from "../../BasePlatform";
 import type { AgentApi } from "../../agent/AgentApi";
@@ -102,6 +102,8 @@ export default class ElectronPlatform extends BasePlatform {
     private clientStartedPromiseWithResolvers = Promise.withResolvers<void>();
     /** Who follows the work of the agent on tasks, see {@link AgentApi.onTaskProgress} */
     private readonly taskProgressListeners = new Set<(progress: AgentTaskProgress) => void>();
+    /** Who follows the failed pipeline runs, see {@link AgentApi.onPipelineFailure} */
+    private readonly pipelineFailureListeners = new Set<(failure: AgentPipelineFailure) => void>();
 
     public constructor() {
         super();
@@ -155,6 +157,9 @@ export default class ElectronPlatform extends BasePlatform {
 
         this.electron.on("agentTaskProgress", (ev, progress: AgentTaskProgress) => {
             for (const listener of this.taskProgressListeners) listener(progress);
+        });
+        this.electron.on("agentPipelineFailure", (ev, failure: AgentPipelineFailure) => {
+            for (const listener of this.pipelineFailureListeners) listener(failure);
         });
 
         this.electron.on("preferences", () => {
@@ -545,6 +550,15 @@ export default class ElectronPlatform extends BasePlatform {
         pickFolder: () => this.ipc.call("agentPickFolder"),
         openTaskInCli: (userId, taskId, folder, instructions) =>
             this.ipc.call("agentOpenTaskInCli", userId, taskId, folder, instructions),
+        suggestTimeSlot: (userId, taskId) => this.ipc.call("agentSuggestTimeSlot", userId, taskId),
+        scheduleTask: (userId, taskId, start, durationMinutes) =>
+            this.ipc.call("agentScheduleTask", userId, taskId, start, durationMinutes),
+        getPipelineStatus: () => this.ipc.call("agentGetPipelineStatus"),
+        onPipelineFailure: (listener) => {
+            this.pipelineFailureListeners.add(listener);
+            return () => this.pipelineFailureListeners.delete(listener);
+        },
+        assistantChat: (request) => this.ipc.call("agentAssistantChat", request),
     };
 
     public get agent(): AgentApi {

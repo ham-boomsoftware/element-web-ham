@@ -23,6 +23,7 @@ const CHANNELS = [
     "ipcCall",
     "ipcReply",
     "agentTaskProgress",
+    "agentPipelineFailure",
     "loudNotification",
     "preferences",
     "seshat",

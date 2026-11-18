@@ -13,14 +13,15 @@ import {
     type AgentTodoItem,
     type AgentTodoRunError,
     type AgentTodoRunMode,
+    type AgentTodoSchedule,
     type AgentTodoViewModel as AgentTodoViewModelInterface,
     type AgentTodoViewSnapshot,
 } from "@element-hq/web-shared-components";
-import type { AgentErrorCode, AgentRunBranch, AgentTask } from "shared-types";
+import type { AgentErrorCode, AgentRunBranch, AgentTask, AgentTaskSchedule, AgentTimeSlot } from "shared-types";
 
 import type { AgentApi } from "../../agent/AgentApi";
 import { type AgentTaskStore, AgentTaskStoreEvent } from "../../agent/AgentTaskStore";
-import { formatDate, formatFullTime } from "../../DateUtils";
+import { formatDate, formatFullDateNoTime, formatFullTime, formatTime } from "../../DateUtils";
 import { _t } from "../../languageHandler";
 
 export interface AgentTodoViewModelProps {
@@ -88,8 +89,37 @@ export function buildChatReport(task: AgentTask): string | undefined {
     return lines.join("\n");
 }
 
+/**
+ * A time as the value of a local date and time field.
+ * @returns `YYYY-MM-DDTHH:MM`
+ */
+export function toLocalInput(time: number): string {
+    const date = new Date(time);
+    const pad = (value: number): string => String(value).padStart(2, "0");
+    return (
+        `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}` +
+        `T${pad(date.getHours())}:${pad(date.getMinutes())}`
+    );
+}
+
+/** The planned time of a task as the to-do list shows it */
+function toTodoSchedule({ start, durationMinutes }: AgentTaskSchedule, now: number): AgentTodoSchedule {
+    const end = start + durationMinutes * 60000;
+    return {
+        label: `${formatFullDateNoTime(new Date(start))}, ${formatTime(new Date(start))}–${formatTime(new Date(end))}`,
+        past: end < now,
+    };
+}
+
+/** When to work on a task if the agent can't suggest a time: in an hour, at the full hour, for an hour */
+function fallbackSlot(now: number): AgentTimeSlot {
+    const start = new Date(now + 60 * 60000);
+    start.setMinutes(0, 0, 0);
+    return { start: start.getTime(), durationMinutes: 60 };
+}
+
 /** A task as the to-do list shows it */
-export function toTodoItem(task: AgentTask): AgentTodoItem {
+export function toTodoItem(task: AgentTask, now = Date.now()): AgentTodoItem {
     return {
         id: task.id,
         title: task.title,
@@ -99,6 +129,7 @@ export function toTodoItem(task: AgentTask): AgentTodoItem {
         chatName: task.source?.roomName || undefined,
         date: formatDate(new Date(task.createdAt)),
         canOpenChat: Boolean(task.source?.roomId),
+        schedule: task.schedule && toTodoSchedule(task.schedule, now),
         run: task.run && {
             mode: task.run.mode,
             state: task.run.state,
@@ -151,7 +182,7 @@ export class AgentTodoViewModel
         const openCount = tasks.filter((task) => !task.done).length;
         return {
             filter,
-            items: tasks.filter((task) => task.done === (filter === "done")).map(toTodoItem),
+            items: tasks.filter((task) => task.done === (filter === "done")).map((task) => toTodoItem(task)),
             openCount,
             doneCount: tasks.length - openCount,
         };
@@ -306,6 +337,52 @@ export class AgentTodoViewModel
     public skipQuestion = (id: string): void => {
         // An empty answer lets the agent decide by itself
         this.sendAnswer(id, "");
+    };
+
+    public planTask = (id: string): void => {
+        const fallback = fallbackSlot(Date.now());
+        this.snapshot.merge({
+            planning: {
+                id,
+                state: "suggesting",
+                start: toLocalInput(fallback.start),
+                durationMinutes: fallback.durationMinutes,
+            },
+        });
+        void (async () => {
+            const result = await this.props.store.suggestTimeSlot(id);
+            // Only if the form is still open for this task
+            if (this.isDisposed || this.snapshot.current.planning?.id !== id) return;
+            // Without a suggestion, the user picks the time from the fallback
+            const slot = result.ok ? result.data : fallback;
+            this.snapshot.merge({
+                planning: {
+                    id,
+                    state: "ready",
+                    start: toLocalInput(slot.start),
+                    durationMinutes: slot.durationMinutes,
+                    reason: slot.reason,
+                },
+            });
+        })();
+    };
+
+    public scheduleTask = (id: string, start: string, durationMinutes: number): void => {
+        // A local date and time without an offset is read as local time
+        const time = new Date(start).getTime();
+        const planning = this.snapshot.current.planning;
+        if (Number.isNaN(time) || planning?.id !== id) return;
+        const saving = { ...planning, state: "saving" as const, start, durationMinutes };
+        this.snapshot.merge({ planning: saving });
+        void (async () => {
+            const error = await this.props.store.schedule(id, time, durationMinutes);
+            if (this.isDisposed || this.snapshot.current.planning?.id !== id) return;
+            this.snapshot.merge({ planning: error ? { ...saving, state: "failed" } : undefined });
+        })();
+    };
+
+    public cancelPlanning = (): void => {
+        this.snapshot.merge({ planning: undefined });
     };
 
     private sendAnswer(id: string, answer: string): void {

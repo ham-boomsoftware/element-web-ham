@@ -15,6 +15,7 @@ import type {
     AgentTask,
     AgentTaskProgress,
     AgentTaskRunMode,
+    AgentTimeSlot,
 } from "shared-types";
 
 import type { AgentApi } from "./AgentApi";
@@ -265,6 +266,60 @@ export class AgentTaskStore extends TypedEventEmitter<AgentTaskStoreEvent, Event
         if (result.ok) return undefined;
         logger.warn(`Could not answer the question of the task ${taskId}: ${result.error}`, result.message);
         return result.error;
+    }
+
+    /**
+     * Let the agent suggest when to work on a task and for how long.
+     * @returns the suggestion, or why there is none
+     */
+    public async suggestTimeSlot(taskId: string): Promise<AgentResult<AgentTimeSlot>> {
+        const { agent, userId } = this;
+        if (!agent || !userId) return { ok: false, error: "unavailable" };
+        const result = await agent.suggestTimeSlot(userId, taskId).catch((e) => {
+            logger.warn(`Could not suggest a time for the task ${taskId}`, e);
+            return { ok: false as const, error: "unavailable" as const, message: undefined };
+        });
+        if (!result.ok) logger.warn(`Could not suggest a time for the task ${taskId}: ${result.error}`, result.message);
+        return result;
+    }
+
+    /**
+     * Plan a time to work on a task; the platform opens a calendar entry for it.
+     * @param start - The start, in ms since the epoch
+     * @returns why it couldn't be planned, or undefined if it was
+     */
+    public async schedule(taskId: string, start: number, durationMinutes: number): Promise<AgentErrorCode | undefined> {
+        const { agent, userId } = this;
+        if (!agent || !userId) return "unavailable";
+        const result = await agent.scheduleTask(userId, taskId, start, durationMinutes).catch((e) => {
+            logger.warn(`Could not plan the task ${taskId}`, e);
+            return { ok: false as const, error: "unavailable" as const, message: undefined };
+        });
+        if (this.agent !== agent) return "unavailable";
+        if (result.ok) {
+            this.replace(result.data);
+            return undefined;
+        }
+        logger.warn(`Could not plan the task ${taskId}: ${result.error}`, result.message);
+        return result.error;
+    }
+
+    /** Read the list again, after the agent changed it outside of this store */
+    public async reload(): Promise<void> {
+        const { agent, userId } = this;
+        if (!agent || !userId) return;
+        const result = await agent.getTasks(userId);
+        if (this.agent !== agent || this.userId !== userId) return;
+        if (!result.ok) {
+            logger.warn(`Could not read the to-do list: ${result.error}`, result.message);
+            return;
+        }
+        // Keep the steps of runs that are still going, which the platform only sends as progress
+        this.list = result.data.map((task) => {
+            const current = this.getTask(task.id);
+            return current?.run?.state === "running" && task.run?.state === "running" ? { ...task, run: current.run } : task;
+        });
+        this.emit(AgentTaskStoreEvent.Update);
     }
 
     /** Show each step of the agent's work as it happens */

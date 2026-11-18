@@ -221,3 +221,63 @@ textarea.control {
 .launchError {
     color: var(--cpd-color-text-critical-primary);
 }
+
+.schedule {
+    align-self: flex-start;
+    padding: 2px var(--cpd-space-2x);
+    border-radius: 9999px;
+    background: var(--cpd-color-bg-accent-subtle);
+    color: var(--cpd-color-text-accent-primary, var(--cpd-color-text-primary));
+}
+
+.schedule[data-past="true"] {
+    background: var(--cpd-color-bg-subtle-secondary);
+    color: var(--cpd-color-text-secondary);
+}
+
+/* The planning form is a card with an accent edge, like the autopilot */
+.plan {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: var(--cpd-space-2x);
+    margin-block-start: var(--cpd-space-2x);
+    padding: var(--cpd-space-3x) var(--cpd-space-3x) var(--cpd-space-3x) var(--cpd-space-4x);
+    overflow: hidden;
+    border: 1px solid var(--cpd-color-border-accent-subtle);
+    border-radius: 8px;
+    background: linear-gradient(135deg, var(--cpd-color-bg-accent-subtle), var(--cpd-color-bg-subtle-secondary) 60%);
+}
+
+.plan::before {
+    content: "";
+    position: absolute;
+    inset-block: 0;
+    inset-inline-start: 0;
+    inline-size: 3px;
+    background: linear-gradient(180deg, var(--cpd-color-icon-accent-primary), var(--cpd-color-icon-info-primary));
+}
+
+.planIcon {
+    flex-shrink: 0;
+    color: var(--cpd-color-icon-accent-primary);
+}
+
+.planSuggesting .reportIcon {
+    animation: pulse 1.2s ease-in-out infinite alternate;
+}
+
+.planReason {
+    color: var(--cpd-color-text-secondary);
+}
+
+.plan .filter:disabled {
+    cursor: default;
+    opacity: 0.5;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .planSuggesting .reportIcon {
+        animation: none;
+    }
+}

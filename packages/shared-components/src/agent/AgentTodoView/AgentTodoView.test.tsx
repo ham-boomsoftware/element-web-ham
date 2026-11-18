@@ -31,6 +31,8 @@ const {
     AutopilotPushFailed,
     AutopilotAsking,
     AutopilotAnswered,
+    Planning,
+    SuggestingTime,
 } = composeStories(stories);
 
 class TestViewModel extends MockViewModel<AgentTodoViewSnapshot> implements AgentTodoViewActions {
@@ -50,6 +52,9 @@ class TestViewModel extends MockViewModel<AgentTodoViewSnapshot> implements Agen
     public reportToChat = vi.fn();
     public answerQuestion = vi.fn();
     public skipQuestion = vi.fn();
+    public planTask = vi.fn();
+    public scheduleTask = vi.fn();
+    public cancelPlanning = vi.fn();
 }
 
 const SNAPSHOT: AgentTodoViewSnapshot = {
@@ -85,6 +90,7 @@ describe("AgentTodoView", () => {
             ["the autopilot at work", AutopilotRunning],
             ["what the autopilot did", AutopilotFinished],
             ["a branch that couldn't be pushed", AutopilotPushFailed],
+            ["the planning of a task", Planning],
         ])("renders %s", (_, Story) => {
             const { container } = render(<Story />);
             expect(container).toMatchSnapshot();
@@ -129,6 +135,69 @@ describe("AgentTodoView", () => {
         render(<Empty />);
 
         expect(screen.getByText("Nothing to do. Requests from your chats show up here.")).toBeInTheDocument();
+    });
+
+    it("shows the planned time of a task", () => {
+        render(<Default />);
+
+        expect(screen.getByText("Planned: Tue, 10 Nov 2026, 09:00–10:30")).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Plan again" })).toBeInTheDocument();
+    });
+
+    it("asks the agent for a time to plan a task", async () => {
+        const user = userEvent.setup();
+        const vm = new TestViewModel(SNAPSHOT);
+        render(<AgentTodoView vm={vm} />);
+
+        await user.click(screen.getByRole("button", { name: "Plan" }));
+
+        expect(vm.planTask).toHaveBeenCalledWith("task-1");
+    });
+
+    it("waits for the suggested time before it can be planned", () => {
+        render(<SuggestingTime />);
+
+        const form = screen.getByRole("form", { name: "Plan a time" });
+        expect(within(form).getByRole("status")).toHaveTextContent("The agent is looking for a good time…");
+        expect(within(form).getByRole("button", { name: "Add to calendar" })).toBeDisabled();
+    });
+
+    it("plans the suggested time, or the time and duration the user chose", async () => {
+        const user = userEvent.setup();
+        const vm = new TestViewModel({
+            ...SNAPSHOT,
+            planning: {
+                id: "task-1",
+                state: "ready",
+                start: "2026-11-10T14:00",
+                durationMinutes: 90,
+                reason: "The afternoon is free.",
+            },
+        });
+        render(<AgentTodoView vm={vm} />);
+        const form = screen.getByRole("form", { name: "Plan a time" });
+        expect(within(form).getByText("The afternoon is free.")).toBeInTheDocument();
+        expect(within(form).getByText("until 15:30")).toBeInTheDocument();
+
+        await user.click(within(form).getByRole("button", { name: "2 h" }));
+        const start = within(form).getByLabelText("Start");
+        await user.clear(start);
+        await user.type(start, "2026-11-11T08:15");
+        await user.click(within(form).getByRole("button", { name: "Add to calendar" }));
+
+        expect(vm.scheduleTask).toHaveBeenCalledWith("task-1", "2026-11-11T08:15", 120);
+        await user.click(within(form).getByRole("button", { name: "Cancel" }));
+        expect(vm.cancelPlanning).toHaveBeenCalled();
+    });
+
+    it("says when the calendar entry couldn't be made", () => {
+        const vm = new TestViewModel({
+            ...SNAPSHOT,
+            planning: { id: "task-1", state: "failed", start: "2026-11-10T14:00", durationMinutes: 60 },
+        });
+        render(<AgentTodoView vm={vm} />);
+
+        expect(screen.getByRole("alert")).toHaveTextContent(/The calendar entry couldn.t be made/);
     });
 
     it("passes the actions of a task to the view model", async () => {

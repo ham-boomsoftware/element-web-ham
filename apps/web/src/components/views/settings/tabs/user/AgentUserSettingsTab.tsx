@@ -13,6 +13,8 @@ import SettingsTab from "../SettingsTab";
 import { SettingsSection } from "../../shared/SettingsSection";
 import { AgentSettingsViewModel } from "../../../../../viewmodels/settings/AgentSettingsViewModel";
 import type { AgentApi } from "../../../../../agent/AgentApi";
+import { AgentAssistantRoom } from "../../../../../agent/AgentAssistantRoom";
+import Modal from "../../../../../Modal";
 
 interface Props {
     /** The agent of the platform */
@@ -23,7 +25,20 @@ interface Props {
  * User settings tab for the agent that replies to direct messages in agent mode.
  */
 export function AgentUserSettingsTab({ agent }: Readonly<Props>): JSX.Element {
-    const vm = useCreateAutoDisposedViewModel(() => new AgentSettingsViewModel({ agent }));
+    const vm = useCreateAutoDisposedViewModel(() => {
+        const assistant = AgentAssistantRoom.sharedInstance();
+        return new AgentSettingsViewModel({
+            agent,
+            onOpenAssistant: assistant.isAvailable
+                ? () => {
+                      void assistant.openRoom().then((opened) => {
+                          // The chat shows behind the settings, so close them
+                          if (opened) Modal.forceCloseAllModals();
+                      });
+                  }
+                : undefined,
+        });
+    });
     return (
         <SettingsTab>
             <SettingsSection heading={_t("settings|agent|title")}>

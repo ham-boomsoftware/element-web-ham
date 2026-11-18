@@ -136,6 +136,19 @@
         "zoom_in": "Zoom in",
         "zoom_out": "Zoom out"
     },
+    "agent_assistant": {
+        "error_not_connected": "I can't answer: no AI provider is connected. Connect one in the settings of the agent.",
+        "error_rate_limited": "The AI provider is busy right now. Please try again in a moment.",
+        "error_unknown": "I couldn't answer (%(error)s). Please try again.",
+        "pipeline_failed": "**Pipeline failed:** %(pipeline)s %(buildNumber)s (%(repository)s, branch `%(branch)s`)",
+        "pipeline_failed_source": "The pipeline of the branch `%(branch)s` for \"%(title)s\" failed. I'm looking into it.",
+        "pipeline_failed_steps": "Failed steps:",
+        "pipeline_requested_by": "Started by %(name)s",
+        "pipeline_task": "Branch of the task \"%(title)s\"",
+        "room_name": "Element Pilot",
+        "room_topic": "Your chat with the agent of Element Pilot",
+        "welcome": "Hi! I'm the agent of Element Pilot. Ask me about your to-dos, let me add or plan tasks, start the autopilot or tell you how the pipelines are doing."
+    },
     "agent_room_instructions_dialog": {
         "title": "Agent instructions for %(roomName)s"
     },

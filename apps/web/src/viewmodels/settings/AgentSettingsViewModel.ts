@@ -20,6 +20,8 @@ import type { AgentApi } from "../../agent/AgentApi";
 export interface Props {
     /** The agent of the platform, which holds the settings and credentials */
     agent: AgentApi;
+    /** Open the chat with the agent; without it, the settings offer no chat */
+    onOpenAssistant?: () => void;
 }
 
 /** Turn the error of the platform into one the settings can show */
@@ -57,6 +59,8 @@ export class AgentSettingsViewModel
             autopilot: false,
             autopilotCommands: [],
             codingCli: "claude",
+            pipelineWatch: false,
+            canOpenAssistant: Boolean(props.onOpenAssistant),
         });
         void this.load();
     }
@@ -80,6 +84,7 @@ export class AgentSettingsViewModel
             autopilotCommands: status.autopilotCommands,
             workspacePath: status.workspacePath,
             codingCli: status.codingCli,
+            pipelineWatch: status.pipelineWatch,
         });
         await this.loadModels();
     }
@@ -229,6 +234,17 @@ export class AgentSettingsViewModel
             const result = await this.run(() => this.props.agent.setSettings({ codingCli }));
             if (result?.ok) this.snapshot.merge({ codingCli: result.data.codingCli });
         })();
+    };
+
+    public setPipelineWatch = (pipelineWatch: boolean): void => {
+        void (async () => {
+            const result = await this.run(() => this.props.agent.setSettings({ pipelineWatch }));
+            if (result?.ok) this.snapshot.merge({ pipelineWatch: result.data.pipelineWatch });
+        })();
+    };
+
+    public openAssistant = (): void => {
+        this.props.onOpenAssistant?.();
     };
 
     public clearWorkspace = (): void => {

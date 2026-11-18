@@ -30,6 +30,8 @@ const AgentSettingsViewWrapperImpl = ({
     chooseWorkspace,
     clearWorkspace,
     setCodingCli,
+    setPipelineWatch,
+    openAssistant,
     ...rest
 }: AgentSettingsProps): JSX.Element => {
     const vm = useMockedViewModel(rest, {
@@ -47,6 +49,8 @@ const AgentSettingsViewWrapperImpl = ({
         chooseWorkspace,
         clearWorkspace,
         setCodingCli,
+        setPipelineWatch,
+        openAssistant,
     });
     return <AgentSettingsView vm={vm} />;
 };
@@ -73,6 +77,8 @@ const meta = {
         autopilotCommands: [],
         workspacePath: undefined,
         codingCli: "claude",
+        pipelineWatch: false,
+        canOpenAssistant: true,
         error: undefined,
         setProvider: fn(),
         connect: fn(),
@@ -88,6 +94,8 @@ const meta = {
         chooseWorkspace: fn(),
         clearWorkspace: fn(),
         setCodingCli: fn(),
+        setPipelineWatch: fn(),
+        openAssistant: fn(),
     },
 } satisfies Meta<typeof AgentSettingsViewWrapper>;
 
