@@ -36,8 +36,14 @@ const QUERY_LIMIT = 500;
 /** How many queries one import makes at most, so that a wrong answer can't make it loop */
 const MAX_QUERIES = 20;
 
-/** The applications or projects whose tickets are not imported, unless the user changed the list */
-export const DEFAULT_IGNORED = ["BRS Produktwartung", "BORA"];
+/**
+ * The applications or projects whose tickets are not imported, unless the user changed the list: the product
+ * maintenance of BORA and of BRS, by the short names of their applications
+ */
+export const DEFAULT_IGNORED = ["BORA", "BRS_PW", "BRS Produktwartung"];
+
+/** How many days back the import looks: tickets that didn't change since are left out */
+export const LOOKBACK_DAYS = 90;
 
 /** How much of a comment the task shows */
 const MAX_COMMENT_LENGTH = 600;
@@ -81,6 +87,13 @@ export interface BsmQueryResponse {
     LimitExceeded?: boolean;
 }
 
+/** An application of BSM, as `GET /personal/api/application` returns it */
+export interface BsmApplication {
+    Name?: string;
+    ShortName?: string | null;
+    Customer?: string;
+}
+
 /** The answer of `GET /personal/api/indication/{number}` */
 export interface BsmTicket {
     Indication?: BsmIndication;
@@ -91,6 +104,8 @@ export interface BsmTicket {
 export interface BsmImportDeps {
     /** The bug tickets that are not closed, with their descriptions and conversations */
     queryOpenBugs(): Promise<{ indications: BsmIndication[]; users: BsmUser[] }>;
+    /** The applications, with their short names, to know which an ignored short name means */
+    getApplications(): Promise<BsmApplication[]>;
     /** One ticket, to find out whether a ticket the list no longer has was closed */
     readTicket(number: string): Promise<BsmTicket>;
     /** The tickets of the open tasks of the to-do list */
@@ -136,16 +151,28 @@ export function isOpenState(status: string | undefined): boolean {
     return Boolean(status) && !CLOSED_STATES.has(status!.toLowerCase());
 }
 
-/** Whether a ticket belongs to an application or project the user ignores; names are compared ignoring case */
-export function isIgnoredTicket(t: BsmIndication, ignored: string[]): boolean {
-    const names = new Set(ignored.map((name) => name.trim().toLowerCase()).filter(Boolean));
-    return [t.ApplicationName, t.ProjectName].some((name) => name && names.has(name.trim().toLowerCase()));
+/**
+ * Whether a ticket belongs to an application or project the user ignores. An ignored name is an application, by
+ * its name or short name, or a project; names are compared ignoring case.
+ */
+export function isIgnoredTicket(t: BsmIndication, ignored: string[], applications: BsmApplication[] = []): boolean {
+    const key = (name: string | null | undefined): string => (name ?? "").trim().toLowerCase();
+    const names = new Set(ignored.map(key).filter(Boolean));
+    // The names of the applications whose short name is ignored
+    for (const app of applications) {
+        if (app.ShortName && names.has(key(app.ShortName)) && app.Name) names.add(key(app.Name));
+    }
+    return [t.ApplicationName, t.ProjectName].some((name) => name && names.has(key(name)));
 }
 
-/** The body of the query for the bug tickets that are not closed */
-export function buildOpenBugsQuery(offset: number): Record<string, unknown> {
+/** The body of the query for the bug tickets that are not closed and changed since a time */
+export function buildOpenBugsQuery(offset: number, since: Date): Record<string, unknown> {
     return {
-        filter: { mainCategoryFilter: "ErrorMessage", statusFilter: OPEN_STATES },
+        filter: {
+            mainCategoryFilter: "ErrorMessage",
+            statusFilter: OPEN_STATES,
+            minChangeDateFilter: since.toISOString(),
+        },
         details: { includeLink: true, includeDescription: true, includeConversations: true },
         limit: QUERY_LIMIT,
         offset,
@@ -219,6 +246,7 @@ export async function importBsmTickets(deps: BsmImportDeps): Promise<BsmImportRe
     const { indications, users } = await deps.queryOpenBugs();
     const seen = { ...deps.getSeen() };
     const ignored = deps.getIgnored();
+    const applications = ignored.length > 0 ? await deps.getApplications().catch(() => []) : [];
     const result: BsmImportResult = {
         listed: indications.length,
         added: [],
@@ -235,7 +263,7 @@ export async function importBsmTickets(deps: BsmImportDeps): Promise<BsmImportRe
     for (const t of indications) {
         if (!t.Number) continue;
         open.add(t.Number);
-        if (isIgnoredTicket(t, ignored)) {
+        if (isIgnoredTicket(t, ignored, applications)) {
             result.ignored++;
             if (openTasks.has(t.Number) && deps.removeTask(t.Number)) result.removed++;
             delete seen[t.Number];
@@ -367,11 +395,12 @@ class BsmApi {
     public async queryOpenBugs(): Promise<{ indications: BsmIndication[]; users: BsmUser[] }> {
         const indications: BsmIndication[] = [];
         const users = new Map<string, BsmUser>();
+        const since = new Date(Date.now() - LOOKBACK_DAYS * 24 * 60 * 60 * 1000);
         for (let page = 0; page < MAX_QUERIES; page++) {
             const answer = (await this.call(
                 "POST",
                 "/personal/api/queryIndications",
-                buildOpenBugsQuery(indications.length),
+                buildOpenBugsQuery(indications.length, since),
             )) as BsmQueryResponse;
             const found = answer.Indications ?? [];
             indications.push(...found);
@@ -380,6 +409,11 @@ class BsmApi {
         }
         console.log(`BSM: ${indications.length} open bug tickets`);
         return { indications, users: [...users.values()] };
+    }
+
+    public async getApplications(): Promise<BsmApplication[]> {
+        const answer = (await this.call("GET", "/personal/api/application")) as { Applications?: BsmApplication[] };
+        return answer.Applications ?? [];
     }
 
     public async readTicket(number: string): Promise<BsmTicket> {
@@ -425,6 +459,7 @@ export async function importBsmTicketsForUser(userId: string): Promise<AgentResu
         const opened = api;
         const result = await importBsmTickets({
             queryOpenBugs: () => opened.queryOpenBugs(),
+            getApplications: () => opened.getApplications(),
             readTicket: (number) => opened.readTicket(number),
             getOpenTicketNumbers: () =>
                 (getAgentStore().get("tasks")?.[userId] ?? [])

@@ -95,6 +95,25 @@ describe("isIgnoredTicket", () => {
         expect(isIgnoredTicket(bug("C", { ApplicationName: "BORA Web" }), ignored)).toBe(false);
         expect(isIgnoredTicket(bug("D"), [])).toBe(false);
     });
+
+    it("matches an application by its short name", () => {
+        const applications = [
+            { Name: "BORA Produktwartung & Support", ShortName: "BORA", Customer: "Boom Software AG" },
+            { Name: "BRS Produktwartung & Support", ShortName: "BRS_PW", Customer: "Boom Software AG" },
+            { Name: "Railium Produktwartung", ShortName: "RPW", Customer: "RSRG & Boom GmbH" },
+        ];
+        const ignored = ["BORA", "BRS_PW"];
+
+        expect(
+            isIgnoredTicket(bug("A", { ApplicationName: "BORA Produktwartung & Support" }), ignored, applications),
+        ).toBe(true);
+        expect(
+            isIgnoredTicket(bug("B", { ApplicationName: "BRS Produktwartung & Support" }), ignored, applications),
+        ).toBe(true);
+        expect(isIgnoredTicket(bug("C", { ApplicationName: "Railium Produktwartung" }), ignored, applications)).toBe(
+            false,
+        );
+    });
 });
 
 describe("isOpenState", () => {
@@ -109,9 +128,13 @@ describe("isOpenState", () => {
 });
 
 describe("buildOpenBugsQuery", () => {
-    it("asks for the bugs that are not closed, with descriptions and conversations", () => {
-        expect(buildOpenBugsQuery(500)).toEqual({
-            filter: { mainCategoryFilter: "ErrorMessage", statusFilter: ["new", "inprocess", "delivered"] },
+    it("asks for the bugs that are not closed and changed lately, with descriptions and conversations", () => {
+        expect(buildOpenBugsQuery(500, new Date("2026-08-20T00:00:00Z"))).toEqual({
+            filter: {
+                mainCategoryFilter: "ErrorMessage",
+                statusFilter: ["new", "inprocess", "delivered"],
+                minChangeDateFilter: "2026-08-20T00:00:00.000Z",
+            },
             details: { includeLink: true, includeDescription: true, includeConversations: true },
             limit: 500,
             offset: 500,
@@ -153,6 +176,7 @@ describe("importBsmTickets", () => {
                 added: true,
             })),
             getIgnored: vi.fn(() => ["BRS Produktwartung", "BORA"]),
+            getApplications: vi.fn(async () => [{ Name: "BORA Produktwartung & Support", ShortName: "BORA" }]),
             removeTask: vi.fn(() => true),
         } as never;
     });
@@ -161,7 +185,7 @@ describe("importBsmTickets", () => {
         deps.queryOpenBugs.mockResolvedValue({
             indications: [
                 bug("ELLBg0169"),
-                bug("BORAg0001", { ApplicationName: "bora" }),
+                bug("BORAg0001", { ApplicationName: "BORA Produktwartung & Support" }),
                 bug("PWg0002", { ApplicationName: "Railium", ProjectName: "BRS Produktwartung" }),
             ],
             users: USERS,
