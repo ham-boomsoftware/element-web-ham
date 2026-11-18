@@ -22,9 +22,6 @@ export const BSM_URL = "https://bsm.boomsoftware.com";
 /** The session the user is logged in to BSM with; `persist:` keeps it after the app closes */
 const BSM_PARTITION = "persist:agent-bsm";
 
-/** The host BSM sends the user to when they are not logged in */
-const LOGIN_HOST = "auth.boomsoftware.com";
-
 /** How long to wait for the ticket list to show */
 const LIST_TIMEOUT_MS = 30 * 1000;
 
@@ -199,24 +196,54 @@ export async function importBsmTickets(deps: BsmImportDeps): Promise<BsmImportRe
 
 // ---- The app: the session and windows for BSM ----
 
+let sessionPrepared = false;
+
 function getBsmSession(): Electron.Session {
-    return session.fromPartition(BSM_PARTITION);
+    const ses = session.fromPartition(BSM_PARTITION);
+    if (!sessionPrepared) {
+        sessionPrepared = true;
+        // A login page can ask Windows to open an app for a link, such as Edge for a single sign-on; the windows of
+        // BSM stay in the app, so such requests are refused
+        ses.setPermissionRequestHandler((_webContents, permission, callback) =>
+            callback(permission !== "openExternal"),
+        );
+    }
+    return ses;
 }
 
-function isLoginPage(url: string): boolean {
+/** Whether a page is not of BSM: the user is sent to a login, of BSM or of another sign-in service */
+export function isLoginPage(url: string): boolean {
     try {
-        return new URL(url).hostname === LOGIN_HOST;
+        const { hostname } = new URL(url);
+        return hostname !== new URL(BSM_URL).hostname || url.includes("LoginOAuth=");
     } catch {
         return false;
     }
 }
 
+/** Keep the links of BSM pages in the window: opening new windows or other apps is refused */
+function keepInWindow(win: BrowserWindow): void {
+    win.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
+}
+
 /** A hidden window in the session of BSM, to read its pages */
 function createReader(): BrowserWindow {
-    return new BrowserWindow({
+    getBsmSession();
+    const win = new BrowserWindow({
         show: false,
         webPreferences: { partition: BSM_PARTITION, sandbox: true, contextIsolation: true, nodeIntegration: false },
     });
+    keepInWindow(win);
+    return win;
+}
+
+/** Load a page; a navigation that a script of the page interrupts, such as to the login, is not an error here */
+async function load(win: BrowserWindow, url: string): Promise<void> {
+    try {
+        await win.loadURL(url);
+    } catch (e) {
+        console.log(`BSM: loading ${url} ended at ${win.webContents.getURL()}`, e instanceof Error ? e.message : e);
+    }
 }
 
 const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
@@ -234,12 +261,21 @@ const READ_LIST_SCRIPT = `(() => {
 async function readList(): Promise<BsmListRow[]> {
     const win = createReader();
     try {
-        await win.loadURL(`${BSM_URL}/#Indications`);
+        console.log("BSM: reading the ticket list");
+        await load(win, `${BSM_URL}/#Indications`);
         const until = Date.now() + LIST_TIMEOUT_MS;
         while (Date.now() < until) {
-            if (isLoginPage(win.webContents.getURL())) throw new BsmLoginError();
-            const rows = (await win.webContents.executeJavaScript(READ_LIST_SCRIPT)) as BsmListRow[] | null;
-            if (rows) return rows.filter((row) => row.number);
+            if (isLoginPage(win.webContents.getURL())) {
+                console.log(`BSM: not logged in, the list page went to ${new URL(win.webContents.getURL()).host}`);
+                throw new BsmLoginError();
+            }
+            const rows = (await win.webContents.executeJavaScript(READ_LIST_SCRIPT).catch(() => null)) as
+                | BsmListRow[]
+                | null;
+            if (rows) {
+                console.log(`BSM: the list shows ${rows.length} tickets`);
+                return rows.filter((row) => row.number);
+            }
             await sleep(500);
         }
         throw new Error("The ticket list of BSM did not show");
@@ -250,7 +286,7 @@ async function readList(): Promise<BsmListRow[]> {
 
 async function readTicketWith(win: BrowserWindow, number: string): Promise<BsmTicket> {
     if (!/^[\w.-]+$/.test(number)) throw new Error(`not a ticket number: ${number}`);
-    await win.loadURL(`${BSM_URL}/personal/api/indication/${encodeURIComponent(number)}`);
+    await load(win, `${BSM_URL}/personal/api/indication/${encodeURIComponent(number)}`);
     // Without a login, the page sends the browser to the login with a script
     await sleep(300);
     if (isLoginPage(win.webContents.getURL())) throw new BsmLoginError();
@@ -273,16 +309,20 @@ function getProjectFolder(application: string): string | undefined {
  * @returns once the user closed the window
  */
 export async function loginToBsm(parent?: BrowserWindow): Promise<AgentResult<void>> {
+    getBsmSession();
     const win = new BrowserWindow({
         width: 1100,
         height: 800,
-        title: "BSM",
+        title: "BSM – anmelden und Fenster schließen",
         parent,
         autoHideMenuBar: true,
         webPreferences: { partition: BSM_PARTITION, sandbox: true, contextIsolation: true, nodeIntegration: false },
     });
+    keepInWindow(win);
+    win.on("page-title-updated", (e) => e.preventDefault());
     const closed = new Promise<void>((resolve) => win.on("closed", () => resolve()));
-    await win.loadURL(`${BSM_URL}/#Home`).catch((e) => console.warn("Failed to open BSM", e));
+    console.log("BSM: opened the login window");
+    await load(win, `${BSM_URL}/#Indications`);
     await closed;
     return { ok: true, data: undefined };
 }

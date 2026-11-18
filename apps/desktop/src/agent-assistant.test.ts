@@ -141,7 +141,21 @@ describe("AssistantTools for BSM", () => {
         expect(tools.tasksChanged).toBe(true);
     });
 
-    it("asks the user to log in when BSM has no login", async () => {
+    it("lets the user log in when BSM has no login, and imports then", async () => {
+        const imported = await deps.importBsmTickets(USER);
+        deps.importBsmTickets.mockReset();
+        deps.importBsmTickets
+            .mockResolvedValueOnce({ ok: false, error: "not_connected" })
+            .mockResolvedValueOnce(imported);
+
+        const text = await tools.run("bsm_import", {});
+
+        expect(deps.loginToBsm).toHaveBeenCalledTimes(1);
+        expect(deps.importBsmTickets).toHaveBeenCalledTimes(2);
+        expect(text).toContain("shows 3 tickets");
+    });
+
+    it("tells when the user is still not logged in", async () => {
         deps.importBsmTickets.mockResolvedValue({ ok: false, error: "not_connected" });
 
         expect(await tools.run("bsm_import", {})).toContain("bsm_login");

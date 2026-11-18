@@ -200,7 +200,8 @@ const TOOLS: WorkspaceToolDefinition[] = [
         name: "bsm_import",
         description:
             "Import the open tickets of BSM that are new or changed since the last import into the to-do list, " +
-            "and mark the tasks of tickets closed in BSM as done. Tells which applications have no project folder.",
+            "and mark the tasks of tickets closed in BSM as done. If the user is not logged in, a BSM window opens " +
+            "for them to log in first. Tells which applications have no project folder.",
         inputSchema: { type: "object", properties: {}, required: [] },
     },
     {
@@ -384,7 +385,12 @@ export class AssistantTools implements AgentToolbox {
                 return "The user closed the BSM window.";
             }
             case "bsm_import": {
-                const result = await this.deps.importBsmTickets(userId);
+                let result = await this.deps.importBsmTickets(userId);
+                if (!result.ok && result.error === "not_connected") {
+                    // Let the user log in right away, then try once more
+                    await this.deps.loginToBsm();
+                    result = await this.deps.importBsmTickets(userId);
+                }
                 if (!result.ok) {
                     return result.error === "not_connected"
                         ? "Error: the user is not logged in to BSM; use bsm_login"

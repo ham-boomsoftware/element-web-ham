@@ -15,6 +15,7 @@ import {
     type BsmTicket,
     describeTicket,
     importBsmTickets,
+    isLoginPage,
     isOpenState,
 } from "./agent-bsm.js";
 
@@ -61,6 +62,16 @@ function ticket(number: string, status = "inprocess", application = "ELL BRS"): 
 function task(id: string, changes: Partial<AgentTask> = {}): AgentTask {
     return { id, title: id, details: "", done: false, createdAt: 1, ...changes };
 }
+
+describe("isLoginPage", () => {
+    it("counts pages outside of BSM and the OAuth start as the login", () => {
+        expect(isLoginPage("https://auth.boomsoftware.com/auth/realms/master/protocol/openid-connect/auth")).toBe(true);
+        expect(isLoginPage("https://login.microsoftonline.com/common/oauth2")).toBe(true);
+        expect(isLoginPage("https://bsm.boomsoftware.com/x?LoginOAuth=1&provider=boombsm")).toBe(true);
+        expect(isLoginPage("https://bsm.boomsoftware.com/#Indications")).toBe(false);
+        expect(isLoginPage("not a url")).toBe(false);
+    });
+});
 
 describe("isOpenState", () => {
     it("counts new and in process tickets as open", () => {
