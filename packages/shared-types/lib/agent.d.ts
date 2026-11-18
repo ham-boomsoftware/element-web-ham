@@ -452,6 +452,30 @@ export interface AgentAssistantRequest {
     ownName: string;
     /** The latest messages of the chat, oldest first, ending with a message of the user */
     turns: AgentTurn[];
+    /** The people the user shares rooms with, whom the agent can write to for them */
+    contacts?: AgentContact[];
+}
+
+/**
+ * Someone the user shares a room with.
+ */
+export interface AgentContact {
+    userId: string;
+    /** The display name */
+    name: string;
+}
+
+/**
+ * A message the agent writes to someone for the user, in the direct chat with them.
+ * - `draft`: it goes into the composer of the chat, for the user to send.
+ * - `send`: it is sent; only after the user confirmed it in the chat with the agent.
+ */
+export interface AgentOutgoingMessage {
+    mode: "draft" | "send";
+    userId: string;
+    name: string;
+    /** The message, in Markdown */
+    text: string;
 }
 
 /**
@@ -461,6 +485,8 @@ export interface AgentAssistantReply {
     text: string;
     /** Whether it changed the to-do list, which then has to be read again */
     tasksChanged: boolean;
+    /** The messages to write to other people, if any */
+    messages?: AgentOutgoingMessage[];
 }
 
 /**

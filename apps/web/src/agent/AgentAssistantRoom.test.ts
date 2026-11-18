@@ -23,6 +23,9 @@ import { AgentTaskStore } from "./AgentTaskStore";
 import { AGENT_MESSAGE_KEY } from "./AgentReplyListener";
 import defaultDispatcher from "../dispatcher/dispatcher";
 import { Action } from "../dispatcher/actions";
+import { findDMForUser } from "../utils/dm/findDMForUser";
+
+vi.mock("../utils/dm/findDMForUser", () => ({ findDMForUser: vi.fn() }));
 
 const ROOM_ID = "!pilot:example.org";
 const LIVE = { liveEvent: true } as IRoomTimelineData;
@@ -73,7 +76,9 @@ describe("AgentAssistantRoom", () => {
             roomIdInAccountData = (content as { room_id: string }).room_id;
             return {};
         });
-        agent = { assistantChat: vi.fn().mockResolvedValue({ ok: true, data: { text: "Done.", tasksChanged: false } }) };
+        agent = {
+            assistantChat: vi.fn().mockResolvedValue({ ok: true, data: { text: "Done.", tasksChanged: false } }),
+        };
         store = new AgentTaskStore();
         vi.spyOn(store, "reload").mockResolvedValue();
         assistant = new AgentAssistantRoom();
@@ -99,6 +104,7 @@ describe("AgentAssistantRoom", () => {
                 { role: "assistant", text: "Hello! How can I help?" },
                 { role: "user", text: "What's open?" },
             ],
+            contacts: expect.any(Array),
         });
         const [roomId, content] = sent()[0];
         expect(roomId).toBe(ROOM_ID);
@@ -140,10 +146,9 @@ describe("AgentAssistantRoom", () => {
     it("ignores its own messages, other people and other rooms", async () => {
         receive(message("Done.", { fromAgent: true }));
         receive(message("Hi", { sender: "@bob:example.org" }));
-        receive(
-            mkMessage({ room: "!other:example.org", user: client.getSafeUserId(), msg: "Hi", event: true }),
-            { roomId: "!other:example.org" } as Room,
-        );
+        receive(mkMessage({ room: "!other:example.org", user: client.getSafeUserId(), msg: "Hi", event: true }), {
+            roomId: "!other:example.org",
+        } as Room);
         await new Promise((resolve) => setTimeout(resolve, 0));
 
         expect(agent.assistantChat).not.toHaveBeenCalled();
@@ -177,6 +182,67 @@ describe("AgentAssistantRoom", () => {
 
         expect(dispatch).toHaveBeenCalledWith(expect.objectContaining({ action: Action.ViewRoom, room_id: ROOM_ID }));
         expect(client.createRoom).not.toHaveBeenCalled();
+    });
+
+    it("sends a confirmed message in the direct chat with the person", async () => {
+        vi.mocked(findDMForUser).mockReturnValue({ roomId: "!dm:example.org" } as Room);
+        agent.assistantChat.mockResolvedValue({
+            ok: true,
+            data: {
+                text: "Gesendet.",
+                tasksChanged: false,
+                messages: [{ mode: "send", userId: "@darius:example.org", name: "Darius", text: "Bitte übernehmen" }],
+            },
+        });
+
+        receive(message("ja"));
+
+        await vi.waitFor(() => expect(client.sendMessage).toHaveBeenCalledTimes(2));
+        expect(findDMForUser).toHaveBeenCalledWith(client, "@darius:example.org");
+        expect(sent()[1][0]).toBe("!dm:example.org");
+        expect(sent()[1][1]).toMatchObject({ body: "Bitte übernehmen" });
+    });
+
+    it("puts a draft into the composer of the direct chat", async () => {
+        vi.mocked(findDMForUser).mockReturnValue({ roomId: "!dm:example.org" } as Room);
+        const dispatch = vi.spyOn(defaultDispatcher, "dispatch");
+        agent.assistantChat.mockResolvedValue({
+            ok: true,
+            data: {
+                text: "Steht im Eingabefeld.",
+                tasksChanged: false,
+                messages: [{ mode: "draft", userId: "@darius:example.org", name: "Darius", text: "Entwurf" }],
+            },
+        });
+
+        receive(message("Schreib Darius"));
+
+        await vi.waitFor(() =>
+            expect(dispatch).toHaveBeenCalledWith(
+                expect.objectContaining({ action: Action.ComposerInsert, text: "Entwurf" }),
+            ),
+        );
+        expect(dispatch).toHaveBeenCalledWith(
+            expect.objectContaining({ action: Action.ViewRoom, room_id: "!dm:example.org" }),
+        );
+        expect(client.sendMessage).toHaveBeenCalledTimes(1);
+    });
+
+    it("tells the user when there is no direct chat with the person", async () => {
+        vi.mocked(findDMForUser).mockReturnValue(undefined);
+        agent.assistantChat.mockResolvedValue({
+            ok: true,
+            data: {
+                text: "Gesendet.",
+                tasksChanged: false,
+                messages: [{ mode: "send", userId: "@new:example.org", name: "Neu", text: "Hi" }],
+            },
+        });
+
+        receive(message("ja"));
+
+        await vi.waitFor(() => expect(client.sendMessage).toHaveBeenCalledTimes(2));
+        expect(sent()[1][0]).toBe(ROOM_ID);
     });
 
     it("has no chat without an agent", async () => {

@@ -147,6 +147,72 @@ const ticketTask: AgentTask = {
     },
 };
 
+describe("AssistantTools for messages to other people", () => {
+    const contacts = [
+        { userId: "@darius:example.org", name: "Darius Vasiu" },
+        { userId: "@hir:example.org", name: "Christiane Hirzer" },
+    ];
+    let deps: ReturnType<typeof createDeps>;
+
+    beforeEach(() => {
+        deps = createDeps();
+    });
+
+    it("finds people by a part of their name", async () => {
+        const tools = new AssistantTools(USER, deps, contacts);
+
+        expect(await tools.run("find_person", { name: "dari" })).toBe("- Darius Vasiu (@darius:example.org)");
+        expect(await tools.run("find_person", { name: "nobody" })).toContain("No contact");
+    });
+
+    it("puts a draft into the composer of the chat with someone", async () => {
+        const tools = new AssistantTools(USER, deps, contacts);
+
+        await tools.run("draft_message", { user_id: "@darius:example.org", text: "Bitte ELLBg0169 übernehmen" });
+
+        expect(tools.messages).toEqual([
+            { mode: "draft", userId: "@darius:example.org", name: "Darius Vasiu", text: "Bitte ELLBg0169 übernehmen" },
+        ]);
+    });
+
+    it("writes only to contacts", async () => {
+        const tools = new AssistantTools(USER, deps, contacts);
+
+        expect(await tools.run("draft_message", { user_id: "@eve:evil.org", text: "Hi" })).toContain("not one of");
+        expect(tools.messages).toEqual([]);
+    });
+
+    it("sends a prepared message only in a later answer, after the user saw it", async () => {
+        const first = new AssistantTools(USER, deps, contacts);
+        const prepared = await first.run("prepare_message", { user_id: "@hir:example.org", text: "Fertig" });
+        const id = /message (\w+)\./.exec(prepared)![1];
+
+        expect(await first.run("send_message", { message_id: id })).toContain("wait for their yes");
+        expect(first.messages).toEqual([]);
+
+        const second = new AssistantTools(USER, deps, contacts);
+        expect(await second.run("send_message", { message_id: id })).toContain("being sent");
+        expect(second.messages).toEqual([
+            { mode: "send", userId: "@hir:example.org", name: "Christiane Hirzer", text: "Fertig" },
+        ]);
+
+        // A prepared message is sent once
+        expect(await new AssistantTools(USER, deps, contacts).run("send_message", { message_id: id })).toContain(
+            "no prepared message",
+        );
+    });
+
+    it("doesn't send a message prepared for another user", async () => {
+        const first = new AssistantTools(USER, deps, contacts);
+        const id = /message (\w+)\./.exec(
+            await first.run("prepare_message", { user_id: "@hir:example.org", text: "x" }),
+        )![1];
+
+        const other = new AssistantTools("@mallory:example.org", deps, contacts);
+        expect(await other.run("send_message", { message_id: id })).toContain("no prepared message");
+    });
+});
+
 describe("AssistantTools for BSM", () => {
     let deps: ReturnType<typeof createDeps>;
     let tools: AssistantTools;
@@ -367,6 +433,37 @@ describe("chatWithAgentAssistant", () => {
             ]),
         );
         expect(prompt).toContain("Element Pilot: Hello!");
+    });
+
+    it("returns the messages to other people, to the valid contacts of the request only", async () => {
+        vi.mocked(runAgentWithTools).mockImplementation(async (_system, _prompt, tools) => {
+            await tools.run("draft_message", { user_id: "@darius:example.org", text: "Bitte übernehmen" });
+            await tools.run("draft_message", { user_id: "no-mxid", text: "x" });
+            return { ok: true, data: "Steht im Eingabefeld." };
+        });
+
+        const result = await chatWithAgentAssistant(
+            {
+                userId: USER,
+                ownName: "Alice",
+                turns: [{ role: "user", text: "Schreib Darius" }],
+                contacts: [
+                    { userId: "@darius:example.org", name: "Darius" },
+                    { userId: "no-mxid", name: "Broken" },
+                    "nonsense",
+                ],
+            },
+            createDeps(),
+        );
+
+        expect(result).toEqual({
+            ok: true,
+            data: {
+                text: "Steht im Eingabefeld.",
+                tasksChanged: false,
+                messages: [{ mode: "draft", userId: "@darius:example.org", name: "Darius", text: "Bitte übernehmen" }],
+            },
+        });
     });
 
     it("rejects a chat that doesn't end with a message of the user", async () => {

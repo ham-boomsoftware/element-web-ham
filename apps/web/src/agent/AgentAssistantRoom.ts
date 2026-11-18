@@ -21,7 +21,7 @@ import {
 } from "matrix-js-sdk/src/matrix";
 import { logger } from "matrix-js-sdk/src/logger";
 import type { RoomMessageEventContent } from "matrix-js-sdk/src/types";
-import type { AgentErrorCode, AgentTurn } from "shared-types";
+import type { AgentContact, AgentErrorCode, AgentOutgoingMessage, AgentTurn } from "shared-types";
 
 import type { AgentApi } from "./AgentApi";
 import { AgentTaskStore } from "./AgentTaskStore";
@@ -30,6 +30,9 @@ import { htmlSerializeFromMdIfNeeded } from "../editor/serialize";
 import defaultDispatcher from "../dispatcher/dispatcher";
 import { Action } from "../dispatcher/actions";
 import type { ViewRoomPayload } from "../dispatcher/payloads/ViewRoomPayload";
+import type { ComposerInsertPayload } from "../dispatcher/payloads/ComposerInsertPayload";
+import { TimelineRenderingType } from "../contexts/RoomContext";
+import { findDMForUser } from "../utils/dm/findDMForUser";
 import { _t } from "../languageHandler";
 
 /** The account data that tells which room is the chat with the agent */
@@ -39,6 +42,30 @@ export const ASSISTANT_ROOM_ACCOUNT_DATA = "io.element.pilot.assistant_room";
 const HISTORY_LENGTH = 20;
 /** How long the agent shows as typing at most, in ms; it's renewed while it thinks */
 const TYPING_TIMEOUT = 30000;
+
+/** How long to wait for the composer of a room that was just opened, in ms */
+const COMPOSER_DELAY_MS = 300;
+
+/** How many people the agent gets to know, so that it can write to them for the user */
+const MAX_CONTACTS = 2000;
+
+/**
+ * The people the user shares a joined room with, by user ID, with their display name.
+ */
+export function readContacts(client: MatrixClient): AgentContact[] {
+    const own = client.getSafeUserId();
+    const contacts = new Map<string, string>();
+    for (const room of client.getRooms()) {
+        if (room.getMyMembership() !== KnownMembership.Join) continue;
+        for (const member of room.getJoinedMembers()) {
+            if (member.userId === own || contacts.has(member.userId)) continue;
+            contacts.set(member.userId, member.rawDisplayName || member.name || member.userId);
+            if (contacts.size >= MAX_CONTACTS) break;
+        }
+        if (contacts.size >= MAX_CONTACTS) break;
+    }
+    return [...contacts].map(([userId, name]) => ({ userId, name }));
+}
 
 /** What to tell the user when the agent couldn't answer */
 function describeError(error: AgentErrorCode): string {
@@ -238,11 +265,19 @@ export class AgentAssistantRoom {
         if (this.client !== client || !this.isMessageOfUser(client, event)) return;
 
         const turns = this.readTurns(client, room, event);
-        const typing = setInterval(() => void client.sendTyping(room.roomId, true, TYPING_TIMEOUT).catch(() => {}), 20000);
+        const typing = setInterval(
+            () => void client.sendTyping(room.roomId, true, TYPING_TIMEOUT).catch(() => {}),
+            20000,
+        );
         void client.sendTyping(room.roomId, true, TYPING_TIMEOUT).catch(() => {});
         try {
             const result = await agent
-                .assistantChat({ userId: client.getSafeUserId(), ownName: this.ownName(client, room), turns })
+                .assistantChat({
+                    userId: client.getSafeUserId(),
+                    ownName: this.ownName(client, room),
+                    turns,
+                    contacts: readContacts(client),
+                })
                 .catch((e) => {
                     logger.warn("The agent couldn't answer in its chat", e);
                     return { ok: false as const, error: "unavailable" as const, message: undefined };
@@ -251,6 +286,7 @@ export class AgentAssistantRoom {
             if (result.ok) {
                 await this.send(room.roomId, result.data.text);
                 if (result.data.tasksChanged) await store?.reload();
+                for (const message of result.data.messages ?? []) await this.writeTo(room.roomId, message);
             } else {
                 logger.warn(`The agent couldn't answer in its chat: ${result.error}`, result.message);
                 await this.send(room.roomId, describeError(result.error));
@@ -258,6 +294,40 @@ export class AgentAssistantRoom {
         } finally {
             clearInterval(typing);
             void client.sendTyping(room.roomId, false, 0).catch(() => {});
+        }
+    }
+
+    /**
+     * Write a message of the agent to someone, in the direct chat with them: into the composer for the user to send,
+     * or sent, once the user confirmed it. What happened is told in the chat with the agent if it didn't work.
+     */
+    private async writeTo(assistantRoomId: string, message: AgentOutgoingMessage): Promise<void> {
+        const client = this.client;
+        if (!client) return;
+        const dm = findDMForUser(client, message.userId);
+        if (!dm) {
+            await this.send(assistantRoomId, _t("agent_assistant|no_direct_chat", { name: message.name }));
+            return;
+        }
+        if (message.mode === "draft") {
+            defaultDispatcher.dispatch<ViewRoomPayload>({
+                action: Action.ViewRoom,
+                room_id: dm.roomId,
+                metricsTrigger: undefined,
+            });
+            // The composer of the room shows once the room is open
+            setTimeout(() => {
+                defaultDispatcher.dispatch<ComposerInsertPayload>({
+                    action: Action.ComposerInsert,
+                    text: message.text,
+                    timelineRenderingType: TimelineRenderingType.Room,
+                });
+                defaultDispatcher.dispatch({ action: Action.FocusSendMessageComposer });
+            }, COMPOSER_DELAY_MS);
+            return;
+        }
+        if (!(await this.send(dm.roomId, message.text))) {
+            await this.send(assistantRoomId, _t("agent_assistant|message_not_sent", { name: message.name }));
         }
     }
 
