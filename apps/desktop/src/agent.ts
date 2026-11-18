@@ -69,6 +69,7 @@ const DEFAULT_SETTINGS: AgentSettings = {
     autopilot: false,
     autopilotCommands: [],
     codingCli: "claude",
+    pipelineWatch: false,
 };
 
 /** How many commands the autopilot may be allowed to run */
@@ -109,6 +110,10 @@ export interface AgentStoreData {
     tasks?: Record<string, AgentTask[]>;
     /** The project folders tasks were last opened in with the coding CLI, most recent first */
     recentProjects?: string[];
+    /** The project folder of each application of BSM tickets, such as `ELL BRS` */
+    bsmProjects?: Record<string, string>;
+    /** When each BSM ticket last changed at the last import, by the Matrix user and the number of the ticket */
+    bsmSeen?: Record<string, Record<string, string>>;
 }
 
 /**
@@ -211,6 +216,7 @@ export function setAgentSettings(changes: unknown): AgentResult<AgentSettings> {
         autopilotCommands,
         workspacePath,
         codingCli,
+        pipelineWatch,
     } = changes as Partial<AgentSettings>;
     if (provider !== undefined && !isProvider(provider)) return failure("invalid_request");
     if (model !== undefined && typeof model !== "string") return failure("invalid_request");
@@ -234,6 +240,7 @@ export function setAgentSettings(changes: unknown): AgentResult<AgentSettings> {
     if (codingCli !== undefined && codingCli !== "claude" && codingCli !== "copilot") {
         return failure("invalid_request");
     }
+    if (pipelineWatch !== undefined && typeof pipelineWatch !== "boolean") return failure("invalid_request");
 
     const settings = getSettings();
     // Each provider has its own models, so a new provider starts with its default model
@@ -250,6 +257,7 @@ export function setAgentSettings(changes: unknown): AgentResult<AgentSettings> {
     }
     if (workspacePath !== undefined) settings.workspacePath = workspacePath ? path.resolve(workspacePath) : undefined;
     if (codingCli !== undefined) settings.codingCli = codingCli;
+    if (pipelineWatch !== undefined) settings.pipelineWatch = pipelineWatch;
     getAgentStore().set("settings", settings);
     return { ok: true, data: settings };
 }

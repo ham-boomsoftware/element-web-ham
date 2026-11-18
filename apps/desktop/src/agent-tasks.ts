@@ -29,7 +29,9 @@ import type {
     AgentTaskProgress,
     AgentTaskRun,
     AgentTaskRunMode,
+    AgentTaskSchedule,
     AgentTaskSource,
+    AgentTicketRef,
 } from "shared-types";
 
 import {
@@ -50,7 +52,13 @@ import {
     setAgentSettings,
     toFailure,
 } from "./agent.js";
-import { MAX_QUESTIONS, type ProjectGuide, readProjectGuides, WorkspaceTools } from "./agent-workspace.js";
+import {
+    type AgentToolbox,
+    MAX_QUESTIONS,
+    type ProjectGuide,
+    readProjectGuides,
+    WorkspaceTools,
+} from "./agent-workspace.js";
 import {
     commitWorktree,
     createWorktree,
@@ -181,6 +189,64 @@ export function addAgentTasks(userId: unknown, newTasks: unknown): AgentResult<A
     return { ok: true, data: added };
 }
 
+/** A ticket as a task: what {@link saveTicketTask} adds or updates */
+export interface TicketTaskInput {
+    ticket: AgentTicketRef;
+    title: string;
+    details: string;
+    /** The project folder of the ticket, if known; a folder the task already has is kept */
+    workspacePath?: string;
+    /** Whether the ticket is closed in the ticket system, which marks the task as done */
+    closed: boolean;
+}
+
+/**
+ * Add a ticket to the to-do list of a user, or update the task of the ticket if there is one.
+ * @returns the task, and whether it is new; undefined for a closed ticket that is not on the list
+ */
+export function saveTicketTask(
+    userId: string,
+    input: TicketTaskInput,
+): { task: AgentTask; added: boolean } | undefined {
+    const tasks = readTasks(userId);
+    const existing = tasks.find(
+        (task) => task.ticket?.system === input.ticket.system && task.ticket.number === input.ticket.number,
+    );
+    const title = input.title.trim().slice(0, MAX_TITLE_LENGTH);
+    const details = input.details.trim().slice(0, MAX_DETAILS_LENGTH);
+    if (existing) {
+        const task = saveTask(userId, existing.id, (task) => ({
+            ...task,
+            title,
+            details,
+            ticket: input.ticket,
+            ...(input.closed && { done: true }),
+            ...(!task.workspacePath && input.workspacePath && { workspacePath: input.workspacePath }),
+        }));
+        return task && { task, added: false };
+    }
+    if (input.closed) return undefined;
+    const task: AgentTask = {
+        id: randomUUID(),
+        title,
+        details,
+        done: false,
+        createdAt: Date.now(),
+        coding: true,
+        ticket: input.ticket,
+        ...(input.workspacePath && { workspacePath: input.workspacePath }),
+    };
+    writeTasks(userId, [...tasks, task]);
+    return { task, added: true };
+}
+
+/**
+ * Set the project folder the agent works on a task in.
+ */
+export function setAgentTaskWorkspace(userId: string, taskId: string, workspacePath: string): AgentTask | undefined {
+    return saveTask(userId, taskId, (task) => ({ ...task, workspacePath }));
+}
+
 /**
  * Change the title, description or state of a task.
  */
@@ -199,6 +265,17 @@ export function updateAgentTask(userId: unknown, taskId: unknown, changes: unkno
         ...(done !== undefined && { done }),
     }));
     return task ? { ok: true, data: task } : failure("not_found");
+}
+
+/**
+ * Save when the user planned to do a task, or forget it with undefined.
+ */
+export function setAgentTaskSchedule(
+    userId: string,
+    taskId: string,
+    schedule: AgentTaskSchedule | undefined,
+): AgentTask | undefined {
+    return saveTask(userId, taskId, ({ schedule: _old, ...task }) => (schedule ? { ...task, schedule } : task));
 }
 
 /**
@@ -376,13 +453,15 @@ export async function runAgentTask(userId: unknown, taskId: unknown, mode: unkno
     const key = `${userId}|${taskId}`;
     if (runningTasks.has(key)) return failure("busy");
     const settings = getSettings();
-    if (!settings.workspacePath || !isDirectory(settings.workspacePath)) return failure("no_workspace");
+    // A task can have a project folder of its own, such as an imported ticket of a customer's project
+    const workspacePath = task.workspacePath ?? settings.workspacePath;
+    if (!workspacePath || !isDirectory(workspacePath)) return failure("no_workspace");
     const credential = await getCredential(settings.provider);
     if (!credential) return failure("not_connected");
 
     runningTasks.add(key);
     try {
-        return await workOnTask(userId, task, mode, settings.workspacePath, async (system, prompt, tools) =>
+        return await workOnTask(userId, task, mode, workspacePath, async (system, prompt, tools) =>
             settings.provider === "claude"
                 ? await runWithClaude(credential, settings.model, system, prompt, tools)
                 : await runWithCopilot(credential, settings.model, system, prompt, tools),
@@ -392,7 +471,7 @@ export async function runAgentTask(userId: unknown, taskId: unknown, mode: unkno
     }
 }
 
-type AgentRunner = (system: string, prompt: string, tools: WorkspaceTools) => Promise<AgentResult<string>>;
+type AgentRunner = (system: string, prompt: string, tools: AgentToolbox) => Promise<AgentResult<string>>;
 
 async function workOnTask(
     userId: string,
@@ -698,14 +777,31 @@ function buildRunPrompt(task: AgentTask, mode: AgentTaskRunMode): string {
 }
 
 /**
- * Let Claude work on a task: it calls the workspace tools until it answers with its report.
+ * Let the agent work with tools, with the provider and model of the settings, until it answers.
+ * @returns its answer
+ */
+export async function runAgentWithTools(
+    system: string,
+    prompt: string,
+    tools: AgentToolbox,
+): Promise<AgentResult<string>> {
+    const settings = getSettings();
+    const credential = await getCredential(settings.provider);
+    if (!credential) return failure("not_connected");
+    return settings.provider === "claude"
+        ? runWithClaude(credential, settings.model, system, prompt, tools)
+        : runWithCopilot(credential, settings.model, system, prompt, tools);
+}
+
+/**
+ * Let Claude work on a task: it calls the tools until it answers with its report.
  */
 async function runWithClaude(
     apiKey: string,
     model: string | undefined,
     system: string,
     prompt: string,
-    tools: WorkspaceTools,
+    tools: AgentToolbox,
 ): Promise<AgentResult<string>> {
     const modelId = model ?? DEFAULT_CLAUDE_MODEL;
     const client = new Anthropic({ apiKey, timeout: RUN_TIMEOUT_MS });
@@ -759,14 +855,14 @@ async function runWithClaude(
 }
 
 /**
- * Let Copilot work on a task, with the workspace tools as its only tools.
+ * Let Copilot work on a task, with the given tools as its only tools.
  */
 async function runWithCopilot(
     token: string,
     model: string | undefined,
     system: string,
     prompt: string,
-    tools: WorkspaceTools,
+    tools: AgentToolbox,
 ): Promise<AgentResult<string>> {
     try {
         const client = await getCopilotClient(token);

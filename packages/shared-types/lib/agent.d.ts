@@ -49,6 +49,11 @@ export interface AgentSettings {
     workspacePath?: string;
     /** The coding CLI that is opened in a terminal to do a task */
     codingCli: AgentCodingCli;
+    /**
+     * Whether the agent watches the Azure DevOps pipelines of the user's projects and reports failed builds: of the
+     * default branch, of the user's own runs, and of the branches of the autopilot.
+     */
+    pipelineWatch: boolean;
 }
 
 /**
@@ -341,6 +346,121 @@ export interface AgentTask {
     coding?: boolean;
     /** The latest work of the agent on it */
     run?: AgentTaskRun;
+    /** When the user planned to do it, if they put it in their calendar */
+    schedule?: AgentTaskSchedule;
+    /** The ticket the task was imported from, such as a ticket of BSM */
+    ticket?: AgentTicketRef;
+    /** The project folder the agent works on this task in, instead of the workspace of the settings */
+    workspacePath?: string;
+}
+
+/**
+ * A ticket of a ticket system that a task was imported from.
+ */
+export interface AgentTicketRef {
+    /** The ticket system, such as `bsm` */
+    system: string;
+    /** The number of the ticket, such as `ELLBg0169` */
+    number: string;
+    /** The page of the ticket */
+    url: string;
+    /** The application of the customer the ticket is about, such as `ELL BRS` */
+    application?: string;
+    /** The state of the ticket in the ticket system, such as `inprocess` */
+    status?: string;
+    /** When the ticket last changed in the ticket system, as the ticket system shows it */
+    changedAt?: string;
+}
+
+/**
+ * A block of time in the user's calendar to do a task in.
+ */
+export interface AgentTaskSchedule {
+    /** When it starts, in milliseconds since the epoch */
+    start: number;
+    durationMinutes: number;
+}
+
+/**
+ * A block of time the agent suggests for a task, for the user to change and confirm.
+ */
+export interface AgentTimeSlot extends AgentTaskSchedule {
+    /** Why the agent suggests it, in a sentence; undefined if it was not the agent but a default */
+    reason?: string;
+}
+
+/**
+ * How a pipeline run ended, as Azure DevOps reports it.
+ */
+export type AgentBuildResult = "succeeded" | "partiallySucceeded" | "failed" | "canceled" | "none";
+
+/**
+ * A finished run of an Azure DevOps pipeline.
+ */
+export interface AgentPipelineBuild {
+    id: number;
+    /** The repository, as `project/repository` */
+    repository: string;
+    /** The name of the pipeline */
+    pipeline: string;
+    /** The number of the run, such as `20261111.3` */
+    buildNumber: string;
+    result: AgentBuildResult;
+    /** The branch, without `refs/heads/` */
+    branch: string;
+    finishedAt: number;
+    /** Who started it, or for whose change it ran */
+    requestedBy?: string;
+    /** Whether it ran for the user */
+    own: boolean;
+    /** The page of the run */
+    url?: string;
+}
+
+/**
+ * A failed pipeline run, with what failed and why.
+ */
+export interface AgentPipelineFailure {
+    build: AgentPipelineBuild;
+    /** The names of the failed steps */
+    failedSteps: string[];
+    /** What the agent thinks went wrong, from the log of the failed step; undefined if it couldn't tell */
+    analysis?: string;
+}
+
+/**
+ * The latest pipeline runs of the user's projects.
+ */
+export interface AgentPipelineStatus {
+    /** The watched repositories, as `project/repository` */
+    repositories: string[];
+    /** The latest run of each pipeline and branch, newest first */
+    builds: AgentPipelineBuild[];
+    checkedAt: number;
+    /** Why some of the repositories couldn't be read */
+    error?: string;
+}
+
+/**
+ * A message to the agent in the user's private chat with it.
+ * `user` is a message of the user, `assistant` one of the agent.
+ */
+export interface AgentAssistantRequest {
+    /** The Matrix user the agent works for */
+    userId: string;
+    /** Their display name */
+    ownName: string;
+    /** The latest messages of the chat, oldest first, ending with a message of the user */
+    turns: AgentTurn[];
+}
+
+/**
+ * The answer of the agent in the user's private chat with it.
+ */
+export interface AgentAssistantReply {
+    text: string;
+    /** Whether it changed the to-do list, which then has to be read again */
+    tasksChanged: boolean;
 }
 
 /**
@@ -372,7 +492,7 @@ export interface AgentModel {
  * - `no_workspace`: no workspace is set, or its folder doesn't exist.
  * - `not_found`: the task doesn't exist.
  * - `busy`: the agent is already working on the task.
- * - `no_repository`: the workspace is not in a git repository, or git failed.
+ * - `no_repository`: the workspace is not in a git repository, or git failed; or no project is on Azure DevOps.
  * - `unavailable`: the provider could not be reached or failed.
  * - `invalid_request`: the command was called with invalid arguments.
  */

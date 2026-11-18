@@ -166,7 +166,9 @@ describe("agent", () => {
                 autopilot: false,
                 autopilotCommands: [],
                 codingCli: "claude",
+                pipelineWatch: false,
                 connected: { claude: false, copilot: false },
+                copilotLoggedInUser: undefined,
                 recentProjects: [],
             });
         });
@@ -187,6 +189,7 @@ describe("agent", () => {
                     autopilot: false,
                     autopilotCommands: [],
                     codingCli: "claude",
+                    pipelineWatch: false,
                 },
             });
         });

@@ -27,6 +27,8 @@ import {
     QUESTION_TIMEOUT_MS,
     removeAgentTaskWorktree,
     runAgentTask,
+    saveTicketTask,
+    setAgentTaskWorkspace,
     setTaskProgressListener,
     updateAgentTask,
 } from "./agent-tasks.js";
@@ -128,6 +130,64 @@ describe("agent tasks", () => {
 
     afterEach(async () => {
         await fs.rm(workspace, { recursive: true, force: true });
+    });
+
+    describe("tickets", () => {
+        const ticket = { system: "bsm", number: "ELLBg0169", url: "https://bsm.example/indication/ELLBg0169" };
+
+        it("adds a ticket once, and updates its task when it changes", () => {
+            const first = saveTicketTask(USER, { ticket, title: "ELLBg0169: A", details: "a", closed: false });
+            const second = saveTicketTask(USER, {
+                ticket: { ...ticket, status: "inprocess" },
+                title: "ELLBg0169: B",
+                details: "b",
+                workspacePath: "C:\\ell",
+                closed: false,
+            });
+
+            expect(first).toMatchObject({ added: true, task: { title: "ELLBg0169: A", coding: true, done: false } });
+            expect(second).toMatchObject({ added: false, task: { id: first!.task.id, title: "ELLBg0169: B" } });
+            expect(second!.task.workspacePath).toBe("C:\\ell");
+            expect(getAgentTasks(USER)).toMatchObject({ ok: true, data: [{ details: "b" }] });
+        });
+
+        it("keeps the project folder a task already has", () => {
+            const { task } = saveTicketTask(USER, { ticket, title: "T", details: "", closed: false })!;
+            setAgentTaskWorkspace(USER, task.id, "C:\\mine");
+
+            const updated = saveTicketTask(USER, {
+                ticket,
+                title: "T",
+                details: "",
+                workspacePath: "C:\\other",
+                closed: false,
+            });
+
+            expect(updated!.task.workspacePath).toBe("C:\\mine");
+        });
+
+        it("marks the task of a closed ticket as done, and doesn't add closed tickets", () => {
+            expect(saveTicketTask(USER, { ticket, title: "T", details: "", closed: true })).toBeUndefined();
+
+            saveTicketTask(USER, { ticket, title: "T", details: "", closed: false });
+            expect(saveTicketTask(USER, { ticket, title: "T", details: "", closed: true })!.task.done).toBe(true);
+        });
+
+        it("works on a task in its own project folder instead of the workspace of the settings", async () => {
+            connect("claude");
+            const { task } = saveTicketTask(USER, {
+                ticket,
+                title: "T",
+                details: "",
+                workspacePath: workspace,
+                closed: false,
+            })!;
+            anthropic.messagesCreate.mockResolvedValue(claudeText("The login always fails."));
+
+            const result = await runAgentTask(USER, task.id, "investigate");
+
+            expect(result).toMatchObject({ ok: true, data: { run: { state: "finished" } } });
+        });
     });
 
     describe("the list", () => {
