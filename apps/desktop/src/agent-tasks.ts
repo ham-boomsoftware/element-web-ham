@@ -243,6 +243,20 @@ export function saveTicketTask(
 }
 
 /**
+ * Take the task of a ticket off the to-do list, unless it is done or the agent worked on it.
+ * @returns whether it was removed
+ */
+export function removeTicketTask(userId: string, system: string, number: string): boolean {
+    const tasks = readTasks(userId);
+    const remaining = tasks.filter(
+        (task) => !(task.ticket?.system === system && task.ticket.number === number && !task.done && !task.run),
+    );
+    if (remaining.length === tasks.length) return false;
+    writeTasks(userId, remaining);
+    return true;
+}
+
+/**
  * Set the project folder the agent works on a task in.
  */
 export function setAgentTaskWorkspace(userId: string, taskId: string, workspacePath: string): AgentTask | undefined {

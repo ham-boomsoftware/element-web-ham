@@ -26,6 +26,7 @@ import {
     pickAgentWorkspace,
     QUESTION_TIMEOUT_MS,
     removeAgentTaskWorktree,
+    removeTicketTask,
     runAgentTask,
     saveTicketTask,
     setAgentTaskWorkspace,
@@ -166,6 +167,20 @@ describe("agent tasks", () => {
             });
 
             expect(updated!.task.workspacePath).toBe("C:\\mine");
+        });
+
+        it("takes the task of a ticket off the list, unless the agent worked on it", () => {
+            saveTicketTask(USER, { ticket, title: "T", details: "", closed: false });
+            expect(removeTicketTask(USER, "bsm", "ELLBg0169")).toBe(true);
+            expect(getAgentTasks(USER)).toMatchObject({ ok: true, data: [] });
+
+            const other = { ...ticket, number: "ELLBg0170" };
+            const { task } = saveTicketTask(USER, { ticket: other, title: "T", details: "", closed: false })!;
+            const tasks = storeData.tasks as Record<string, AgentTask[]>;
+            tasks[USER] = tasks[USER].map((t) =>
+                t.id === task.id ? { ...t, run: { mode: "investigate", state: "finished", startedAt: 1 } } : t,
+            );
+            expect(removeTicketTask(USER, "bsm", "ELLBg0170")).toBe(false);
         });
 
         it("marks the task of a closed ticket as done, and doesn't add closed tickets", () => {

@@ -114,6 +114,8 @@ export interface AgentStoreData {
     bsmProjects?: Record<string, string>;
     /** When each BSM ticket last changed at the last import, by the Matrix user and the number of the ticket */
     bsmSeen?: Record<string, Record<string, string>>;
+    /** The applications or projects whose BSM tickets are not imported */
+    bsmIgnored?: string[];
     /** Whether tasks are done with Claude Code, and the configuration folder of its account, if not the user's own */
     claudeCode?: { enabled?: boolean; configDir?: string };
 }

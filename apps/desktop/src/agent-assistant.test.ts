@@ -42,6 +42,8 @@ vi.mock("./agent-tasks.js", () => ({
 }));
 vi.mock("./agent-pipelines.js", () => ({ getAgentPipelineStatus: vi.fn() }));
 vi.mock("./agent-bsm.js", () => ({
+    getBsmIgnored: vi.fn(),
+    setBsmIgnored: vi.fn(),
     importBsmTicketsForUser: vi.fn(),
     loginToBsm: vi.fn(),
     setBsmProjectFolder: vi.fn(),
@@ -107,7 +109,16 @@ function createDeps(): AssistantDeps & { [K in keyof AssistantDeps]: ReturnType<
         loginToBsm: vi.fn(async () => ({ ok: true, data: undefined })),
         importBsmTickets: vi.fn(async () => ({
             ok: true,
-            data: { listed: 3, added: [ticketTask], updated: [], closed: [], withoutFolder: ["ELL BRS"], errors: [] },
+            data: {
+                listed: 3,
+                added: [ticketTask],
+                updated: [],
+                closed: [],
+                withoutFolder: ["ELL BRS"],
+                errors: [],
+                ignored: 2,
+                removed: 1,
+            },
         })),
         setBsmProjectFolder: vi.fn(() => ({ ok: true, data: [ticketTask] })),
         pickFolder: vi.fn(async () => "C:\\projects\\ell"),
@@ -117,6 +128,8 @@ function createDeps(): AssistantDeps & { [K in keyof AssistantDeps]: ReturnType<
         setClaudeCode: vi.fn((changes) => ({ enabled: true, ...changes })),
         openClaudeLogin: vi.fn(async () => ({ ok: true, data: undefined })),
         agentClaudeConfigDir: vi.fn(() => "C:\\agent\\claude-account"),
+        getBsmIgnored: vi.fn(() => ["BRS Produktwartung", "BORA"]),
+        setBsmIgnored: vi.fn((name: string) => ["BRS Produktwartung", "BORA", name]),
     } as never;
 }
 
@@ -150,6 +163,7 @@ describe("AssistantTools for BSM", () => {
         expect(text).toContain("shows 3 tickets");
         expect(text).toContain("ELLBg0169");
         expect(text).toContain("without a project folder: ELL BRS");
+        expect(text).toContain("Left out 2 tickets of ignored applications or projects, and took 1 of their tasks");
         expect(tools.tasksChanged).toBe(true);
     });
 
@@ -192,6 +206,15 @@ describe("AssistantTools for BSM", () => {
 
         expect(deps.pickFolder).not.toHaveBeenCalled();
         expect(deps.setBsmProjectFolder).toHaveBeenCalledWith(USER, "ELL BRS", "D:\\ell");
+    });
+
+    it("ignores the tickets of an application, or lists what is ignored", async () => {
+        expect(await tools.run("bsm_ignore", {})).toBe("Ignored applications and projects: BRS Produktwartung, BORA");
+
+        const text = await tools.run("bsm_ignore", { name: "Railium", ignore: true });
+
+        expect(deps.setBsmIgnored).toHaveBeenCalledWith("Railium", true);
+        expect(text).toContain("Railium");
     });
 
     it("opens a ticket in Claude Code in its project folder", async () => {

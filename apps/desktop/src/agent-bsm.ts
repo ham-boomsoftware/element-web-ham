@@ -16,7 +16,7 @@ import { BrowserWindow, session } from "electron";
 import type { AgentResult, AgentTask, AgentTicketRef } from "shared-types";
 
 import { failure, getAgentStore, isDirectory } from "./agent.js";
-import { saveTicketTask, setAgentTaskWorkspace, type TicketTaskInput } from "./agent-tasks.js";
+import { removeTicketTask, saveTicketTask, setAgentTaskWorkspace, type TicketTaskInput } from "./agent-tasks.js";
 
 /** The address of BSM */
 export const BSM_URL = "https://bsm.boomsoftware.com";
@@ -35,6 +35,9 @@ const QUERY_LIMIT = 500;
 
 /** How many queries one import makes at most, so that a wrong answer can't make it loop */
 const MAX_QUERIES = 20;
+
+/** The applications or projects whose tickets are not imported, unless the user changed the list */
+export const DEFAULT_IGNORED = ["BRS Produktwartung", "BORA"];
 
 /** How much of a comment the task shows */
 const MAX_COMMENT_LENGTH = 600;
@@ -98,6 +101,10 @@ export interface BsmImportDeps {
     /** The project folder of an application, if the user set one */
     getProjectFolder(application: string): string | undefined;
     saveTask(input: TicketTaskInput): { task: AgentTask; added: boolean } | undefined;
+    /** The applications or projects whose tickets are left out */
+    getIgnored(): string[];
+    /** Take the task of a ticket off the list, unless the agent worked on it; whether it was removed */
+    removeTask(number: string): boolean;
 }
 
 /** What an import did */
@@ -112,6 +119,10 @@ export interface BsmImportResult {
     withoutFolder: string[];
     /** The tickets that couldn't be read, with why */
     errors: string[];
+    /** How many open bug tickets were left out, as their application or project is ignored */
+    ignored: number;
+    /** How many tasks of ignored tickets were taken off the list */
+    removed: number;
 }
 
 export class BsmLoginError extends Error {
@@ -123,6 +134,12 @@ export class BsmLoginError extends Error {
 /** Whether a state of a ticket counts as open: anything but closed, so also a fix delivered but not confirmed */
 export function isOpenState(status: string | undefined): boolean {
     return Boolean(status) && !CLOSED_STATES.has(status!.toLowerCase());
+}
+
+/** Whether a ticket belongs to an application or project the user ignores; names are compared ignoring case */
+export function isIgnoredTicket(t: BsmIndication, ignored: string[]): boolean {
+    const names = new Set(ignored.map((name) => name.trim().toLowerCase()).filter(Boolean));
+    return [t.ApplicationName, t.ProjectName].some((name) => name && names.has(name.trim().toLowerCase()));
 }
 
 /** The body of the query for the bug tickets that are not closed */
@@ -201,6 +218,7 @@ function toTaskInput(t: BsmIndication, users: BsmUser[], folder: string | undefi
 export async function importBsmTickets(deps: BsmImportDeps): Promise<BsmImportResult> {
     const { indications, users } = await deps.queryOpenBugs();
     const seen = { ...deps.getSeen() };
+    const ignored = deps.getIgnored();
     const result: BsmImportResult = {
         listed: indications.length,
         added: [],
@@ -208,12 +226,21 @@ export async function importBsmTickets(deps: BsmImportDeps): Promise<BsmImportRe
         closed: [],
         withoutFolder: [],
         errors: [],
+        ignored: 0,
+        removed: 0,
     };
     const withoutFolder = new Set<string>();
     const open = new Set<string>();
+    const openTasks = new Set(deps.getOpenTicketNumbers());
     for (const t of indications) {
         if (!t.Number) continue;
         open.add(t.Number);
+        if (isIgnoredTicket(t, ignored)) {
+            result.ignored++;
+            if (openTasks.has(t.Number) && deps.removeTask(t.Number)) result.removed++;
+            delete seen[t.Number];
+            continue;
+        }
         if (seen[t.Number] && seen[t.Number] === t.ChangeDate) continue;
         const folder = t.ApplicationName ? deps.getProjectFolder(t.ApplicationName) : undefined;
         const saved = deps.saveTask(toTaskInput(t, users, folder));
@@ -224,7 +251,7 @@ export async function importBsmTickets(deps: BsmImportDeps): Promise<BsmImportRe
     }
 
     // A ticket of an open task that the query no longer returns was closed, or isn't a bug any more
-    for (const number of deps.getOpenTicketNumbers()) {
+    for (const number of openTasks) {
         if (open.has(number)) continue;
         try {
             const ticket = await deps.readTicket(number);
@@ -407,6 +434,8 @@ export async function importBsmTicketsForUser(userId: string): Promise<AgentResu
             setSeen: (seen) => getAgentStore().set("bsmSeen", { ...getAgentStore().get("bsmSeen"), [userId]: seen }),
             getProjectFolder,
             saveTask: (input) => saveTicketTask(userId, input),
+            getIgnored: getBsmIgnored,
+            removeTask: (number) => removeTicketTask(userId, "bsm", number),
         });
         return { ok: true, data: result };
     } catch (e) {
@@ -431,6 +460,25 @@ export function setBsmProjectFolder(userId: string, application: string, folder:
         .filter((task) => !task.done && !task.workspacePath && task.ticket?.application === application)
         .flatMap((task) => setAgentTaskWorkspace(userId, task.id, folder) ?? []);
     return { ok: true, data: changed };
+}
+
+/** The applications or projects whose tickets are not imported */
+export function getBsmIgnored(): string[] {
+    return getAgentStore().get("bsmIgnored") ?? DEFAULT_IGNORED;
+}
+
+/**
+ * Ignore the tickets of an application or project, or import them again.
+ * @returns the names that are ignored now
+ */
+export function setBsmIgnored(name: string, ignore: boolean): string[] {
+    const trimmed = name.trim();
+    const others = getBsmIgnored().filter((other) => other.toLowerCase() !== trimmed.toLowerCase());
+    const next = ignore && trimmed ? [...others, trimmed] : others;
+    getAgentStore().set("bsmIgnored", next);
+    // Tickets that are no longer ignored are imported with the next import, also if they didn't change
+    if (!ignore) getAgentStore().set("bsmSeen", {});
+    return next;
 }
 
 /** Forget the login to BSM */

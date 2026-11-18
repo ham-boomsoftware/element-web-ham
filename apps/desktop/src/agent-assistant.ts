@@ -33,7 +33,14 @@ import {
 import type { AgentToolbox, WorkspaceToolDefinition } from "./agent-workspace.js";
 import { getAgentPipelineStatus } from "./agent-pipelines.js";
 import { formatLocalTime, parseLocalTime, scheduleAgentTask, suggestAgentTimeSlot } from "./agent-calendar.js";
-import { type BsmImportResult, importBsmTicketsForUser, loginToBsm, setBsmProjectFolder } from "./agent-bsm.js";
+import {
+    type BsmImportResult,
+    getBsmIgnored,
+    importBsmTicketsForUser,
+    loginToBsm,
+    setBsmIgnored,
+    setBsmProjectFolder,
+} from "./agent-bsm.js";
 import { openAgentTaskInCli, openClaudeCodeLogin, pickAgentFolder } from "./agent-cli.js";
 import { type ClaudeCodeSettings, getClaudeCodeSettings, setClaudeCodeSettings } from "./agent-claude-code.js";
 
@@ -74,6 +81,8 @@ export interface AssistantDeps {
     openClaudeLogin: (configDir: string) => Promise<AgentResult<void>>;
     /** The configuration folder for a Claude account of the agent's own */
     agentClaudeConfigDir: () => string;
+    getBsmIgnored: () => string[];
+    setBsmIgnored: (name: string, ignore: boolean) => string[];
 }
 
 const DEFAULT_DEPS: AssistantDeps = {
@@ -98,6 +107,8 @@ const DEFAULT_DEPS: AssistantDeps = {
     setClaudeCode: setClaudeCodeSettings,
     openClaudeLogin: openClaudeCodeLogin,
     agentClaudeConfigDir: () => path.join(getAgentDataPath(), "claude-account"),
+    getBsmIgnored,
+    setBsmIgnored,
 };
 
 const TASK_ID = { type: "string", description: "The ID of the task from list_tasks, or its first 8 characters" };
@@ -236,6 +247,21 @@ const TOOLS: WorkspaceToolDefinition[] = [
         },
     },
     {
+        name: "bsm_ignore",
+        description:
+            "Ignore the BSM tickets of an application or project, such as `BORA`, so that they are not imported and " +
+            "their open tasks leave the to-do list with the next import; or import them again with `ignore: false`. " +
+            "Without a name, it lists what is ignored.",
+        inputSchema: {
+            type: "object",
+            properties: {
+                name: { type: "string", description: "The application or project, as BSM names it" },
+                ignore: { type: "boolean", description: "true to ignore it, false to import it again" },
+            },
+            required: [],
+        },
+    },
+    {
         name: "open_in_terminal",
         description:
             "Open a task in Claude Code in a terminal of its own, in the project folder of the task, for the user to " +
@@ -282,6 +308,12 @@ export function describeBsmImport(result: BsmImportResult): string {
     if (result.added.length + result.updated.length + result.closed.length === 0) lines.push("Nothing new.");
     if (result.withoutFolder.length > 0) {
         lines.push(`Applications without a project folder: ${result.withoutFolder.join(", ")}`);
+    }
+    if (result.ignored > 0) {
+        lines.push(
+            `Left out ${result.ignored} tickets of ignored applications or projects` +
+                (result.removed > 0 ? `, and took ${result.removed} of their tasks off the list.` : "."),
+        );
     }
     if (result.errors.length > 0) lines.push(`Couldn't read: ${result.errors.join("; ")}`);
     return lines.join("\n");
@@ -458,6 +490,13 @@ export class AssistantTools implements AgentToolbox {
                 if (!result.ok) return `Error: ${folder} is not a folder`;
                 if (result.data.length > 0) this.tasksChanged = true;
                 return `The project folder of ${application} is ${folder}; ${result.data.length} open tasks got it.`;
+            }
+            case "bsm_ignore": {
+                const name = asString(args.name);
+                const ignored = name ? this.deps.setBsmIgnored(name, args.ignore !== false) : this.deps.getBsmIgnored();
+                return ignored.length > 0
+                    ? `Ignored applications and projects: ${ignored.join(", ")}`
+                    : "No application or project is ignored.";
             }
             case "open_in_terminal": {
                 const task = this.findTask(args.task_id);

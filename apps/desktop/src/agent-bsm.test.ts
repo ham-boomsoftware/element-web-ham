@@ -16,6 +16,7 @@ import {
     buildOpenBugsQuery,
     describeTicket,
     importBsmTickets,
+    isIgnoredTicket,
     isLoginPage,
     isOpenState,
 } from "./agent-bsm.js";
@@ -26,7 +27,11 @@ vi.mock("./agent.js", () => ({
     getAgentStore: vi.fn(),
     isDirectory: vi.fn(),
 }));
-vi.mock("./agent-tasks.js", () => ({ saveTicketTask: vi.fn(), setAgentTaskWorkspace: vi.fn() }));
+vi.mock("./agent-tasks.js", () => ({
+    removeTicketTask: vi.fn(),
+    saveTicketTask: vi.fn(),
+    setAgentTaskWorkspace: vi.fn(),
+}));
 
 const USERS: BsmUser[] = [
     { Username: "HIR", Name: "Hirzer Christiane" },
@@ -78,6 +83,17 @@ describe("isLoginPage", () => {
         expect(isLoginPage("https://bsm.boomsoftware.com/x?LoginOAuth=1&provider=boombsm")).toBe(true);
         expect(isLoginPage("https://bsm.boomsoftware.com/#Indications")).toBe(false);
         expect(isLoginPage("not a url")).toBe(false);
+    });
+});
+
+describe("isIgnoredTicket", () => {
+    it("matches the application or the project, ignoring case", () => {
+        const ignored = ["BRS Produktwartung", "BORA"];
+
+        expect(isIgnoredTicket(bug("A", { ApplicationName: "BORA" }), ignored)).toBe(true);
+        expect(isIgnoredTicket(bug("B", { ProjectName: "brs produktwartung " }), ignored)).toBe(true);
+        expect(isIgnoredTicket(bug("C", { ApplicationName: "BORA Web" }), ignored)).toBe(false);
+        expect(isIgnoredTicket(bug("D"), [])).toBe(false);
     });
 });
 
@@ -136,7 +152,32 @@ describe("importBsmTickets", () => {
                 task: task(input.ticket.number, { workspacePath: input.workspacePath, done: input.closed }),
                 added: true,
             })),
+            getIgnored: vi.fn(() => ["BRS Produktwartung", "BORA"]),
+            removeTask: vi.fn(() => true),
         } as never;
+    });
+
+    it("leaves out the tickets of ignored applications and projects, and takes their tasks off the list", async () => {
+        deps.queryOpenBugs.mockResolvedValue({
+            indications: [
+                bug("ELLBg0169"),
+                bug("BORAg0001", { ApplicationName: "bora" }),
+                bug("PWg0002", { ApplicationName: "Railium", ProjectName: "BRS Produktwartung" }),
+            ],
+            users: USERS,
+        });
+        deps.getOpenTicketNumbers.mockReturnValue(["BORAg0001"]);
+        seen = { BORAg0001: "old" };
+
+        const result = await importBsmTickets(deps);
+
+        expect(result.added.map((t) => t.id)).toEqual(["ELLBg0169"]);
+        expect(result.ignored).toBe(2);
+        expect(result.removed).toBe(1);
+        expect(deps.removeTask).toHaveBeenCalledWith("BORAg0001");
+        expect(deps.removeTask).not.toHaveBeenCalledWith("PWg0002");
+        expect(deps.readTicket).not.toHaveBeenCalled();
+        expect(seen.BORAg0001).toBeUndefined();
     });
 
     it("adds the open bugs with their ticket", async () => {
