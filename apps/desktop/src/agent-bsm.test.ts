@@ -15,6 +15,7 @@ import {
     type BsmTicket,
     describeTicket,
     importBsmTickets,
+    isBugTicket,
     isLoginPage,
     isOpenState,
 } from "./agent-bsm.js";
@@ -31,12 +32,13 @@ function row(number: string, changedAt = "05.11.2026 14:21"): BsmListRow {
     return { number, category: "Analyse", summary: `Summary of ${number}`, changedAt };
 }
 
-function ticket(number: string, status = "inprocess", application = "ELL BRS"): BsmTicket {
+function ticket(number: string, status = "inprocess", category = "Fehlermeldung"): BsmTicket {
     return {
         Indication: {
             Number: number,
             Link: `https://bsm.example/indication/${number}`,
-            ApplicationName: application,
+            ApplicationName: "ELL BRS",
+            MainCategoryName: category,
             Summary: `Summary of ${number}`,
             Description: "Spalte ausblenden",
             Status: status,
@@ -74,12 +76,21 @@ describe("isLoginPage", () => {
 });
 
 describe("isOpenState", () => {
-    it("counts new and in process tickets as open", () => {
+    it("counts every ticket that is not closed as open, also a delivered fix", () => {
         expect(isOpenState("new")).toBe(true);
         expect(isOpenState("InProcess")).toBe(true);
+        expect(isOpenState("delivered")).toBe(true);
         expect(isOpenState("completed")).toBe(false);
-        expect(isOpenState("delivered")).toBe(false);
         expect(isOpenState(undefined)).toBe(false);
+    });
+});
+
+describe("isBugTicket", () => {
+    it("counts only the tickets of the category Fehlermeldung as bugs", () => {
+        expect(isBugTicket(ticket("A"))).toBe(true);
+        expect(isBugTicket(ticket("B", "new", "Supportanfrage"))).toBe(false);
+        expect(isBugTicket(ticket("C", "new", "Änderungswunsch"))).toBe(false);
+        expect(isBugTicket({})).toBe(false);
     });
 });
 
@@ -131,6 +142,28 @@ describe("importBsmTickets", () => {
             }),
         );
         expect(seen).toEqual({ ELLBg0169: "05.11.2026 14:21", ELLBg0170: "05.11.2026 14:21" });
+    });
+
+    it("leaves out tickets that are not bugs, and doesn't read them again", async () => {
+        deps.readList.mockResolvedValue([row("ELLBg0171"), row("ELLBg0172")]);
+        deps.readTicket.mockImplementation(async (number: string) =>
+            ticket(number, "inprocess", number === "ELLBg0171" ? "Supportanfrage" : "Fehlermeldung"),
+        );
+
+        const result = await importBsmTickets(deps);
+
+        expect(result.added.map((t) => t.id)).toEqual(["ELLBg0172"]);
+        expect(deps.saveTask).toHaveBeenCalledTimes(1);
+        expect(seen.ELLBg0171).toBe("05.11.2026 14:21");
+    });
+
+    it("adds a delivered bug, which is not closed yet", async () => {
+        deps.readList.mockResolvedValue([row("ELLBg0173")]);
+        deps.readTicket.mockResolvedValue(ticket("ELLBg0173", "delivered"));
+
+        const result = await importBsmTickets(deps);
+
+        expect(result.added.map((t) => t.id)).toEqual(["ELLBg0173"]);
     });
 
     it("skips the tickets that did not change since the last import", async () => {

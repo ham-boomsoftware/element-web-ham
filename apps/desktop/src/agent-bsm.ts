@@ -5,10 +5,10 @@ SPDX-License-Identifier: AGPL-3.0-only OR GPL-3.0-only OR LicenseRef-Element-Com
 Please see LICENSE files in the repository root for full details.
 */
 
-// Imports the open tickets of BSM, the Boom Support Manager, into the user's to-do list, so that the agent can look
-// into them in the project folder of the customer's application. BSM has no API for other programs: the user logs
-// in once in a window of the app, in a session of its own that is kept, and the app reads the ticket list page and
-// the ticket pages with that session. The app never sees the password.
+// Imports the bug tickets of BSM, the Boom Support Manager, that are not closed into the user's to-do list, so that
+// the agent can look into them in the project folder of the customer's application. BSM has no API for other
+// programs: the user logs in once in a window of the app, in a session of its own that is kept, and the app reads the
+// ticket list page and the ticket pages with that session. The app never sees the password.
 
 import { BrowserWindow, session } from "electron";
 import type { AgentResult, AgentTask, AgentTicketRef } from "shared-types";
@@ -25,8 +25,11 @@ const BSM_PARTITION = "persist:agent-bsm";
 /** How long to wait for the ticket list to show */
 const LIST_TIMEOUT_MS = 30 * 1000;
 
-/** The states of a ticket that count as open; the others, such as `completed` or `delivered`, are closed */
-const OPEN_STATES = new Set(["new", "inprocess"]);
+/** The states of a ticket that count as closed; the others, such as `inprocess` or `delivered`, are still open */
+const CLOSED_STATES = new Set(["completed", "closed", "rejected", "cancelled", "canceled"]);
+
+/** The main category of the tickets that report a bug; only these are imported */
+const BUG_CATEGORY = "Fehlermeldung";
 
 /** How much of a comment the task shows */
 const MAX_COMMENT_LENGTH = 600;
@@ -95,9 +98,14 @@ export class BsmLoginError extends Error {
     }
 }
 
-/** Whether a state of a ticket counts as open */
+/** Whether a state of a ticket counts as open: anything but closed, so also a fix delivered but not confirmed */
 export function isOpenState(status: string | undefined): boolean {
-    return OPEN_STATES.has((status ?? "").toLowerCase());
+    return Boolean(status) && !CLOSED_STATES.has(status!.toLowerCase());
+}
+
+/** Whether a ticket reports a bug, rather than asking a question or for a change */
+export function isBugTicket(ticket: BsmTicket): boolean {
+    return ticket.Indication?.MainCategoryName?.trim().toLowerCase() === BUG_CATEGORY.toLowerCase();
 }
 
 /** Turn a ticket of BSM into the text of a task: what is asked, and the conversations about it, oldest first */
@@ -148,8 +156,9 @@ export function toTicketRef(ticket: BsmTicket, row: BsmListRow): AgentTicketRef 
 }
 
 /**
- * Read the ticket list of BSM, and add the open tickets that are new or changed since the last import to the to-do
- * list. The task of a ticket that was closed in BSM is marked as done.
+ * Read the ticket list of BSM, and add the bug tickets that are not closed and are new or changed since the last
+ * import to the to-do list. The task of a ticket that was closed in BSM is marked as done. Questions and requests
+ * for changes are left out.
  */
 export async function importBsmTickets(deps: BsmImportDeps): Promise<BsmImportResult> {
     const rows = await deps.readList();
@@ -171,6 +180,10 @@ export async function importBsmTickets(deps: BsmImportDeps): Promise<BsmImportRe
         } catch (e) {
             if (e instanceof BsmLoginError) throw e;
             result.errors.push(`${row.number}: ${e instanceof Error ? e.message : String(e)}`);
+            continue;
+        }
+        if (!isBugTicket(ticket)) {
+            seen[row.number] = row.changedAt;
             continue;
         }
         const ref = toTicketRef(ticket, row);

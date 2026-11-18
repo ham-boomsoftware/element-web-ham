@@ -199,7 +199,8 @@ const TOOLS: WorkspaceToolDefinition[] = [
     {
         name: "bsm_import",
         description:
-            "Import the open tickets of BSM that are new or changed since the last import into the to-do list, " +
+            "Import the bug tickets of BSM that are not closed and are new or changed since the last import into " +
+            "the to-do list; questions and change requests are left out. " +
             "and mark the tasks of tickets closed in BSM as done. If the user is not logged in, a BSM window opens " +
             "for them to log in first. Tells which applications have no project folder.",
         inputSchema: { type: "object", properties: {}, required: [] },
