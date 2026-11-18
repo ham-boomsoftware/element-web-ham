@@ -11,11 +11,11 @@ import type { AgentTask } from "shared-types";
 import {
     BsmLoginError,
     type BsmImportDeps,
-    type BsmListRow,
-    type BsmTicket,
+    type BsmIndication,
+    type BsmUser,
+    buildOpenBugsQuery,
     describeTicket,
     importBsmTickets,
-    isBugTicket,
     isLoginPage,
     isOpenState,
 } from "./agent-bsm.js";
@@ -28,36 +28,42 @@ vi.mock("./agent.js", () => ({
 }));
 vi.mock("./agent-tasks.js", () => ({ saveTicketTask: vi.fn(), setAgentTaskWorkspace: vi.fn() }));
 
-function row(number: string, changedAt = "05.11.2026 14:21"): BsmListRow {
-    return { number, category: "Analyse", summary: `Summary of ${number}`, changedAt };
-}
+const USERS: BsmUser[] = [
+    { Username: "HIR", Name: "Hirzer Christiane" },
+    { Username: "j.janssen@ell.co.at", Name: "Janek Janßen" },
+];
 
-function ticket(number: string, status = "inprocess", category = "Fehlermeldung"): BsmTicket {
+function bug(number: string, changes: Partial<BsmIndication> = {}): BsmIndication {
     return {
-        Indication: {
-            Number: number,
-            Link: `https://bsm.example/indication/${number}`,
-            ApplicationName: "ELL BRS",
-            MainCategoryName: category,
-            Summary: `Summary of ${number}`,
-            Description: "Spalte ausblenden",
-            Status: status,
-            Reporter: "j.janssen@ell.co.at",
-            Handler: "HIR",
-            Conversations: [
-                {
-                    Name: "ad 1)",
-                    Comments: [
-                        { CreateDate: "2026-11-17T07:12:34Z", CreateBy: "HIR", CommentText: "Im PROD erledigt" },
-                        { CreateDate: "2026-11-16T08:11:29Z", CreateBy: "d.vasiu@ell.co.at", CommentText: "1 ist OK" },
-                    ],
-                },
-            ],
-        },
-        Users: [
-            { Username: "HIR", Name: "Hirzer Christiane" },
-            { Username: "j.janssen@ell.co.at", Name: "Janek Janßen" },
+        Number: number,
+        Link: `https://bsm.example/indication/${number}`,
+        ApplicationName: "ELL BRS",
+        Summary: `Summary of ${number}`,
+        Description: "Spalte ausblenden",
+        MainCategoryName: "Fehlermeldung",
+        CategoryName: "Fehler, Workaround möglich",
+        Status: "inprocess",
+        ChangeDate: "2026-11-05T14:21:00Z",
+        Reporter: "j.janssen@ell.co.at",
+        Handler: "HIR",
+        Conversations: [
+            {
+                Name: "ad 1)",
+                Comments: [
+                    {
+                        CreateDate: "2026-11-17T07:12:34Z",
+                        CreateBy: "HIR",
+                        CommentText: "Im PROD erledigt",
+                        ChildComments: [
+                            { CreateDate: "2026-11-18T07:00:00Z", CreateBy: "HIR", CommentText: "Nachtrag" },
+                        ],
+                    },
+                    { CreateDate: "2026-11-16T08:11:29Z", CreateBy: "d.vasiu@ell.co.at", CommentText: "1 ist OK" },
+                    { CreateDate: "2026-11-16T09:00:00Z", CreateBy: "HIR", CommentText: null },
+                ],
+            },
         ],
+        ...changes,
     };
 }
 
@@ -81,30 +87,35 @@ describe("isOpenState", () => {
         expect(isOpenState("InProcess")).toBe(true);
         expect(isOpenState("delivered")).toBe(true);
         expect(isOpenState("completed")).toBe(false);
+        expect(isOpenState("archived")).toBe(false);
         expect(isOpenState(undefined)).toBe(false);
     });
 });
 
-describe("isBugTicket", () => {
-    it("counts only the tickets of the category Fehlermeldung as bugs", () => {
-        expect(isBugTicket(ticket("A"))).toBe(true);
-        expect(isBugTicket(ticket("B", "new", "Supportanfrage"))).toBe(false);
-        expect(isBugTicket(ticket("C", "new", "Änderungswunsch"))).toBe(false);
-        expect(isBugTicket({})).toBe(false);
+describe("buildOpenBugsQuery", () => {
+    it("asks for the bugs that are not closed, with descriptions and conversations", () => {
+        expect(buildOpenBugsQuery(500)).toEqual({
+            filter: { mainCategoryFilter: "ErrorMessage", statusFilter: ["new", "inprocess", "delivered"] },
+            details: { includeLink: true, includeDescription: true, includeConversations: true },
+            limit: 500,
+            offset: 500,
+        });
     });
 });
 
 describe("describeTicket", () => {
-    it("tells what is asked, with the comments oldest first and the names of the people", () => {
-        const text = describeTicket(ticket("ELLBg0169"));
+    it("tells what is asked, with the comments and replies oldest first and the names of the people", () => {
+        const text = describeTicket(bug("ELLBg0169"), USERS);
 
         expect(text).toContain("BSM ticket ELLBg0169: Summary of ELLBg0169");
         expect(text).toContain("https://bsm.example/indication/ELLBg0169");
         expect(text).toContain("Application: ELL BRS");
+        expect(text).toContain("Fehlermeldung / Fehler, Workaround möglich");
         expect(text).toContain("Reporter: Janek Janßen · Handler: Hirzer Christiane");
         expect(text).toContain("Spalte ausblenden");
         expect(text.indexOf("1 ist OK")).toBeLessThan(text.indexOf("Im PROD erledigt"));
-        expect(text).toContain("- 2026-11-17 Hirzer Christiane: Im PROD erledigt");
+        expect(text).toContain("- 2026-11-18 Hirzer Christiane: Nachtrag");
+        expect(text).not.toContain("null");
     });
 });
 
@@ -115,74 +126,69 @@ describe("importBsmTickets", () => {
     beforeEach(() => {
         seen = {};
         deps = {
-            readList: vi.fn(async () => [row("ELLBg0169"), row("ELLBg0170")]),
-            readTicket: vi.fn(async (number: string) => ticket(number, number === "ELLBg0170" ? "completed" : "new")),
+            queryOpenBugs: vi.fn(async () => ({ indications: [bug("ELLBg0169"), bug("ELLBg0172")], users: USERS })),
+            readTicket: vi.fn(),
+            getOpenTicketNumbers: vi.fn(() => []),
             getSeen: vi.fn(() => seen),
             setSeen: vi.fn((next) => (seen = next)),
             getProjectFolder: vi.fn(() => undefined),
-            saveTask: vi.fn((input) =>
-                input.closed
-                    ? undefined
-                    : { task: task(input.ticket.number, { workspacePath: input.workspacePath }), added: true },
-            ),
+            saveTask: vi.fn((input) => ({
+                task: task(input.ticket.number, { workspacePath: input.workspacePath, done: input.closed }),
+                added: true,
+            })),
         } as never;
     });
 
-    it("adds the open tickets and leaves out closed ones that are not on the list", async () => {
+    it("adds the open bugs with their ticket", async () => {
         const result = await importBsmTickets(deps);
 
         expect(result.listed).toBe(2);
-        expect(result.added.map((t) => t.id)).toEqual(["ELLBg0169"]);
-        expect(result.closed).toEqual([]);
+        expect(result.added.map((t) => t.id)).toEqual(["ELLBg0169", "ELLBg0172"]);
         expect(deps.saveTask).toHaveBeenCalledWith(
             expect.objectContaining({
                 title: "ELLBg0169: Summary of ELLBg0169",
                 closed: false,
-                ticket: expect.objectContaining({ system: "bsm", number: "ELLBg0169", application: "ELL BRS" }),
+                ticket: expect.objectContaining({
+                    system: "bsm",
+                    number: "ELLBg0169",
+                    application: "ELL BRS",
+                    status: "inprocess",
+                }),
             }),
         );
-        expect(seen).toEqual({ ELLBg0169: "05.11.2026 14:21", ELLBg0170: "05.11.2026 14:21" });
-    });
-
-    it("leaves out tickets that are not bugs, and doesn't read them again", async () => {
-        deps.readList.mockResolvedValue([row("ELLBg0171"), row("ELLBg0172")]);
-        deps.readTicket.mockImplementation(async (number: string) =>
-            ticket(number, "inprocess", number === "ELLBg0171" ? "Supportanfrage" : "Fehlermeldung"),
-        );
-
-        const result = await importBsmTickets(deps);
-
-        expect(result.added.map((t) => t.id)).toEqual(["ELLBg0172"]);
-        expect(deps.saveTask).toHaveBeenCalledTimes(1);
-        expect(seen.ELLBg0171).toBe("05.11.2026 14:21");
-    });
-
-    it("adds a delivered bug, which is not closed yet", async () => {
-        deps.readList.mockResolvedValue([row("ELLBg0173")]);
-        deps.readTicket.mockResolvedValue(ticket("ELLBg0173", "delivered"));
-
-        const result = await importBsmTickets(deps);
-
-        expect(result.added.map((t) => t.id)).toEqual(["ELLBg0173"]);
+        expect(seen).toEqual({ ELLBg0169: "2026-11-05T14:21:00Z", ELLBg0172: "2026-11-05T14:21:00Z" });
     });
 
     it("skips the tickets that did not change since the last import", async () => {
-        seen = { ELLBg0169: "05.11.2026 14:21", ELLBg0170: "05.11.2026 14:21" };
+        seen = { ELLBg0169: "2026-11-05T14:21:00Z", ELLBg0172: "2026-11-05T14:21:00Z" };
 
         const result = await importBsmTickets(deps);
 
-        expect(deps.readTicket).not.toHaveBeenCalled();
+        expect(deps.saveTask).not.toHaveBeenCalled();
         expect(result.added).toEqual([]);
     });
 
     it("marks the task of a ticket closed in BSM as done", async () => {
-        deps.readList.mockResolvedValue([row("ELLBg0170", "18.11.2026 08:00")]);
-        deps.saveTask.mockReturnValue({ task: task("ELLBg0170", { done: true }), added: false });
+        deps.getOpenTicketNumbers.mockReturnValue(["ELLBg0169", "ELLBg0150"]);
+        deps.readTicket.mockResolvedValue({ Indication: bug("ELLBg0150", { Status: "completed" }), Users: USERS });
+        seen = { ELLBg0150: "2026-11-01T00:00:00Z" };
 
         const result = await importBsmTickets(deps);
 
+        expect(deps.readTicket).toHaveBeenCalledWith("ELLBg0150");
+        expect(deps.readTicket).not.toHaveBeenCalledWith("ELLBg0169");
         expect(deps.saveTask).toHaveBeenCalledWith(expect.objectContaining({ closed: true }));
-        expect(result.closed.map((t) => t.id)).toEqual(["ELLBg0170"]);
+        expect(result.closed.map((t) => t.id)).toEqual(["ELLBg0150"]);
+        expect(seen.ELLBg0150).toBeUndefined();
+    });
+
+    it("leaves a task open whose ticket is still open, but no longer a bug the query returns", async () => {
+        deps.getOpenTicketNumbers.mockReturnValue(["ELLBg0150"]);
+        deps.readTicket.mockResolvedValue({ Indication: bug("ELLBg0150", { Status: "inprocess" }) });
+
+        const result = await importBsmTickets(deps);
+
+        expect(result.closed).toEqual([]);
     });
 
     it("gives the task the project folder of its application, or names the application without one", async () => {
@@ -195,17 +201,17 @@ describe("importBsmTickets", () => {
         expect(without.withoutFolder).toEqual(["ELL BRS"]);
     });
 
-    it("goes on when a ticket can't be read, and reads it again next time", async () => {
-        deps.readTicket.mockRejectedValueOnce(new Error("timeout"));
+    it("goes on when a closed ticket can't be read", async () => {
+        deps.getOpenTicketNumbers.mockReturnValue(["ELLBg0150"]);
+        deps.readTicket.mockRejectedValue(new Error("BSM answered 404"));
 
         const result = await importBsmTickets(deps);
 
-        expect(result.errors).toEqual(["ELLBg0169: timeout"]);
-        expect(seen.ELLBg0169).toBeUndefined();
+        expect(result.errors).toEqual(["ELLBg0150: BSM answered 404"]);
     });
 
     it("stops when the user is not logged in", async () => {
-        deps.readTicket.mockRejectedValue(new BsmLoginError());
+        deps.queryOpenBugs.mockRejectedValue(new BsmLoginError());
 
         await expect(importBsmTickets(deps)).rejects.toBeInstanceOf(BsmLoginError);
         expect(deps.setSeen).not.toHaveBeenCalled();
