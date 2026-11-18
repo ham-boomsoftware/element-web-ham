@@ -16,6 +16,7 @@ Please see LICENSE files in the repository root for full details.
 import { spawn } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import fs from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
 import type { AgentResult, AgentRunStep, AgentRunStepKind, AgentTaskRunMode } from "shared-types";
 
@@ -43,6 +44,28 @@ export interface ClaudeCodeRun {
     /** The commands the autopilot may run, each exactly */
     commands: string[];
     onStep(step: AgentRunStep): void;
+    /** What the run is about, such as the title of the task; tools that list sessions show it */
+    label?: string;
+}
+
+/** The environment variable that tells hooks, such as of a session dashboard, which task of Element Pilot runs */
+export const LABEL_ENV = "ELEMENT_PILOT_TASK";
+
+/**
+ * The hooks of the user's own Claude settings, for a run with an account of its own, whose configuration folder
+ * has none; so that tools like a session dashboard see its runs too.
+ * @returns the file with the hooks, or undefined if there are none
+ */
+async function writeUserHooks(dir: string): Promise<string | undefined> {
+    try {
+        const settings = JSON.parse(await fs.readFile(path.join(os.homedir(), ".claude", "settings.json"), "utf8"));
+        if (!settings?.hooks) return undefined;
+        const file = path.join(dir, "hooks.json");
+        await fs.writeFile(file, JSON.stringify({ hooks: settings.hooks }), "utf8");
+        return file;
+    } catch {
+        return undefined;
+    }
 }
 
 /** The settings of Claude Code for the agent */
@@ -162,6 +185,7 @@ export async function runWithClaudeCode(run: ClaudeCodeRun): Promise<AgentResult
     const systemFile = path.join(dir, `system-${randomUUID()}.md`);
     await fs.writeFile(systemFile, `${run.system}\n\n${CLAUDE_CODE_TOOL_NOTE}\n`, "utf8");
     const { configDir } = getClaudeCodeSettings();
+    const hooksFile = configDir ? await writeUserHooks(dir) : undefined;
     const args = [
         "-p",
         "--output-format",
@@ -169,6 +193,7 @@ export async function runWithClaudeCode(run: ClaudeCodeRun): Promise<AgentResult
         "--verbose",
         "--append-system-prompt-file",
         systemFile,
+        ...(hooksFile ? ["--settings", hooksFile] : []),
         ...buildToolArgs(run.mode, run.commands),
     ];
 
@@ -178,7 +203,11 @@ export async function runWithClaudeCode(run: ClaudeCodeRun): Promise<AgentResult
         const exit = await new Promise<{ code: number | null; stderr: string }>((resolve, reject) => {
             const child = spawn("claude", args, {
                 cwd: run.root,
-                env: { ...process.env, ...(configDir && { CLAUDE_CONFIG_DIR: configDir }) },
+                env: {
+                    ...process.env,
+                    ...(configDir && { CLAUDE_CONFIG_DIR: configDir }),
+                    [LABEL_ENV]: (run.label ?? run.mode).replace(/[\r\n]+/g, " ").slice(0, 120),
+                },
                 stdio: ["pipe", "pipe", "pipe"],
                 windowsHide: true,
             });

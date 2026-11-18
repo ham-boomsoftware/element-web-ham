@@ -488,6 +488,7 @@ export async function runAgentTask(userId: unknown, taskId: unknown, mode: unkno
                       prompt,
                       commands: mode === "autopilot" ? settings.autopilotCommands : [],
                       onStep: (step) => context.addStep(step),
+                      label: task.title,
                   })
                 : settings.provider === "claude"
                   ? await runWithClaude(credential!, settings.model, system, prompt, tools)
