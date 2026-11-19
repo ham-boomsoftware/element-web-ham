@@ -15,7 +15,9 @@ import {
     buildSuggestionsSystemPrompt,
     buildSystemPrompt,
     connectAgent,
+    CLAUDE_CODE_MODELS,
     connectCopilotLoggedInUser,
+    connectLoggedInUser,
     disconnectAgent,
     generateAgentReply,
     generateAgentSuggestions,
@@ -33,8 +35,12 @@ import {
     toClaudeMessages,
 } from "./agent.js";
 
-const { storeData, storeOptions, safeStorage, anthropic, copilot } = vi.hoisted(() => {
+const { storeData, storeOptions, safeStorage, anthropic, copilot, claudeCode } = vi.hoisted(() => {
     return {
+        claudeCode: {
+            getClaudeCodeLogin: vi.fn(),
+            askWithClaudeCode: vi.fn(),
+        },
         /** What the agent's store holds, as electron-store would write it to disk */
         storeData: {} as Record<string, unknown>,
         storeOptions: [] as unknown[],
@@ -105,6 +111,8 @@ vi.mock("@anthropic-ai/sdk", async (importOriginal) => {
     });
     return { ...actual, default: MockAnthropic };
 });
+
+vi.mock("./agent-claude-code.js", () => claudeCode);
 
 vi.mock("@github/copilot-sdk", () => ({
     CopilotClient: vi.fn(function (this: Record<string, unknown>, options: unknown) {
@@ -377,6 +385,75 @@ describe("agent", () => {
                 ok: false,
                 error: "invalid_request",
             });
+        });
+
+        it("connects Claude with the login of Claude Code instead of an API key", async () => {
+            storeCredential("claude", "sk-ant-old");
+            claudeCode.getClaudeCodeLogin.mockResolvedValue({
+                ok: true,
+                data: { loggedIn: true, subscriptionType: "max" },
+            });
+
+            expect(await connectLoggedInUser("claude")).toEqual({ ok: true, data: undefined });
+
+            expect(storeData.secrets).toEqual({});
+            expect(storeData.claudeLoggedInUser).toEqual({ subscriptionType: "max" });
+            const status = getAgentStatus();
+            expect(status.connected).toEqual({ claude: true, copilot: false });
+            expect(status.claudeLoggedInUser).toEqual({ subscriptionType: "max" });
+            expect(await listAgentModels("claude")).toEqual({ ok: true, data: CLAUDE_CODE_MODELS });
+            expect(anthropic.modelsList).not.toHaveBeenCalled();
+        });
+
+        it("writes replies and suggestions through Claude Code with the login of Claude Code", async () => {
+            claudeCode.getClaudeCodeLogin.mockResolvedValue({ ok: true, data: { loggedIn: true } });
+            await connectLoggedInUser("claude");
+            setAgentSettings({ provider: "claude", model: "claude-sonnet-5-5" });
+            claudeCode.askWithClaudeCode.mockResolvedValueOnce({ ok: true, data: "Yes, tomorrow works" });
+
+            expect(await generateAgentReply(request)).toEqual({ ok: true, data: "Yes, tomorrow works" });
+            const [model, system, prompt] = claudeCode.askWithClaudeCode.mock.calls[0];
+            expect(model).toBe("claude-sonnet-5-5");
+            expect(system).toContain("You write the replies of Alice");
+            expect(prompt).toContain("Are you free tomorrow?");
+
+            claudeCode.askWithClaudeCode.mockResolvedValueOnce({ ok: true, data: '["Yes", "No", "Maybe"]' });
+            expect(await generateAgentSuggestions(suggestionsRequest)).toEqual({
+                ok: true,
+                data: ["Yes", "No", "Maybe"],
+            });
+            expect(anthropic.messagesCreate).not.toHaveBeenCalled();
+        });
+
+        it("does not connect Claude if Claude Code is not logged in", async () => {
+            claudeCode.getClaudeCodeLogin.mockResolvedValue({ ok: false, error: "not_connected" });
+
+            expect(await connectLoggedInUser("claude")).toEqual({ ok: false, error: "not_connected" });
+            expect(storeData.claudeLoggedInUser).toBeUndefined();
+            expect(getAgentStatus().connected.claude).toBe(false);
+        });
+
+        it("forgets the login of Claude Code on disconnect and when an API key is set", async () => {
+            claudeCode.getClaudeCodeLogin.mockResolvedValue({ ok: true, data: { loggedIn: true } });
+            await connectLoggedInUser("claude");
+            await disconnectAgent("claude");
+            expect(storeData.claudeLoggedInUser).toBeUndefined();
+
+            await connectLoggedInUser("claude");
+            anthropic.modelsList.mockResolvedValue({ data: [] });
+            await connectAgent("claude", "sk-ant-test");
+            expect(storeData.claudeLoggedInUser).toBeUndefined();
+            expect(Object.keys(storeData.secrets as object)).toEqual(["claude"]);
+            expect(await connectAgent("claude", "claude-code-login")).toMatchObject({ error: "invalid_request" });
+        });
+
+        it("connects Copilot when no provider is given, as before Claude could use a login", async () => {
+            copilot.getAuthStatus.mockResolvedValue({ isAuthenticated: true, login: "alice" });
+            copilot.listModels.mockResolvedValue([]);
+
+            expect(await connectLoggedInUser(undefined)).toEqual({ ok: true, data: undefined });
+            expect(storeData.copilotLoggedInUser).toEqual({ login: "alice" });
+            expect(await connectLoggedInUser("other")).toMatchObject({ ok: false, error: "invalid_request" });
         });
 
         it("lists the models of a connected provider", async () => {

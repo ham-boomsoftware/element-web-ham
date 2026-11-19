@@ -66,6 +66,7 @@ const meta = {
         provider: "claude",
         connected: { claude: false, copilot: false },
         copilotUsesLoggedInUser: false,
+        claudeUsesLoggedInUser: false,
         copilotLogin: undefined,
         models: [],
         model: undefined,

@@ -74,6 +74,11 @@ export interface AgentStatus extends AgentSettings {
      * if known.
      */
     copilotLoggedInUser?: { login?: string };
+    /**
+     * Set if Claude uses the login of Claude Code instead of an API key, such as the user's subscription, with the
+     * kind of subscription if known.
+     */
+    claudeLoggedInUser?: { subscriptionType?: string };
     /** The project folders tasks were last opened in with the coding CLI, most recent first */
     recentProjects: string[];
 }

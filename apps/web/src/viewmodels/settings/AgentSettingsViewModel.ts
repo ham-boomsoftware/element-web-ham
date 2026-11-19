@@ -51,6 +51,7 @@ export class AgentSettingsViewModel
             provider: "claude",
             connected: { claude: false, copilot: false },
             copilotUsesLoggedInUser: false,
+            claudeUsesLoggedInUser: false,
             models: [],
             instructions: "",
             replySuggestions: true,
@@ -75,6 +76,7 @@ export class AgentSettingsViewModel
             connected,
             copilotUsesLoggedInUser: Boolean(status.copilotLoggedInUser),
             copilotLogin: status.copilotLoggedInUser?.login,
+            claudeUsesLoggedInUser: Boolean(status.claudeLoggedInUser),
             model,
             instructions,
             replySuggestions,
@@ -134,6 +136,7 @@ export class AgentSettingsViewModel
             this.snapshot.merge({
                 connected: { ...this.snapshot.current.connected, [provider]: true },
                 ...(provider === "copilot" && { copilotUsesLoggedInUser: false, copilotLogin: undefined }),
+                ...(provider === "claude" && { claudeUsesLoggedInUser: false }),
             });
             await this.loadModels();
         })();
@@ -141,11 +144,14 @@ export class AgentSettingsViewModel
 
     public connectLoggedInUser = (): void => {
         void (async () => {
-            const result = await this.run(() => this.props.agent.connectLoggedInUser());
+            const { provider } = this.snapshot.current;
+            const result = await this.run(() => this.props.agent.connectLoggedInUser(provider));
             if (!result) return;
             if (!result.ok) {
-                // Copilot found no login it could use on this computer
-                if (result.error === "not_connected") this.snapshot.merge({ error: "not_logged_in" });
+                // The CLI of the provider has no login it could use on this computer
+                if (result.error === "not_connected") {
+                    this.snapshot.merge({ error: provider === "claude" ? "claude_not_logged_in" : "not_logged_in" });
+                }
                 return;
             }
             const status = await this.props.agent.getStatus();
@@ -154,6 +160,7 @@ export class AgentSettingsViewModel
                 connected: status.connected,
                 copilotUsesLoggedInUser: Boolean(status.copilotLoggedInUser),
                 copilotLogin: status.copilotLoggedInUser?.login,
+                claudeUsesLoggedInUser: Boolean(status.claudeLoggedInUser),
             });
             await this.loadModels();
         })();
@@ -168,6 +175,7 @@ export class AgentSettingsViewModel
                 connected: { ...this.snapshot.current.connected, [provider]: false },
                 models: [],
                 ...(provider === "copilot" && { copilotUsesLoggedInUser: false, copilotLogin: undefined }),
+                ...(provider === "claude" && { claudeUsesLoggedInUser: false }),
             });
         })();
     };

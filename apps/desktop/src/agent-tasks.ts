@@ -40,6 +40,7 @@ import {
     askClaude,
     askCopilot,
     buildInstructionLines,
+    CLAUDE_LOGGED_IN_USER,
     DEFAULT_CLAUDE_MODEL,
     failure,
     getAgentDataPath,
@@ -843,6 +844,13 @@ async function runWithClaude(
     prompt: string,
     tools: AgentToolbox,
 ): Promise<AgentResult<string>> {
+    // Claude Code can't call the tools of the agent, only its own
+    if (apiKey === CLAUDE_LOGGED_IN_USER) {
+        return failure(
+            "unavailable",
+            "The tools of the agent need an Anthropic API key; the Claude subscription only works through Claude Code",
+        );
+    }
     const modelId = model ?? DEFAULT_CLAUDE_MODEL;
     const client = new Anthropic({ apiKey, timeout: RUN_TIMEOUT_MS });
     const messages: Anthropic.Beta.BetaMessageParam[] = [{ role: "user", content: prompt }];

@@ -176,6 +176,131 @@ export function isLoginError(text: string): boolean {
     return /\/login|not logged in|log in|authenticat|invalid api key/i.test(text);
 }
 
+/** How long a single answer of Claude Code may take, such as a reply or suggestions */
+const ASK_TIMEOUT_MS = 2 * 60 * 1000;
+
+/** The login of Claude Code, as `claude auth status --json` reports it */
+export interface ClaudeCodeLogin {
+    loggedIn?: boolean;
+    authMethod?: string;
+    subscriptionType?: string;
+}
+
+/**
+ * Run the CLI and collect what it writes.
+ * @param input - What goes in through stdin, so that text of a chat never goes on a command line
+ */
+function runClaude(
+    args: string[],
+    input: string,
+    timeoutMs: number,
+): Promise<{ code: number | null; stdout: string; stderr: string }> {
+    const { configDir } = getClaudeCodeSettings();
+    const cwd = path.join(getAgentDataPath(), "claude-code");
+    return fs.mkdir(cwd, { recursive: true }).then(
+        () =>
+            new Promise((resolve, reject) => {
+                const child = spawn("claude", args, {
+                    cwd,
+                    env: { ...process.env, ...(configDir && { CLAUDE_CONFIG_DIR: configDir }) },
+                    stdio: ["pipe", "pipe", "pipe"],
+                    windowsHide: true,
+                });
+                const timer = setTimeout(() => child.kill(), timeoutMs);
+                let stdout = "";
+                let stderr = "";
+                child.stdout.setEncoding("utf8");
+                child.stdout.on("data", (chunk: string) => (stdout += chunk));
+                child.stderr.setEncoding("utf8");
+                child.stderr.on("data", (chunk: string) => (stderr += chunk));
+                child.once("error", (e) => {
+                    clearTimeout(timer);
+                    reject(e);
+                });
+                child.once("close", (code) => {
+                    clearTimeout(timer);
+                    resolve({ code, stdout, stderr });
+                });
+                child.stdin.end(input, "utf8");
+            }),
+    );
+}
+
+/** The failure for a CLI that could not be started */
+function startFailure(e: unknown): AgentResult<never> {
+    const missing = (e as NodeJS.ErrnoException)?.code === "ENOENT";
+    return failure("unavailable", missing ? "Claude Code (claude) is not installed" : String(e));
+}
+
+/**
+ * Check that Claude Code is logged in, without asking the model anything.
+ * @returns the login, or `not_connected` if the CLI has none
+ */
+export async function getClaudeCodeLogin(): Promise<AgentResult<ClaudeCodeLogin>> {
+    try {
+        const { stdout, stderr } = await runClaude(["auth", "status", "--json"], "", 30 * 1000);
+        let login: ClaudeCodeLogin;
+        try {
+            login = JSON.parse(stdout) as ClaudeCodeLogin;
+        } catch {
+            return failure("unavailable", (stderr || stdout).trim().slice(0, 1000));
+        }
+        return login.loggedIn ? { ok: true, data: login } : failure("not_connected");
+    } catch (e) {
+        return startFailure(e);
+    }
+}
+
+/**
+ * Get a single answer of Claude through Claude Code, with the Claude account it is logged in with, such as the
+ * user's subscription. Claude Code gets no tools, no MCP servers and no settings of a project, and keeps no session.
+ */
+export async function askWithClaudeCode(
+    model: string | undefined,
+    system: string,
+    prompt: string,
+): Promise<AgentResult<string>> {
+    const dir = path.join(getAgentDataPath(), "claude-code");
+    await fs.mkdir(dir, { recursive: true });
+    const systemFile = path.join(dir, `system-${randomUUID()}.md`);
+    await fs.writeFile(systemFile, system, "utf8");
+    const args = [
+        "-p",
+        "--output-format",
+        "json",
+        "--system-prompt-file",
+        systemFile,
+        "--tools",
+        "",
+        "--strict-mcp-config",
+        "--setting-sources",
+        "project",
+        "--no-session-persistence",
+        ...(model ? ["--model", model] : []),
+    ];
+    try {
+        const { code, stdout, stderr } = await runClaude(args, prompt, ASK_TIMEOUT_MS);
+        let result: StreamEvent | undefined;
+        try {
+            result = JSON.parse(stdout) as StreamEvent;
+        } catch {
+            result = undefined;
+        }
+        if (result && !result.is_error && result.subtype === "success") {
+            const answer = (result.result ?? "").trim();
+            return answer ? { ok: true, data: answer } : failure("refused");
+        }
+        const message = (result?.result || stderr || stdout).trim() || `Claude Code ended with exit code ${code}`;
+        console.warn("Claude Code could not answer", message);
+        return failure(isLoginError(message) ? "not_connected" : "unavailable", message.slice(0, 1000));
+    } catch (e) {
+        console.error("Failed to start Claude Code", e);
+        return startFailure(e);
+    } finally {
+        await fs.rm(systemFile, { force: true });
+    }
+}
+
 /**
  * Let Claude Code work on a task in its folder, and wait for its report.
  */

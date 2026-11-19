@@ -184,12 +184,40 @@ describe("AgentSettingsViewModel", () => {
         });
 
         it("shows that there is no GitHub login on this computer", async () => {
+            vm.setProvider("copilot");
+            await vi.waitFor(() => expect(vm.getSnapshot().provider).toBe("copilot"));
             agent.connectLoggedInUser.mockResolvedValue({ ok: false, error: "not_connected" });
 
             vm.connectLoggedInUser();
 
             await vi.waitFor(() => expect(vm.getSnapshot().error).toBe("not_logged_in"));
             expect(vm.getSnapshot()).toMatchObject({ isBusy: false, copilotUsesLoggedInUser: false });
+            expect(agent.connectLoggedInUser).toHaveBeenCalledWith("copilot");
+        });
+
+        it("connects Claude with the login of Claude Code on this computer", async () => {
+            agent.connectLoggedInUser.mockResolvedValue({ ok: true, data: undefined });
+            agent.getStatus.mockResolvedValue({
+                ...(await agent.getStatus()),
+                connected: { claude: true, copilot: false },
+                claudeLoggedInUser: { subscriptionType: "max" },
+            });
+
+            vm.connectLoggedInUser();
+
+            await vi.waitFor(() => expect(vm.getSnapshot().claudeUsesLoggedInUser).toBe(true));
+            expect(vm.getSnapshot().connected).toEqual({ claude: true, copilot: false });
+            expect(agent.connectLoggedInUser).toHaveBeenCalledWith("claude");
+            expect(agent.listModels).toHaveBeenCalledWith("claude");
+        });
+
+        it("shows that Claude Code is not logged in on this computer", async () => {
+            agent.connectLoggedInUser.mockResolvedValue({ ok: false, error: "not_connected" });
+
+            vm.connectLoggedInUser();
+
+            await vi.waitFor(() => expect(vm.getSnapshot().error).toBe("claude_not_logged_in"));
+            expect(vm.getSnapshot()).toMatchObject({ isBusy: false, claudeUsesLoggedInUser: false });
         });
 
         it("disconnects the selected provider", async () => {

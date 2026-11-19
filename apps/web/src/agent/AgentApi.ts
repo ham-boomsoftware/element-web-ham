@@ -44,10 +44,11 @@ export interface AgentApi {
     /** Check a credential with its provider and store it */
     connect(provider: AgentProvider, credential: string): Promise<AgentResult<void>>;
     /**
-     * Connect Copilot with the GitHub login of this computer, of Copilot CLI or GitHub CLI, instead of a token.
+     * Connect a provider with the login of its CLI on this computer instead of a credential: Copilot with the GitHub
+     * login of Copilot CLI or GitHub CLI, Claude with the login of Claude Code, such as a subscription.
      * Fails with `not_connected` if the computer has no login.
      */
-    connectLoggedInUser(): Promise<AgentResult<void>>;
+    connectLoggedInUser(provider: AgentProvider): Promise<AgentResult<void>>;
     /** Forget the credential of a provider */
     disconnect(provider: AgentProvider): Promise<AgentResult<void>>;
     /** List the models a connected provider offers */
@@ -138,7 +139,12 @@ export interface AgentApi {
      * @param start - The start, in ms since the epoch
      * @returns the task with the planned time
      */
-    scheduleTask(userId: string, taskId: string, start: number, durationMinutes: number): Promise<AgentResult<AgentTask>>;
+    scheduleTask(
+        userId: string,
+        taskId: string,
+        start: number,
+        durationMinutes: number,
+    ): Promise<AgentResult<AgentTask>>;
     /** Get the latest runs of the pipelines of the project folders */
     getPipelineStatus(): Promise<AgentResult<AgentPipelineStatus>>;
     /**

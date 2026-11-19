@@ -14,7 +14,7 @@ import Store, { clearData } from "./store.js";
 import { getConfig } from "./config.js";
 import {
     connectAgent,
-    connectCopilotLoggedInUser,
+    connectLoggedInUser,
     disconnectAgent,
     generateAgentReply,
     generateAgentSuggestions,
@@ -239,7 +239,7 @@ ipcMain.on("ipcCall", async function (_ev: IpcMainEvent, payload) {
             ret = setAgentRoomInstructions(args[0], args[1], args[2]);
             break;
         case "agentConnectLoggedInUser":
-            ret = await connectCopilotLoggedInUser();
+            ret = await connectLoggedInUser(args[0]);
             break;
         case "agentGenerateReply":
             ret = await generateAgentReply(args[0]);

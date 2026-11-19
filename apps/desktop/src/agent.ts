@@ -35,6 +35,8 @@ import type {
     AgentTurn,
 } from "shared-types";
 
+import { askWithClaudeCode, getClaudeCodeLogin } from "./agent-claude-code.js";
+
 /** The model used for Claude when the user picked none */
 export const DEFAULT_CLAUDE_MODEL = "claude-opus-5-5";
 
@@ -88,6 +90,19 @@ const ROOM_RULES: readonly AgentRoomRule[] = ["auto_reply", "tasks_only", "ignor
  */
 export const COPILOT_LOGGED_IN_USER = "logged-in-user";
 
+/**
+ * The credential of Claude while it uses the login of Claude Code, such as the user's subscription, instead of an API
+ * key. It is never sent anywhere: the requests go through the CLI, see {@link askWithClaudeCode}.
+ */
+export const CLAUDE_LOGGED_IN_USER = "claude-code-login";
+
+/** The models offered for Claude through Claude Code, which has no list of its own */
+export const CLAUDE_CODE_MODELS: AgentModel[] = [
+    { id: "claude-opus-5-5", name: "Claude Opus 5.5" },
+    { id: "claude-sonnet-5-5", name: "Claude Sonnet 5.5" },
+    { id: "claude-haiku-5-5", name: "Claude Haiku 5.5" },
+];
+
 export interface AgentStoreData {
     settings?: AgentSettings;
     /** The credential of each connected provider, encrypted with safeStorage and base64-encoded */
@@ -97,6 +112,11 @@ export interface AgentStoreData {
      * name of the GitHub account
      */
     copilotLoggedInUser?: { login?: string };
+    /**
+     * Set while Claude uses the login of Claude Code instead of an API key from {@link secrets}, with the kind of
+     * subscription
+     */
+    claudeLoggedInUser?: { subscriptionType?: string };
     /**
      * The rooms the agent replied in before there were room rules, by the Matrix user they belong to. They count as
      * `auto_reply` until the user changes a rule, which moves them to {@link roomRules}.
@@ -149,19 +169,26 @@ export function getSettings(): AgentSettings {
     return { ...DEFAULT_SETTINGS, ...getAgentStore().get("settings") };
 }
 
-/** Whether a credential is stored for a provider, or Copilot uses the GitHub login of the computer */
+/** Whether a provider uses the login of its CLI on this computer instead of a stored credential */
+function usesLoggedInUser(provider: AgentProvider): boolean {
+    return Boolean(getAgentStore().get(provider === "copilot" ? "copilotLoggedInUser" : "claudeLoggedInUser"));
+}
+
+/** Whether a credential is stored for a provider, or it uses the login of its CLI on this computer */
 function hasCredential(provider: AgentProvider): boolean {
-    if (provider === "copilot" && getAgentStore().get("copilotLoggedInUser")) return true;
+    if (usesLoggedInUser(provider)) return true;
     return Boolean(getAgentStore().get("secrets")?.[provider]);
 }
 
 /**
  * Read the credential of a provider.
- * @returns the credential, {@link COPILOT_LOGGED_IN_USER} if Copilot uses the GitHub login of the computer, or
- * undefined if none is stored or it can't be decrypted on this computer
+ * @returns the credential, {@link COPILOT_LOGGED_IN_USER} if Copilot uses the GitHub login of the computer,
+ * {@link CLAUDE_LOGGED_IN_USER} if Claude uses the login of Claude Code, or undefined if none is stored or it can't
+ * be decrypted on this computer
  */
 export async function getCredential(provider: AgentProvider): Promise<string | undefined> {
-    if (provider === "copilot" && getAgentStore().get("copilotLoggedInUser")) return COPILOT_LOGGED_IN_USER;
+    if (provider === "copilot" && usesLoggedInUser("copilot")) return COPILOT_LOGGED_IN_USER;
+    if (provider === "claude" && usesLoggedInUser("claude")) return CLAUDE_LOGGED_IN_USER;
     const encrypted = getAgentStore().get("secrets")?.[provider];
     if (!encrypted) return undefined;
     try {
@@ -174,7 +201,7 @@ export async function getCredential(provider: AgentProvider): Promise<string | u
 
 /**
  * Store the credential of a provider, or forget it with undefined. A credential is only ever stored encrypted.
- * For Copilot, this also stops using the GitHub login of the computer.
+ * This also stops using the login of the provider's CLI on this computer.
  */
 function setCredential(provider: AgentProvider, credential: string | undefined): void {
     const secrets = { ...getAgentStore().get("secrets") };
@@ -185,7 +212,7 @@ function setCredential(provider: AgentProvider, credential: string | undefined):
         secrets[provider] = safeStorage.encryptString(credential).toString("base64");
     }
     getAgentStore().set("secrets", secrets);
-    if (provider === "copilot") getAgentStore().delete("copilotLoggedInUser");
+    getAgentStore().delete(provider === "copilot" ? "copilotLoggedInUser" : "claudeLoggedInUser");
 }
 
 export function failure(error: AgentErrorCode, message?: string): AgentResult<never> {
@@ -200,6 +227,7 @@ export function getAgentStatus(): AgentStatus {
         ...getSettings(),
         connected: { claude: hasCredential("claude"), copilot: hasCredential("copilot") },
         copilotLoggedInUser: getAgentStore().get("copilotLoggedInUser"),
+        claudeLoggedInUser: getAgentStore().get("claudeLoggedInUser"),
         recentProjects: getAgentStore().get("recentProjects") ?? [],
     };
 }
@@ -284,8 +312,10 @@ export async function connectAgent(provider: unknown, credential: unknown): Prom
     if (!isProvider(provider) || typeof credential !== "string" || !credential.trim()) {
         return failure("invalid_request");
     }
-    // The marker of the computer's login is not a token
-    if (credential.trim() === COPILOT_LOGGED_IN_USER) return failure("invalid_request");
+    // The markers of the computer's logins are not credentials
+    if (credential.trim() === COPILOT_LOGGED_IN_USER || credential.trim() === CLAUDE_LOGGED_IN_USER) {
+        return failure("invalid_request");
+    }
     const checked = await listModelsWith(provider, credential.trim());
     if (!checked.ok) return checked;
     try {
@@ -318,6 +348,32 @@ export async function connectCopilotLoggedInUser(): Promise<AgentResult<void>> {
     setCredential("copilot", undefined);
     getAgentStore().set("copilotLoggedInUser", login ? { login } : {});
     return { ok: true, data: undefined };
+}
+
+/**
+ * Connect Claude with the login of Claude Code on this computer, such as the user's subscription, instead of an API
+ * key. Nothing is stored but the kind of subscription; the login stays with Claude Code. It uses the configuration
+ * folder of Claude Code from its settings, so the same account as the tasks.
+ */
+export async function connectClaudeLoggedInUser(): Promise<AgentResult<void>> {
+    const login = await getClaudeCodeLogin();
+    if (!login.ok) return login;
+    setCredential("claude", undefined);
+    getAgentStore().set(
+        "claudeLoggedInUser",
+        login.data.subscriptionType ? { subscriptionType: login.data.subscriptionType } : {},
+    );
+    return { ok: true, data: undefined };
+}
+
+/**
+ * Connect a provider with the login of its CLI on this computer.
+ * @param provider - The provider; Copilot if none is given, as before Claude could use a login too
+ */
+export async function connectLoggedInUser(provider: unknown): Promise<AgentResult<void>> {
+    if (provider === undefined || provider === "copilot") return connectCopilotLoggedInUser();
+    if (provider === "claude") return connectClaudeLoggedInUser();
+    return failure("invalid_request");
 }
 
 /**
@@ -441,6 +497,10 @@ export async function generateAgentReply(request: unknown): Promise<AgentResult<
     if (settings.provider === "claude") {
         const messages = toClaudeMessages(request.turns);
         if (messages.at(-1)?.role !== "user") return failure("invalid_request");
+        // Claude Code takes a single prompt, so the conversation is written out as a transcript
+        if (credential === CLAUDE_LOGGED_IN_USER) {
+            return askWithClaudeCode(settings.model ?? DEFAULT_CLAUDE_MODEL, system, buildCopilotReplyPrompt(request));
+        }
         return askClaude(credential, settings.model, system, messages);
     }
     return askCopilot(credential, settings.model, system, buildCopilotReplyPrompt(request));
@@ -603,6 +663,9 @@ export function buildInstructionLines(
 
 async function listModelsWith(provider: AgentProvider, credential: string): Promise<AgentResult<AgentModel[]>> {
     try {
+        if (provider === "claude" && credential === CLAUDE_LOGGED_IN_USER) {
+            return { ok: true, data: CLAUDE_CODE_MODELS };
+        }
         if (provider === "claude") {
             const page = await new Anthropic({ apiKey: credential }).models.list({ limit: 100 });
             return { ok: true, data: page.data.map((model) => ({ id: model.id, name: model.display_name })) };
@@ -637,6 +700,7 @@ export function toClaudeMessages(turns: AgentTurn[]): Anthropic.MessageParam[] {
 
 /**
  * Get the answer of Claude to a conversation that ends with a message of the user's side.
+ * @param apiKey - An Anthropic API key, or {@link CLAUDE_LOGGED_IN_USER} to ask through Claude Code
  */
 export async function askClaude(
     apiKey: string,
@@ -645,6 +709,7 @@ export async function askClaude(
     messages: Anthropic.MessageParam[],
 ): Promise<AgentResult<string>> {
     const modelId = model ?? DEFAULT_CLAUDE_MODEL;
+    if (apiKey === CLAUDE_LOGGED_IN_USER) return askWithClaudeCode(modelId, system, toTranscript(messages));
 
     try {
         const client = new Anthropic({ apiKey, timeout: REPLY_TIMEOUT_MS });
@@ -670,6 +735,21 @@ export async function askClaude(
     } catch (e) {
         return toFailure("claude", e);
     }
+}
+
+/**
+ * Write Claude messages out as a single prompt, for Claude Code: a single message as it is, a conversation as a
+ * transcript.
+ */
+export function toTranscript(messages: Anthropic.MessageParam[]): string {
+    const text = (content: Anthropic.MessageParam["content"]): string =>
+        typeof content === "string"
+            ? content
+            : content.map((block) => (block.type === "text" ? block.text : "")).join("");
+    if (messages.length === 1) return text(messages[0].content);
+    return messages
+        .map((message) => `${message.role === "user" ? "User" : "Assistant"}: ${text(message.content)}`)
+        .join("\n");
 }
 
 let copilot: { token: string; client: CopilotClient } | undefined;

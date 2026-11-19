@@ -521,7 +521,7 @@ export default class ElectronPlatform extends BasePlatform {
         getStatus: () => this.ipc.call("agentGetStatus"),
         setSettings: (changes) => this.ipc.call("agentSetSettings", changes),
         connect: (provider, credential) => this.ipc.call("agentConnect", provider, credential),
-        connectLoggedInUser: () => this.ipc.call("agentConnectLoggedInUser"),
+        connectLoggedInUser: (provider) => this.ipc.call("agentConnectLoggedInUser", provider),
         disconnect: (provider) => this.ipc.call("agentDisconnect", provider),
         listModels: (provider) => this.ipc.call("agentListModels", provider),
         getRoomRules: (userId) => this.ipc.call("agentGetRoomRules", userId),
