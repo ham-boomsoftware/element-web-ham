@@ -231,6 +231,12 @@ export class AgentSettingsViewModel
         this.snapshot.merge({ claudeLoginPending: false });
     };
 
+    /** Stops waiting for the login of the Claude account, so that no check runs after the settings closed */
+    public override dispose(): void {
+        this.cancelClaudeLogin();
+        super.dispose();
+    }
+
     public disconnect = (): void => {
         const { provider } = this.snapshot.current;
         void (async () => {
