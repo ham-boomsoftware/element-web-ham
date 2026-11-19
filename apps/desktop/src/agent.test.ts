@@ -40,6 +40,8 @@ const { storeData, storeOptions, safeStorage, anthropic, copilot, claudeCode } =
         claudeCode: {
             getClaudeCodeLogin: vi.fn(),
             askWithClaudeCode: vi.fn(),
+            getAgentClaudeConfigDir: vi.fn(() => "/agent/claude-account"),
+            setClaudeCodeSettings: vi.fn(),
         },
         /** What the agent's store holds, as electron-store would write it to disk */
         storeData: {} as Record<string, unknown>,
@@ -403,6 +405,33 @@ describe("agent", () => {
             expect(status.claudeLoggedInUser).toEqual({ subscriptionType: "max" });
             expect(await listAgentModels("claude")).toEqual({ ok: true, data: CLAUDE_CODE_MODELS });
             expect(anthropic.modelsList).not.toHaveBeenCalled();
+            // The login of this computer, for the tasks too
+            expect(claudeCode.getClaudeCodeLogin).toHaveBeenCalledWith(undefined);
+            expect(claudeCode.setClaudeCodeSettings).toHaveBeenCalledWith({ configDir: undefined });
+        });
+
+        it("connects Claude with the Claude account the agent has of its own", async () => {
+            claudeCode.getClaudeCodeLogin.mockResolvedValue({
+                ok: true,
+                data: { loggedIn: true, subscriptionType: "pro", email: "agent@example.org" },
+            });
+
+            expect(await connectLoggedInUser("claude", "own")).toEqual({ ok: true, data: undefined });
+
+            expect(claudeCode.getClaudeCodeLogin).toHaveBeenCalledWith("/agent/claude-account");
+            expect(claudeCode.setClaudeCodeSettings).toHaveBeenCalledWith({ configDir: "/agent/claude-account" });
+            expect(getAgentStatus().claudeLoggedInUser).toEqual({
+                subscriptionType: "pro",
+                email: "agent@example.org",
+                ownAccount: true,
+            });
+        });
+
+        it("keeps the account of the tasks if the login is missing", async () => {
+            claudeCode.getClaudeCodeLogin.mockResolvedValue({ ok: false, error: "not_connected" });
+
+            expect(await connectLoggedInUser("claude", "own")).toMatchObject({ ok: false, error: "not_connected" });
+            expect(claudeCode.setClaudeCodeSettings).not.toHaveBeenCalled();
         });
 
         it("writes replies and suggestions through Claude Code with the login of Claude Code", async () => {

@@ -40,7 +40,7 @@ import {
     setTaskProgressListener,
     updateAgentTask,
 } from "./agent-tasks.js";
-import { openAgentTaskInCli, pickAgentFolder } from "./agent-cli.js";
+import { openAgentTaskInCli, openClaudeAccountLogin, pickAgentFolder } from "./agent-cli.js";
 import { scheduleAgentTask, suggestAgentTimeSlot } from "./agent-calendar.js";
 import { getAgentPipelineStatus, setPipelineFailureListener, syncPipelineWatcher } from "./agent-pipelines.js";
 import { chatWithAgentAssistant } from "./agent-assistant.js";
@@ -239,7 +239,10 @@ ipcMain.on("ipcCall", async function (_ev: IpcMainEvent, payload) {
             ret = setAgentRoomInstructions(args[0], args[1], args[2]);
             break;
         case "agentConnectLoggedInUser":
-            ret = await connectLoggedInUser(args[0]);
+            ret = await connectLoggedInUser(args[0], args[1]);
+            break;
+        case "agentOpenClaudeLogin":
+            ret = await openClaudeAccountLogin();
             break;
         case "agentGenerateReply":
             ret = await generateAgentReply(args[0]);

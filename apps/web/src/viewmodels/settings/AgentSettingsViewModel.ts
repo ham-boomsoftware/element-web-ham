@@ -13,7 +13,7 @@ import {
     type AgentSettingsViewModel as AgentSettingsViewModelInterface,
     type AgentSettingsViewSnapshot,
 } from "@element-hq/web-shared-components";
-import type { AgentErrorCode, AgentResult } from "shared-types";
+import type { AgentErrorCode, AgentResult, AgentStatus } from "shared-types";
 
 import type { AgentApi } from "../../agent/AgentApi";
 
@@ -40,6 +40,24 @@ export function toSettingsError(error: AgentErrorCode): AgentSettingsError {
 /**
  * View model of the agent settings: reads the settings from the platform's agent and changes them there.
  */
+
+/** How often to check whether the user logged in to the Claude account of the agent */
+const CLAUDE_LOGIN_POLL_MS = 3000;
+
+/** How long to wait for the user to log in to the Claude account of the agent */
+const CLAUDE_LOGIN_TIMEOUT_MS = 10 * 60 * 1000;
+
+/** What the settings show of the login of Claude Code */
+function claudeLoginOf(
+    status: AgentStatus,
+): Pick<AgentSettingsViewSnapshot, "claudeUsesLoggedInUser" | "claudeOwnAccount" | "claudeLogin"> {
+    return {
+        claudeUsesLoggedInUser: Boolean(status.claudeLoggedInUser),
+        claudeOwnAccount: Boolean(status.claudeLoggedInUser?.ownAccount),
+        claudeLogin: status.claudeLoggedInUser?.email,
+    };
+}
+
 export class AgentSettingsViewModel
     extends BaseViewModel<AgentSettingsViewSnapshot, Props>
     implements AgentSettingsViewModelInterface
@@ -52,6 +70,8 @@ export class AgentSettingsViewModel
             connected: { claude: false, copilot: false },
             copilotUsesLoggedInUser: false,
             claudeUsesLoggedInUser: false,
+            claudeOwnAccount: false,
+            claudeLoginPending: false,
             models: [],
             instructions: "",
             replySuggestions: true,
@@ -76,7 +96,7 @@ export class AgentSettingsViewModel
             connected,
             copilotUsesLoggedInUser: Boolean(status.copilotLoggedInUser),
             copilotLogin: status.copilotLoggedInUser?.login,
-            claudeUsesLoggedInUser: Boolean(status.claudeLoggedInUser),
+            ...claudeLoginOf(status),
             model,
             instructions,
             replySuggestions,
@@ -136,7 +156,11 @@ export class AgentSettingsViewModel
             this.snapshot.merge({
                 connected: { ...this.snapshot.current.connected, [provider]: true },
                 ...(provider === "copilot" && { copilotUsesLoggedInUser: false, copilotLogin: undefined }),
-                ...(provider === "claude" && { claudeUsesLoggedInUser: false }),
+                ...(provider === "claude" && {
+                    claudeUsesLoggedInUser: false,
+                    claudeOwnAccount: false,
+                    claudeLogin: undefined,
+                }),
             });
             await this.loadModels();
         })();
@@ -160,10 +184,51 @@ export class AgentSettingsViewModel
                 connected: status.connected,
                 copilotUsesLoggedInUser: Boolean(status.copilotLoggedInUser),
                 copilotLogin: status.copilotLoggedInUser?.login,
-                claudeUsesLoggedInUser: Boolean(status.claudeLoggedInUser),
+                ...claudeLoginOf(status),
             });
             await this.loadModels();
         })();
+    };
+
+    /** The timer that checks whether the user logged in to the Claude account of the agent */
+    private claudeLoginTimer?: ReturnType<typeof setTimeout>;
+
+    public loginClaudeAccount = (): void => {
+        void (async () => {
+            const opened = await this.run(() => this.props.agent.openClaudeLogin());
+            if (!opened?.ok) return;
+            this.snapshot.merge({ claudeLoginPending: true });
+            const deadline = Date.now() + CLAUDE_LOGIN_TIMEOUT_MS;
+            const check = async (): Promise<void> => {
+                this.claudeLoginTimer = undefined;
+                if (this.isDisposed || !this.snapshot.current.claudeLoginPending) return;
+                // Not through run(): the controls stay usable and "not logged in yet" is no error while waiting
+                const result = await this.props.agent.connectLoggedInUser("claude", "own");
+                if (this.isDisposed || !this.snapshot.current.claudeLoginPending) return;
+                if (result.ok) {
+                    const status = await this.props.agent.getStatus();
+                    if (this.isDisposed) return;
+                    this.snapshot.merge({
+                        claudeLoginPending: false,
+                        error: undefined,
+                        connected: status.connected,
+                        ...claudeLoginOf(status),
+                    });
+                    await this.loadModels();
+                } else if (Date.now() >= deadline) {
+                    this.snapshot.merge({ claudeLoginPending: false, error: "claude_login_timeout" });
+                } else {
+                    this.claudeLoginTimer = setTimeout(() => void check(), CLAUDE_LOGIN_POLL_MS);
+                }
+            };
+            this.claudeLoginTimer = setTimeout(() => void check(), CLAUDE_LOGIN_POLL_MS);
+        })();
+    };
+
+    public cancelClaudeLogin = (): void => {
+        if (this.claudeLoginTimer) clearTimeout(this.claudeLoginTimer);
+        this.claudeLoginTimer = undefined;
+        this.snapshot.merge({ claudeLoginPending: false });
     };
 
     public disconnect = (): void => {
@@ -175,7 +240,11 @@ export class AgentSettingsViewModel
                 connected: { ...this.snapshot.current.connected, [provider]: false },
                 models: [],
                 ...(provider === "copilot" && { copilotUsesLoggedInUser: false, copilotLogin: undefined }),
-                ...(provider === "claude" && { claudeUsesLoggedInUser: false }),
+                ...(provider === "claude" && {
+                    claudeUsesLoggedInUser: false,
+                    claudeOwnAccount: false,
+                    claudeLogin: undefined,
+                }),
             });
         })();
     };

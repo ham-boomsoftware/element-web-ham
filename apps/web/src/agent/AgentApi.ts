@@ -46,9 +46,16 @@ export interface AgentApi {
     /**
      * Connect a provider with the login of its CLI on this computer instead of a credential: Copilot with the GitHub
      * login of Copilot CLI or GitHub CLI, Claude with the login of Claude Code, such as a subscription.
-     * Fails with `not_connected` if the computer has no login.
+     * With `account` set to `own`, Claude uses the account the agent has of its own instead, see
+     * {@link openClaudeLogin}.
+     * Fails with `not_connected` if there is no login.
      */
-    connectLoggedInUser(provider: AgentProvider): Promise<AgentResult<void>>;
+    connectLoggedInUser(provider: AgentProvider, account?: "own"): Promise<AgentResult<void>>;
+    /**
+     * Open a terminal for the user to log in to a Claude account of the agent's own, apart from the login of this
+     * computer. Connect it afterwards with `connectLoggedInUser("claude", "own")`.
+     */
+    openClaudeLogin(): Promise<AgentResult<void>>;
     /** Forget the credential of a provider */
     disconnect(provider: AgentProvider): Promise<AgentResult<void>>;
     /** List the models a connected provider offers */

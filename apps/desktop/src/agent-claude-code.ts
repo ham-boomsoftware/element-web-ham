@@ -76,6 +76,11 @@ export interface ClaudeCodeSettings {
     configDir?: string;
 }
 
+/** The configuration folder of Claude Code for an account of the agent's own, apart from the user's login */
+export function getAgentClaudeConfigDir(): string {
+    return path.join(getAgentDataPath(), "claude-account");
+}
+
 /** The settings of Claude Code; it is used unless the user turned it off */
 export function getClaudeCodeSettings(): ClaudeCodeSettings {
     const stored = getAgentStore().get("claudeCode");
@@ -184,18 +189,21 @@ export interface ClaudeCodeLogin {
     loggedIn?: boolean;
     authMethod?: string;
     subscriptionType?: string;
+    /** The email address of the Claude account */
+    email?: string;
 }
 
 /**
  * Run the CLI and collect what it writes.
  * @param input - What goes in through stdin, so that text of a chat never goes on a command line
+ * @param configDir - The configuration folder of Claude Code, or undefined for the user's own login
  */
 function runClaude(
     args: string[],
     input: string,
     timeoutMs: number,
+    configDir = getClaudeCodeSettings().configDir,
 ): Promise<{ code: number | null; stdout: string; stderr: string }> {
-    const { configDir } = getClaudeCodeSettings();
     const cwd = path.join(getAgentDataPath(), "claude-code");
     return fs.mkdir(cwd, { recursive: true }).then(
         () =>
@@ -234,11 +242,15 @@ function startFailure(e: unknown): AgentResult<never> {
 
 /**
  * Check that Claude Code is logged in, without asking the model anything.
+ * @param configDir - The configuration folder of Claude Code, or undefined for the user's own login; by default
+ * the one of the settings
  * @returns the login, or `not_connected` if the CLI has none
  */
-export async function getClaudeCodeLogin(): Promise<AgentResult<ClaudeCodeLogin>> {
+export async function getClaudeCodeLogin(
+    configDir = getClaudeCodeSettings().configDir,
+): Promise<AgentResult<ClaudeCodeLogin>> {
     try {
-        const { stdout, stderr } = await runClaude(["auth", "status", "--json"], "", 30 * 1000);
+        const { stdout, stderr } = await runClaude(["auth", "status", "--json"], "", 30 * 1000, configDir);
         let login: ClaudeCodeLogin;
         try {
             login = JSON.parse(stdout) as ClaudeCodeLogin;

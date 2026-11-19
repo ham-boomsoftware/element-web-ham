@@ -98,7 +98,11 @@ const agentTasks = vi.hoisted(() => ({
     setTaskProgressListener: vi.fn(),
 }));
 vi.mock("./agent-tasks.js", () => agentTasks);
-const agentCli = vi.hoisted(() => ({ pickAgentFolder: vi.fn(), openAgentTaskInCli: vi.fn() }));
+const agentCli = vi.hoisted(() => ({
+    pickAgentFolder: vi.fn(),
+    openAgentTaskInCli: vi.fn(),
+    openClaudeAccountLogin: vi.fn(),
+}));
 vi.mock("./agent-cli.js", () => agentCli);
 const agentCalendar = vi.hoisted(() => ({ suggestAgentTimeSlot: vi.fn(), scheduleAgentTask: vi.fn() }));
 vi.mock("./agent-calendar.js", () => agentCalendar);
@@ -415,7 +419,7 @@ describe("ipc agent commands", () => {
             agent.setAgentRoomInstructions,
             ["@alice:example.org", "!dm:example.org", "Answer in English"],
         ],
-        ["agentConnectLoggedInUser", agent.connectLoggedInUser, ["claude"]],
+        ["agentConnectLoggedInUser", agent.connectLoggedInUser, ["claude", "own"]],
         ["agentGenerateReply", agent.generateAgentReply, [{ ownName: "Alice", partnerName: "Bob", turns: [] }]],
         [
             "agentGenerateSuggestions",
@@ -442,6 +446,7 @@ describe("ipc agent commands", () => {
             ["@alice:example.org", "task-1", "The blue one", "Bob"],
         ],
         ["agentPickFolder", agentCli.pickAgentFolder, []],
+        ["agentOpenClaudeLogin", agentCli.openClaudeAccountLogin, []],
         [
             "agentOpenTaskInCli",
             agentCli.openAgentTaskInCli,

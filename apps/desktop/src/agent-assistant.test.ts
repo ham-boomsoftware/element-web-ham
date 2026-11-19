@@ -29,7 +29,11 @@ vi.mock("./agent.js", () => ({
     getSettings: vi.fn(() => ({ instructions: "Be brief." })),
     getAgentDataPath: vi.fn(() => "/agent"),
 }));
-vi.mock("./agent-claude-code.js", () => ({ getClaudeCodeSettings: vi.fn(), setClaudeCodeSettings: vi.fn() }));
+vi.mock("./agent-claude-code.js", () => ({
+    getAgentClaudeConfigDir: vi.fn(() => "/agent/claude-account"),
+    getClaudeCodeSettings: vi.fn(),
+    setClaudeCodeSettings: vi.fn(),
+}));
 vi.mock("./agent-tasks.js", () => ({
     addAgentTasks: vi.fn(),
     answerAgentTaskQuestion: vi.fn(),

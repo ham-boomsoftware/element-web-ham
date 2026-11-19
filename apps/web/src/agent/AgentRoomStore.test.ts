@@ -29,6 +29,7 @@ describe("AgentRoomStore", () => {
                 data: rule ? { [roomId]: rule } : {},
             })),
             connectLoggedInUser: vi.fn(),
+            openClaudeLogin: vi.fn(),
             getRoomInstructions: vi
                 .fn()
                 .mockResolvedValue({ ok: true, data: { "!a:example.org": "Answer in German" } }),

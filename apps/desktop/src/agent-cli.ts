@@ -19,7 +19,7 @@ import type { AgentCodingCli, AgentResult, AgentTask } from "shared-types";
 
 import { failure, getAgentDataPath, getAgentStore, getSettings, isDirectory } from "./agent.js";
 import { findAgentTask, showFolderDialog } from "./agent-tasks.js";
-import { getClaudeCodeSettings } from "./agent-claude-code.js";
+import { getAgentClaudeConfigDir, getClaudeCodeSettings } from "./agent-claude-code.js";
 
 /** How many recent project folders are kept */
 const MAX_RECENT_PROJECTS = 8;
@@ -157,6 +157,14 @@ export async function openClaudeCodeLogin(configDir: string): Promise<AgentResul
         console.error("Failed to open the login of Claude Code", e);
         return failure("unavailable", e instanceof Error ? e.message : String(e));
     }
+}
+
+/**
+ * Open a terminal for the user to log in to the Claude account the agent has of its own, apart from the login of
+ * this computer. Once logged in, the account is connected with `connectLoggedInUser("claude", "own")`.
+ */
+export function openClaudeAccountLogin(): Promise<AgentResult<void>> {
+    return openClaudeCodeLogin(getAgentClaudeConfigDir());
 }
 
 /** Open a new PowerShell window that runs the CLI, and stays open when the CLI ends */

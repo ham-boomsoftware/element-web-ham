@@ -90,6 +90,7 @@ describe("ReplySuggestionsViewModel", () => {
             getRoomRules: vi.fn(),
             setRoomRule: vi.fn(),
             connectLoggedInUser: vi.fn(),
+            openClaudeLogin: vi.fn(),
             getRoomInstructions: vi.fn(),
             setRoomInstructions: vi.fn(),
             generateReply: vi.fn(),

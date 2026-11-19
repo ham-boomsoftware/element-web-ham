@@ -43,6 +43,7 @@ export type AgentSettingsCli = "claude" | "copilot";
  * - `invalid_credential`: the provider rejected the key or token.
  * - `not_logged_in`: Copilot found no GitHub login on this computer, or the account has no Copilot plan.
  * - `claude_not_logged_in`: Claude Code is not logged in on this computer.
+ * - `claude_login_timeout`: the login to the Claude account of the agent did not finish in time.
  * - `rate_limited`: the provider asks to slow down, or the plan's allowance is used up.
  * - `unavailable`: the provider could not be reached.
  * - `no_workspace`: the chosen project folder doesn't exist.
@@ -52,6 +53,7 @@ export type AgentSettingsError =
     | "invalid_credential"
     | "not_logged_in"
     | "claude_not_logged_in"
+    | "claude_login_timeout"
     | "rate_limited"
     | "unavailable"
     | "no_workspace"
@@ -81,6 +83,12 @@ export interface AgentSettingsViewSnapshot {
     copilotLogin?: string;
     /** Whether Claude uses the login of Claude Code, such as a subscription, instead of an API key */
     claudeUsesLoggedInUser: boolean;
+    /** Whether that login is the Claude account of the agent's own rather than the login of this computer */
+    claudeOwnAccount: boolean;
+    /** The email address of the Claude account, if known */
+    claudeLogin?: string;
+    /** Whether the agent waits for the user to log in to its Claude account in a terminal */
+    claudeLoginPending: boolean;
     /** The models of the selected provider; empty while it is not connected */
     models: AgentSettingsModel[];
     /** The selected model, or undefined for the provider's default */
@@ -119,6 +127,13 @@ export interface AgentSettingsViewActions {
      * Copilot CLI or GitHub CLI, Claude with the login of Claude Code
      */
     connectLoggedInUser: () => void;
+    /**
+     * Open a terminal to log in to a Claude account of the agent's own, apart from the login of this computer, and
+     * connect Claude with it once the user logged in
+     */
+    loginClaudeAccount: () => void;
+    /** Stop waiting for the login to the Claude account */
+    cancelClaudeLogin: () => void;
     /** Forget the credential of the selected provider */
     disconnect: () => void;
     /** Choose a model of the selected provider, or "" for its default */
@@ -172,6 +187,9 @@ export function AgentSettingsView({ vm }: Readonly<AgentSettingsViewProps>): JSX
         copilotUsesLoggedInUser,
         copilotLogin,
         claudeUsesLoggedInUser,
+        claudeOwnAccount,
+        claudeLogin,
+        claudeLoginPending,
         models,
         model,
         instructions,
@@ -220,7 +238,15 @@ export function AgentSettingsView({ vm }: Readonly<AgentSettingsViewProps>): JSX
             ? _t("settings|agent|connected_copilot_login", { login: copilotLogin })
             : _t("settings|agent|connected_copilot_logged_in");
     }
-    if (claudeUsesLoggedInUser) connectedLabels.claude = _t("settings|agent|connected_claude_logged_in");
+    if (claudeUsesLoggedInUser && claudeOwnAccount) {
+        connectedLabels.claude = claudeLogin
+            ? _t("settings|agent|connected_claude_own_account_login", { login: claudeLogin })
+            : _t("settings|agent|connected_claude_own_account");
+    } else if (claudeUsesLoggedInUser) {
+        connectedLabels.claude = claudeLogin
+            ? _t("settings|agent|connected_claude_logged_in_login", { login: claudeLogin })
+            : _t("settings|agent|connected_claude_logged_in");
+    }
     const loggedInUserLabels: Record<AgentSettingsProvider, string> = {
         claude: _t("settings|agent|use_claude_code_login"),
         copilot: _t("settings|agent|use_logged_in_user"),
@@ -241,6 +267,7 @@ export function AgentSettingsView({ vm }: Readonly<AgentSettingsViewProps>): JSX
         invalid_credential: _t("settings|agent|error_invalid_credential"),
         not_logged_in: _t("settings|agent|error_not_logged_in"),
         claude_not_logged_in: _t("settings|agent|error_claude_not_logged_in"),
+        claude_login_timeout: _t("settings|agent|error_claude_login_timeout"),
         rate_limited: _t("settings|agent|error_rate_limited"),
         unavailable: _t("settings|agent|error_unavailable"),
         no_workspace: _t("settings|agent|error_no_workspace"),
@@ -305,6 +332,30 @@ export function AgentSettingsView({ vm }: Readonly<AgentSettingsViewProps>): JSX
                     <Submit size="md" disabled={isBusy || !credential.trim()}>
                         {_t("settings|agent|connect")}
                     </Submit>
+                    {provider === "claude" &&
+                        (claudeLoginPending ? (
+                            <Flex direction="column" gap="var(--cpd-space-2x)">
+                                <Text size="sm">{_t("settings|agent|claude_account_login_pending")}</Text>
+                                <Button type="button" kind="tertiary" size="md" onClick={vm.cancelClaudeLogin}>
+                                    {_t("action|cancel")}
+                                </Button>
+                            </Flex>
+                        ) : (
+                            <Flex direction="column" gap="var(--cpd-space-2x)">
+                                <Button
+                                    type="button"
+                                    kind="secondary"
+                                    size="md"
+                                    disabled={isBusy}
+                                    onClick={vm.loginClaudeAccount}
+                                >
+                                    {_t("settings|agent|claude_account_login")}
+                                </Button>
+                                <Text size="sm" className={styles.description}>
+                                    {_t("settings|agent|claude_account_login_description")}
+                                </Text>
+                            </Flex>
+                        ))}
                     <Flex direction="column" gap="var(--cpd-space-2x)">
                         <Button
                             type="button"

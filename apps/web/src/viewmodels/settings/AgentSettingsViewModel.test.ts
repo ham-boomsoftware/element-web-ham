@@ -55,6 +55,7 @@ describe("AgentSettingsViewModel", () => {
             getRoomRules: vi.fn(),
             setRoomRule: vi.fn(),
             connectLoggedInUser: vi.fn(),
+            openClaudeLogin: vi.fn(),
             getRoomInstructions: vi.fn(),
             setRoomInstructions: vi.fn(),
             generateReply: vi.fn(),
@@ -209,6 +210,56 @@ describe("AgentSettingsViewModel", () => {
             expect(vm.getSnapshot().connected).toEqual({ claude: true, copilot: false });
             expect(agent.connectLoggedInUser).toHaveBeenCalledWith("claude");
             expect(agent.listModels).toHaveBeenCalledWith("claude");
+        });
+
+        it("opens the login of the Claude account of the agent and connects once the user logged in", async () => {
+            vi.useFakeTimers();
+            try {
+                agent.openClaudeLogin.mockResolvedValue({ ok: true, data: undefined });
+                agent.connectLoggedInUser.mockResolvedValueOnce({ ok: false, error: "not_connected" });
+                agent.connectLoggedInUser.mockResolvedValueOnce({ ok: true, data: undefined });
+                agent.getStatus.mockResolvedValue({
+                    ...(await agent.getStatus()),
+                    connected: { claude: true, copilot: false },
+                    claudeLoggedInUser: { email: "agent@example.org", ownAccount: true },
+                });
+
+                vm.loginClaudeAccount();
+                await vi.waitFor(() => expect(vm.getSnapshot().claudeLoginPending).toBe(true));
+
+                // Not logged in yet: it keeps waiting without an error
+                await vi.advanceTimersByTimeAsync(3000);
+                expect(vm.getSnapshot()).toMatchObject({ claudeLoginPending: true, error: undefined });
+
+                await vi.advanceTimersByTimeAsync(3000);
+                await vi.waitFor(() => expect(vm.getSnapshot().claudeLoginPending).toBe(false));
+                expect(vm.getSnapshot()).toMatchObject({
+                    claudeUsesLoggedInUser: true,
+                    claudeOwnAccount: true,
+                    claudeLogin: "agent@example.org",
+                    connected: { claude: true, copilot: false },
+                });
+                expect(agent.connectLoggedInUser).toHaveBeenCalledWith("claude", "own");
+            } finally {
+                vi.useRealTimers();
+            }
+        });
+
+        it("stops waiting for the login of the Claude account when cancelled", async () => {
+            vi.useFakeTimers();
+            try {
+                agent.openClaudeLogin.mockResolvedValue({ ok: true, data: undefined });
+
+                vm.loginClaudeAccount();
+                await vi.waitFor(() => expect(vm.getSnapshot().claudeLoginPending).toBe(true));
+                vm.cancelClaudeLogin();
+                await vi.advanceTimersByTimeAsync(10000);
+
+                expect(vm.getSnapshot().claudeLoginPending).toBe(false);
+                expect(agent.connectLoggedInUser).not.toHaveBeenCalled();
+            } finally {
+                vi.useRealTimers();
+            }
         });
 
         it("shows that Claude Code is not logged in on this computer", async () => {

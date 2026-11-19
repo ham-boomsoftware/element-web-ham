@@ -10,7 +10,6 @@ Please see LICENSE files in the repository root for full details.
 // chat, so what they write there are instructions.
 
 import { randomUUID } from "node:crypto";
-import path from "node:path";
 import type {
     AgentAssistantReply,
     AgentAssistantRequest,
@@ -24,7 +23,7 @@ import type {
     AgentTurn,
 } from "shared-types";
 
-import { buildInstructionLines, failure, getAgentDataPath, getSettings } from "./agent.js";
+import { buildInstructionLines, failure, getSettings } from "./agent.js";
 import {
     addAgentTasks,
     answerAgentTaskQuestion,
@@ -45,7 +44,12 @@ import {
     setBsmProjectFolder,
 } from "./agent-bsm.js";
 import { openAgentTaskInCli, openClaudeCodeLogin, pickAgentFolder } from "./agent-cli.js";
-import { type ClaudeCodeSettings, getClaudeCodeSettings, setClaudeCodeSettings } from "./agent-claude-code.js";
+import {
+    type ClaudeCodeSettings,
+    getAgentClaudeConfigDir,
+    getClaudeCodeSettings,
+    setClaudeCodeSettings,
+} from "./agent-claude-code.js";
 
 /** How many messages of the chat the agent reads */
 export const MAX_TURNS = 30;
@@ -109,7 +113,7 @@ const DEFAULT_DEPS: AssistantDeps = {
     getClaudeCode: getClaudeCodeSettings,
     setClaudeCode: setClaudeCodeSettings,
     openClaudeLogin: openClaudeCodeLogin,
-    agentClaudeConfigDir: () => path.join(getAgentDataPath(), "claude-account"),
+    agentClaudeConfigDir: getAgentClaudeConfigDir,
     getBsmIgnored,
     setBsmIgnored,
 };

@@ -35,7 +35,12 @@ import type {
     AgentTurn,
 } from "shared-types";
 
-import { askWithClaudeCode, getClaudeCodeLogin } from "./agent-claude-code.js";
+import {
+    askWithClaudeCode,
+    getAgentClaudeConfigDir,
+    getClaudeCodeLogin,
+    setClaudeCodeSettings,
+} from "./agent-claude-code.js";
 
 /** The model used for Claude when the user picked none */
 export const DEFAULT_CLAUDE_MODEL = "claude-opus-5-5";
@@ -114,9 +119,9 @@ export interface AgentStoreData {
     copilotLoggedInUser?: { login?: string };
     /**
      * Set while Claude uses the login of Claude Code instead of an API key from {@link secrets}, with the kind of
-     * subscription
+     * subscription, the email address of the account and whether it is an account of the agent's own
      */
-    claudeLoggedInUser?: { subscriptionType?: string };
+    claudeLoggedInUser?: { subscriptionType?: string; email?: string; ownAccount?: boolean };
     /**
      * The rooms the agent replied in before there were room rules, by the Matrix user they belong to. They count as
      * `auto_reply` until the user changes a rule, which moves them to {@link roomRules}.
@@ -351,28 +356,37 @@ export async function connectCopilotLoggedInUser(): Promise<AgentResult<void>> {
 }
 
 /**
- * Connect Claude with the login of Claude Code on this computer, such as the user's subscription, instead of an API
- * key. Nothing is stored but the kind of subscription; the login stays with Claude Code. It uses the configuration
- * folder of Claude Code from its settings, so the same account as the tasks.
+ * Connect Claude with a login of Claude Code instead of an API key, such as a subscription. Nothing is stored but
+ * the kind of subscription and the email address of the account; the login stays with Claude Code. The tasks use
+ * the same account, as Claude Code keeps working with its configuration folder.
+ * @param configDir - The configuration folder of an account of the agent's own, or undefined for the user's own
+ * login of this computer
  */
-export async function connectClaudeLoggedInUser(): Promise<AgentResult<void>> {
-    const login = await getClaudeCodeLogin();
+export async function connectClaudeLoggedInUser(configDir: string | undefined): Promise<AgentResult<void>> {
+    const login = await getClaudeCodeLogin(configDir);
     if (!login.ok) return login;
     setCredential("claude", undefined);
-    getAgentStore().set(
-        "claudeLoggedInUser",
-        login.data.subscriptionType ? { subscriptionType: login.data.subscriptionType } : {},
-    );
+    setClaudeCodeSettings({ configDir });
+    const { subscriptionType, email } = login.data;
+    getAgentStore().set("claudeLoggedInUser", {
+        ...(subscriptionType && { subscriptionType }),
+        ...(email && { email }),
+        ...(configDir && { ownAccount: true }),
+    });
     return { ok: true, data: undefined };
 }
 
 /**
- * Connect a provider with the login of its CLI on this computer.
+ * Connect a provider with the login of its CLI.
  * @param provider - The provider; Copilot if none is given, as before Claude could use a login too
+ * @param account - For Claude, `own` for the account the agent has of its own, which the user logs in to with
+ * {@link openClaudeAccountLogin}; otherwise the login of this computer
  */
-export async function connectLoggedInUser(provider: unknown): Promise<AgentResult<void>> {
+export async function connectLoggedInUser(provider: unknown, account?: unknown): Promise<AgentResult<void>> {
     if (provider === undefined || provider === "copilot") return connectCopilotLoggedInUser();
-    if (provider === "claude") return connectClaudeLoggedInUser();
+    if (provider === "claude") {
+        return connectClaudeLoggedInUser(account === "own" ? getAgentClaudeConfigDir() : undefined);
+    }
     return failure("invalid_request");
 }
 

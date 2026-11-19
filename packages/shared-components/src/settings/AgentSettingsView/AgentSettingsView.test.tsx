@@ -31,6 +31,8 @@ describe("<AgentSettingsView />", () => {
             "setProvider",
             "connect",
             "connectLoggedInUser",
+            "loginClaudeAccount",
+            "cancelClaudeLogin",
             "disconnect",
             "setModel",
             "saveInstructions",
